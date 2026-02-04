@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapPin, Calendar, Home, Briefcase, Store, Car, Clock } from 'lucide-react';
+import WeatherWidget from '../components/WeatherWidget'; // <--- Importando o Widget Real
 
 // Importando componentes
 import SectionHeader from '../components/SectionHeader';
@@ -17,14 +18,15 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData }
     .slice(0, 3);
 
   return (
-<div className="space-y-12 pb-12">
+    <div className="space-y-12 pb-12 animate-in fade-in">
       
-      {/* HERO SECTION (Ajustada para não cortar a imagem) */}
+      {/* HERO SECTION (Banner Principal) */}
       <div className="relative w-full rounded-2xl overflow-hidden shadow-lg mx-4 mt-6 md:mx-0 group">
         <img 
           src="/vista-ouro-branco.jpg" 
           alt={`Vista de ${CITY_NAME}`} 
           className="w-full h-auto max-h-[600px] object-cover group-hover:scale-105 transition duration-700 block" 
+          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1444723121867-40ebb0a1bedd?auto=format&fit=crop&q=80&w=1000' }} // Fallback caso a imagem local não exista
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
           <div className="flex items-center gap-2 mb-2">
@@ -42,7 +44,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData }
       <div className="px-4 md:px-0">
         <SectionHeader title="Últimas Notícias" link={() => navigate('news')} />
         <div className="grid md:grid-cols-4 gap-6">
-          {newsData.slice(0, 4).map((news, idx) => (
+          {newsData.length > 0 ? newsData.slice(0, 4).map((news, idx) => (
             <div 
               key={news.id} 
               onClick={() => onNewsClick(news)} 
@@ -66,7 +68,11 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData }
                 )}
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-4 text-center py-10 bg-slate-50 border border-dashed rounded-xl text-slate-400">
+              Nenhuma notícia cadastrada ainda.
+            </div>
+          )}
         </div>
       </div>
 
@@ -94,6 +100,8 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData }
 
       {/* SEÇÃO DE AGENDA E UTILIDADE PÚBLICA */}
       <div className="grid md:grid-cols-3 gap-8 px-4 md:px-0">
+        
+        {/* Coluna Esquerda: Agenda */}
         <div className="md:col-span-2">
           <SectionHeader title="Agenda da Cidade" link={() => navigate('events')} />
           <div className="space-y-4">
@@ -126,30 +134,35 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData }
           </div>
         </div>
         
+        {/* Coluna Direita: Clima e Utilidades */}
         <div>
           <h2 className="text-xl font-bold text-slate-800 mb-6">Utilidade Pública</h2>
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg mb-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="block text-indigo-100 text-sm">Agora em {CITY_NAME}</span>
-                <span className="text-4xl font-bold">24°C</span>
-              </div>
-              <div className="bg-white/20 p-2 rounded-full">
-                <span className="text-2xl">⛅</span>
-              </div>
-            </div>
+          
+          {/* WIDGET DE CLIMA REAL */}
+          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg mb-4 flex flex-col items-center justify-center text-center">
+             <span className="block text-indigo-100 text-sm mb-2 opacity-80 uppercase tracking-wide">Clima Agora</span>
+             <div className="scale-150 transform">
+               <WeatherWidget />
+             </div>
+             <span className="mt-3 text-sm text-blue-100">Ouro Branco - MG</span>
           </div>
+
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
             <div className="flex justify-between text-sm py-2 border-b">
-              <span className="text-slate-500">Farmácia</span>
+              <span className="text-slate-500">Farmácia Plantão</span>
               <span className="font-bold text-slate-800">Drogaria Central</span>
             </div>
-            <div className="flex justify-between text-sm py-2">
-              <span className="text-slate-500">Lixo</span>
-              <span className="font-bold text-slate-800">Reciclável (Qua/Sáb)</span>
+            <div className="flex justify-between text-sm py-2 border-b">
+              <span className="text-slate-500">Coleta de Lixo</span>
+              <span className="font-bold text-slate-800">Seg / Qua / Sex</span>
+            </div>
+             <div className="flex justify-between text-sm py-2">
+              <span className="text-slate-500">Coleta Seletiva</span>
+              <span className="font-bold text-slate-800">Quarta-feira</span>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
