@@ -52,7 +52,7 @@ export default function App() {
   const [vehiclesData, setVehiclesData] = useState([]);
   const [guideData, setGuideData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL ---
+  // --- 1. CARREGAMENTO INICIAL E PERSISTÊNCIA ---
   const loadAllData = async () => {
     try {
       const [n, e, p, j, v, g] = await Promise.all([
@@ -67,6 +67,7 @@ export default function App() {
   };
 
   useEffect(() => { 
+    // Verifica se já existe um usuário salvo no navegador
     const savedUser = localStorage.getItem('app_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -193,16 +194,17 @@ export default function App() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          
-          {/* LOGO NOVA (Substitui o texto antigo) */}
-          <div className="flex items-center cursor-pointer group" onClick={() => setCurrentPage('home')}>
-            <img 
-              src="/logo.jpg" 
-              alt="Link da Cidade Ouro Branco" 
-              className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
+            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
+              <Grid className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">
+                {APP_BRAND}<span className="text-indigo-600">daCidade</span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
+            </div>
           </div>
-
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/>
             <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
@@ -287,7 +289,7 @@ export default function App() {
           )}
         </main>
 
-        {/* WIDGETS */}
+        {/* WIDGETS (LIMPO - SEM TEXTOS DUPLICADOS) */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
