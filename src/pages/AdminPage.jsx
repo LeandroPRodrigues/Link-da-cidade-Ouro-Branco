@@ -14,20 +14,20 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [modalType, setModalType] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // --- ESTADOS COMPARTILHADOS DOS FORMS (Notícias e Eventos) ---
+  // --- ESTADOS DOS FORMS (Notícias e Eventos) ---
   const [imageSource, setImageSource] = useState('url'); // 'url' ou 'upload'
   const [selectedFile, setSelectedFile] = useState(null); 
   const [formData, setFormData] = useState({
     title: '', category: '', subcategory: '', image: '', summary: '',
     author: 'Redação Link', date: new Date().toISOString().split('T')[0],
-    time: '', location: '', description: ''
+    time: '', location: '', description: '', link: '' // <--- Novos campos
   });
 
   const resetForm = () => {
     setFormData({
       title: '', category: '', subcategory: '', image: '', summary: '',
       author: 'Redação Link', date: new Date().toISOString().split('T')[0],
-      time: '', location: '', description: ''
+      time: '', location: '', description: '', link: ''
     });
     setEditingItem(null);
     setModalType(null);
@@ -39,63 +39,48 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setEditingItem(item);
     if (type === 'news' || type === 'event') {
       setFormData({ ...item });
-      setImageSource('url'); // Na edição, assume URL inicialmente
+      setImageSource('url'); 
       window.scrollTo(0,0);
     } else {
       setModalType(type);
     }
   };
 
-  // --- SUBMIT DE NOTÍCIAS ---
+  // --- SUBMIT NOTÍCIAS ---
   const handleNewsSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     let finalImageUrl = formData.image;
-
     if (imageSource === 'upload' && selectedFile) {
-      try {
-        finalImageUrl = await uploadFile(selectedFile, 'news');
-      } catch (error) {
-        alert("Erro ao fazer upload da imagem.");
-        setLoading(false);
-        return;
-      }
+      try { finalImageUrl = await uploadFile(selectedFile, 'news'); } 
+      catch (error) { alert("Erro no upload."); setLoading(false); return; }
     }
 
     const payload = { ...formData, image: finalImageUrl, id: editingItem ? editingItem.id : undefined };
     if (editingItem) crud.updateNews(payload); else crud.addNews(payload);
     
-    setLoading(false);
-    alert("Notícia salva!"); resetForm();
+    setLoading(false); alert("Notícia salva!"); resetForm();
   };
 
-  // --- SUBMIT DE EVENTOS (ATUALIZADO COM UPLOAD) ---
+  // --- SUBMIT EVENTOS ---
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     let finalImageUrl = formData.image;
-
-    // Lógica de Upload para Eventos
     if (imageSource === 'upload' && selectedFile) {
-      try {
-        finalImageUrl = await uploadFile(selectedFile, 'events'); // Pasta 'events'
-      } catch (error) {
-        alert("Erro ao fazer upload da imagem do evento.");
-        setLoading(false);
-        return;
-      }
+      try { finalImageUrl = await uploadFile(selectedFile, 'events'); } 
+      catch (error) { alert("Erro no upload."); setLoading(false); return; }
     }
 
     const payload = { ...formData, image: finalImageUrl, id: editingItem ? editingItem.id : undefined };
     if (editingItem) crud.updateEvent(payload); else crud.addEvent(payload);
     
-    setLoading(false);
-    alert("Evento salvo!"); resetForm();
+    setLoading(false); alert("Evento salvo!"); resetForm();
   };
 
-  // Componente Auxiliar de Lista
+  // Lista Genérica
   const AdminList = ({ data, type, labelField, onDelete }) => (
     <div className="space-y-2 max-h-[500px] overflow-y-auto">
       {data.length === 0 && <p className="text-slate-400 text-sm">Nenhum item cadastrado.</p>}
@@ -122,6 +107,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         </h2>
       </div>
 
+      {/* ABAS */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
         {[
           { id: 'news', label: 'Notícias', icon: FileText },
@@ -151,7 +137,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               <h3 className="font-bold border-b pb-2">{editingItem ? 'Editar Notícia' : 'Nova Notícia'}</h3>
               <form onSubmit={handleNewsSubmit} className="space-y-4">
                 <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="input w-full font-bold" placeholder="Título" required/>
-                
                 <div className="grid grid-cols-2 gap-3">
                   <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="input w-full" required>
                     <option value="">Categoria...</option>
@@ -164,42 +149,23 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Imagem da Capa</label>
                   <div className="flex gap-4 mb-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" checked={imageSource === 'url'} onChange={() => setImageSource('url')} /> Link da Web
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'url'} onChange={() => setImageSource('url')} /> Link URL
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} /> Upload
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} /> Upload PC
                     </label>
                   </div>
-
                   {imageSource === 'url' ? (
-                    <input 
-                      value={formData.image} 
-                      onChange={e => setFormData({...formData, image: e.target.value})} 
-                      className="input w-full bg-white" 
-                      placeholder="https://..." 
-                      required={!editingItem}
-                    />
+                    <input value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input w-full bg-white" placeholder="https://..." required={!editingItem}/>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => setSelectedFile(e.target.files[0])}
-                        className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-700"
-                        required={!formData.image}
-                      />
-                      {selectedFile && <span className="text-xs text-green-600 font-bold">Ok!</span>}
-                    </div>
+                    <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-700" required={!formData.image}/>
                   )}
                 </div>
 
                 <textarea value={formData.summary} onChange={e => setFormData({...formData, summary: e.target.value})} className="input w-full h-32" placeholder="Texto da notícia..."/>
-                
                 <div className="flex gap-2">
-                  <button disabled={loading} className="btn-primary flex-1 bg-slate-900 flex items-center justify-center gap-2">
-                    {loading ? <Loader className="animate-spin" /> : "Salvar Notícia"}
-                  </button>
+                  <button disabled={loading} className="btn-primary flex-1 bg-slate-900 flex justify-center gap-2">{loading ? <Loader className="animate-spin" /> : "Salvar Notícia"}</button>
                   {editingItem && <button type="button" onClick={resetForm} className="btn-primary bg-red-50 text-red-600 hover:bg-red-100">Cancelar</button>}
                 </div>
               </form>
@@ -210,7 +176,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* --- ABA EVENTOS (AGORA COM UPLOAD) --- */}
+        {/* --- ABA EVENTOS (NOVA COM CAMPOS EXTRAS) --- */}
         {activeTab === 'events' && (
            <div className="grid lg:grid-cols-3 gap-8">
              <div className="lg:col-span-2 space-y-4">
@@ -224,44 +190,30 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
                 <input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="input w-full" placeholder="Local" required/>
                 
+                {/* CAMPOS NOVOS */}
+                <input value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} className="input w-full" placeholder="Link (Ingressos/Mais Info) - Opcional"/>
+                <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="input w-full h-24" placeholder="Descrição completa do evento..."/>
+
                 {/* IMAGEM EVENTO */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Cartaz / Imagem</label>
                   <div className="flex gap-4 mb-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" checked={imageSource === 'url'} onChange={() => setImageSource('url')} /> Link da Web
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'url'} onChange={() => setImageSource('url')} /> Link URL
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} /> Upload
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} /> Upload PC
                     </label>
                   </div>
-
                   {imageSource === 'url' ? (
-                    <input 
-                      value={formData.image} 
-                      onChange={e => setFormData({...formData, image: e.target.value})} 
-                      className="input w-full bg-white" 
-                      placeholder="https://..." 
-                      required={!editingItem}
-                    />
+                    <input value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input w-full bg-white" placeholder="https://..." required={!editingItem}/>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => setSelectedFile(e.target.files[0])}
-                        className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
-                        required={!formData.image}
-                      />
-                      {selectedFile && <span className="text-xs text-green-600 font-bold">Ok!</span>}
-                    </div>
+                    <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-700" required={!formData.image}/>
                   )}
                 </div>
 
                 <div className="flex gap-2">
-                  <button disabled={loading} className="btn-primary flex-1 bg-purple-600 flex items-center justify-center gap-2">
-                    {loading ? <Loader className="animate-spin" /> : "Salvar Evento"}
-                  </button>
+                  <button disabled={loading} className="btn-primary flex-1 bg-purple-600 flex justify-center gap-2">{loading ? <Loader className="animate-spin" /> : "Salvar Evento"}</button>
                   {editingItem && <button type="button" onClick={resetForm} className="btn-primary bg-red-50 text-red-600 hover:bg-red-100">Cancelar</button>}
                 </div>
               </form>
@@ -272,7 +224,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            </div>
         )}
 
-        {/* --- DEMAIS ABAS (LISTAS) --- */}
+        {/* --- DEMAIS ABAS --- */}
         {(activeTab === 'properties' || activeTab === 'jobs' || activeTab === 'vehicles' || activeTab === 'guide') && (
            <div>
              <div className="flex justify-between items-center mb-6">
@@ -295,7 +247,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         {modalType === 'vehicle' && <VehicleForm user={{id:'admin', name:'Admin'}} onSuccess={(d) => { if(editingItem) crud.updateVehicle({...d, id: editingItem.id}); else crud.addVehicle(d); resetForm(); }} />}
         {modalType === 'guide' && <GuideForm initialData={editingItem} onSuccess={(d) => { if(editingItem) crud.updateGuideItem({...d, id: editingItem.id}); else crud.addGuideItem(d); resetForm(); }} />}
       </Modal>
-
     </div>
   );
 }

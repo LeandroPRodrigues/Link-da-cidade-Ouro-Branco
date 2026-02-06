@@ -1,5 +1,5 @@
 import { db as firestoreDB } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 // Função auxiliar
 const mapList = (snapshot) => {
@@ -7,19 +7,19 @@ const mapList = (snapshot) => {
 };
 
 export const database = {
-  // --- NOTÍCIAS ---
+  // --- NOTÍCIAS (Agora inicia com likes e comments vazios) ---
   getNews: async () => { const q = await getDocs(collection(firestoreDB, "news")); return mapList(q); },
-  addNews: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "news"), data); },
+  addNews: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [] }); },
   updateNews: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "news", id), data); },
   deleteNews: async (id) => { await deleteDoc(doc(firestoreDB, "news", id)); },
 
-  // --- EVENTOS ---
+  // --- EVENTOS (Agora inicia com likes e comments vazios) ---
   getEvents: async () => { const q = await getDocs(collection(firestoreDB, "events")); return mapList(q); },
-  addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), data); },
+  addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
   updateEvent: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "events", id), data); },
   deleteEvent: async (id) => { await deleteDoc(doc(firestoreDB, "events", id)); },
 
-  // --- IMÓVEIS (Agora salva o ownerId) ---
+  // --- IMÓVEIS ---
   getProperties: async () => { const q = await getDocs(collection(firestoreDB, "properties")); return mapList(q); },
   addProperty: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "properties"), data); },
   updateProperty: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "properties", id), data); },
@@ -31,7 +31,7 @@ export const database = {
   updateJob: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "jobs", id), data); },
   deleteJob: async (id) => { await deleteDoc(doc(firestoreDB, "jobs", id)); },
 
-  // --- VEÍCULOS (Agora salva o ownerId) ---
+  // --- VEÍCULOS ---
   getVehicles: async () => { const q = await getDocs(collection(firestoreDB, "vehicles")); return mapList(q); },
   addVehicle: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "vehicles"), data); },
   updateVehicle: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "vehicles", id), data); },
@@ -43,9 +43,33 @@ export const database = {
   updateGuideItem: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "guide", id), data); },
   deleteGuideItem: async (id) => { await deleteDoc(doc(firestoreDB, "guide", id)); },
 
-  // --- USUÁRIOS E AUTH ---
+  // --- INTERAÇÕES SOCIAIS (NOVO) ---
+  toggleLike: async (collectionName, itemId, userId) => {
+    const itemRef = doc(firestoreDB, collectionName, itemId);
+    const itemSnap = await getDoc(itemRef);
+    
+    if (itemSnap.exists()) {
+      const data = itemSnap.data();
+      const likes = data.likes || [];
+      
+      if (likes.includes(userId)) {
+        // Se já curtiu, remove (Descurtir)
+        await updateDoc(itemRef, { likes: arrayRemove(userId) });
+      } else {
+        // Se não curtiu, adiciona (Curtir)
+        await updateDoc(itemRef, { likes: arrayUnion(userId) });
+      }
+    }
+  },
+
+  addComment: async (collectionName, itemId, comment) => {
+    const itemRef = doc(firestoreDB, collectionName, itemId);
+    await updateDoc(itemRef, { comments: arrayUnion(comment) });
+  },
+
+  // --- USUÁRIOS E AUTH (Mantido Original) ---
   findUser: async (email, password) => {
-    // 1. Verifica se é o Admin Supremo (Seus dados novos)
+    // 1. Verifica se é o Admin Supremo
     if (email === 'leandro122005@hotmail.com' && password === 'Leolure123!') {
       return { 
         id: 'admin_master', 
@@ -56,7 +80,6 @@ export const database = {
       };
     }
     // 2. Verifica usuários comuns no banco
-    // Nota: O ideal é usar Firebase Auth no futuro, mas mantendo a lógica atual:
     const q = query(collection(firestoreDB, "users"), where("email", "==", email), where("password", "==", password));
     const querySnapshot = await getDocs(q);
     
@@ -70,7 +93,7 @@ export const database = {
   checkCpfExists: async (cpf) => {
     const q = query(collection(firestoreDB, "users"), where("cpf", "==", cpf));
     const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty; // Retorna true se achar o CPF
+    return !querySnapshot.empty; 
   },
 
   checkEmailExists: async (email) => {
@@ -80,7 +103,6 @@ export const database = {
   },
 
   saveUser: async (user) => {
-    // Salva o usuário na coleção 'users'
     await addDoc(collection(firestoreDB, "users"), user);
   }
 };
