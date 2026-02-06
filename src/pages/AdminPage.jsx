@@ -4,18 +4,14 @@ import { NEWS_CATEGORIES } from '../data/mockData';
 import PropertyForm from '../components/PropertyForm'; 
 import JobForm from '../components/JobForm';
 import VehicleForm from '../components/VehicleForm';
-import Modal from '../components/Modal';
-
-// Se você tiver criado GuideForm e GuideCard, descomente as linhas abaixo.
-// Se não tiver criado, manteremos comentado para não quebrar o Admin.
 import GuideForm from '../components/GuideForm'; 
-// import GuideCard from '../components/GuideCard'; 
+import Modal from '../components/Modal';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, crud }) {
   const [activeTab, setActiveTab] = useState('news');
   const [editingItem, setEditingItem] = useState(null);
   
-  // Modais
+  // Controle do Modal
   const [modalType, setModalType] = useState(null); // 'property', 'job', 'vehicle', 'guide'
 
   // Form Genérico (Notícias/Eventos)
@@ -45,7 +41,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     }
   };
 
-  // Submits
   const handleNewsSubmit = (e) => {
     e.preventDefault();
     const payload = { ...formData, id: editingItem ? editingItem.id : undefined };
@@ -59,6 +54,25 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     if (editingItem) crud.updateEvent(payload); else crud.addEvent(payload);
     alert("Salvo!"); resetForm();
   };
+
+  // Componente Auxiliar de Lista
+  const AdminList = ({ data, type, labelField, onDelete }) => (
+    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+      {data.length === 0 && <p className="text-slate-400 text-sm">Nenhum item cadastrado.</p>}
+      {data.map(item => (
+        <div key={item.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <div>
+            <span className="font-bold text-slate-700 block">{item[labelField]}</span>
+            <span className="text-xs text-slate-400">ID: {item.id}</span>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => handleEdit(item, type)} className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"><Edit size={16}/></button>
+            <button onClick={() => onDelete(item.id)} className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"><Trash2 size={16}/></button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="pb-12 animate-in fade-in">
@@ -93,7 +107,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       {/* CONTEÚDO DA ABA */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 min-h-[400px]">
         
-        {/* --- ABA NOTÍCIAS --- */}
+        {/* NOTÍCIAS */}
         {activeTab === 'news' && (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-4">
@@ -115,57 +129,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
               </form>
             </div>
-            <div className="lg:col-span-1 border-l pl-4 h-96 overflow-y-auto">
+            <div className="lg:col-span-1 border-l pl-4">
               <h3 className="font-bold mb-2 text-sm text-slate-400 uppercase">Cadastrados</h3>
-              {newsData.map(n => (
-                <div key={n.id} className="flex justify-between items-center py-2 border-b text-sm">
-                  <span className="truncate w-32">{n.title}</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(n, 'news')}><Edit size={14} className="text-blue-600"/></button>
-                    <button onClick={() => crud.deleteNews(n.id)}><Trash2 size={14} className="text-red-600"/></button>
-                  </div>
-                </div>
-              ))}
+              <AdminList data={newsData} type="news" labelField="title" onDelete={crud.deleteNews} />
             </div>
           </div>
         )}
 
-        {/* --- ABA GUIA (Correção) --- */}
-        {activeTab === 'guide' && (
-          <div>
-            <div className="flex justify-between mb-4">
-              <h3 className="font-bold">Guia Comercial</h3>
-              <button onClick={() => setModalType('guide')} className="btn-primary py-2 px-4 text-xs bg-purple-600 flex gap-2 items-center"><Plus size={14}/> Novo</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {guideData.map(item => (
-                <div key={item.id} className="border p-3 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold">{item.name}</h4>
-                    <p className="text-xs text-slate-500">{item.phone}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(item, 'guide')} className="p-2 bg-blue-50 rounded text-blue-600"><Edit size={16}/></button>
-                    <button onClick={() => crud.deleteGuideItem(item.id)} className="p-2 bg-red-50 rounded text-red-600"><Trash2 size={16}/></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* --- OUTRAS ABAS (Listagem Simples) --- */}
-        {(activeTab === 'properties' || activeTab === 'jobs' || activeTab === 'vehicles') && (
-          <div>
-             <div className="flex justify-between mb-4">
-              <h3 className="font-bold capitalize">{activeTab}</h3>
-              <button onClick={() => setModalType(activeTab.slice(0, -1))} className="btn-primary py-2 px-4 text-xs bg-slate-900 flex gap-2 items-center"><Plus size={14}/> Novo</button>
-            </div>
-            <p className="text-slate-500 text-sm">Use o botão "Novo" acima para cadastrar itens nestas categorias. A listagem completa aparece na página pública.</p>
-          </div>
-        )}
-
-        {/* --- ABA EVENTOS --- */}
+        {/* EVENTOS */}
         {activeTab === 'events' && (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-4">
@@ -184,25 +155,68 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
               </form>
             </div>
-            <div className="lg:col-span-1 border-l pl-4 h-96 overflow-y-auto">
+            <div className="lg:col-span-1 border-l pl-4">
               <h3 className="font-bold mb-2 text-sm text-slate-400 uppercase">Agendados</h3>
-              {eventsData.map(e => (
-                <div key={e.id} className="flex justify-between items-center py-2 border-b text-sm">
-                  <span className="truncate w-32">{e.title}</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(e, 'event')}><Edit size={14} className="text-blue-600"/></button>
-                    <button onClick={() => crud.deleteEvent(e.id)}><Trash2 size={14} className="text-red-600"/></button>
-                  </div>
-                </div>
-              ))}
+              <AdminList data={eventsData} type="event" labelField="title" onDelete={crud.deleteEvent} />
             </div>
           </div>
         )}
 
+        {/* IMÓVEIS (Agora com lista!) */}
+        {activeTab === 'properties' && (
+          <div>
+             <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg">Gerenciar Imóveis</h3>
+              <button onClick={() => setModalType('property')} className="btn-primary py-2 px-4 text-xs bg-emerald-600 flex gap-2 items-center hover:bg-emerald-700 text-white rounded shadow">
+                <Plus size={14}/> Novo Imóvel
+              </button>
+            </div>
+            <AdminList data={propertiesData} type="property" labelField="title" onDelete={crud.deleteProperty} />
+          </div>
+        )}
+
+        {/* VAGAS (Agora com lista!) */}
+        {activeTab === 'jobs' && (
+          <div>
+             <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg">Gerenciar Vagas</h3>
+              <button onClick={() => setModalType('job')} className="btn-primary py-2 px-4 text-xs bg-blue-600 flex gap-2 items-center hover:bg-blue-700 text-white rounded shadow">
+                <Plus size={14}/> Nova Vaga
+              </button>
+            </div>
+            <AdminList data={jobsData} type="job" labelField="title" onDelete={crud.deleteJob} />
+          </div>
+        )}
+
+        {/* VEÍCULOS (Agora com lista!) */}
+        {activeTab === 'vehicles' && (
+          <div>
+             <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg">Gerenciar Veículos</h3>
+              <button onClick={() => setModalType('vehicle')} className="btn-primary py-2 px-4 text-xs bg-orange-600 flex gap-2 items-center hover:bg-orange-700 text-white rounded shadow">
+                <Plus size={14}/> Novo Veículo
+              </button>
+            </div>
+            <AdminList data={vehiclesData} type="vehicle" labelField="model" onDelete={crud.deleteVehicle} />
+          </div>
+        )}
+
+        {/* GUIA (Lista Corrigida) */}
+        {activeTab === 'guide' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg">Gerenciar Guia</h3>
+              <button onClick={() => setModalType('guide')} className="btn-primary py-2 px-4 text-xs bg-purple-600 flex gap-2 items-center hover:bg-purple-700 text-white rounded shadow">
+                <Plus size={14}/> Novo Local
+              </button>
+            </div>
+            <AdminList data={guideData} type="guide" labelField="name" onDelete={crud.deleteGuideItem} />
+          </div>
+        )}
       </div>
 
       {/* MODAIS DO ADMIN */}
-      <Modal isOpen={!!modalType} onClose={resetForm} title={`Gerenciar ${modalType}`}>
+      <Modal isOpen={!!modalType} onClose={resetForm} title={`Gerenciar ${modalType === 'property' ? 'Imóvel' : modalType === 'job' ? 'Vaga' : modalType === 'vehicle' ? 'Veículo' : 'Local'}`}>
         {modalType === 'property' && <PropertyForm user={{id:'admin', name:'Admin'}} onSuccess={(d) => { if(editingItem) crud.updateProperty({...d, id: editingItem.id}); else crud.addProperty(d); resetForm(); }} />}
         {modalType === 'job' && <JobForm onSuccess={(d) => { if(editingItem) crud.updateJob({...d, id: editingItem.id}); else crud.addJob(d); resetForm(); }} />}
         {modalType === 'vehicle' && <VehicleForm user={{id:'admin', name:'Admin'}} onSuccess={(d) => { if(editingItem) crud.updateVehicle({...d, id: editingItem.id}); else crud.addVehicle(d); resetForm(); }} />}
