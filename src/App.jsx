@@ -24,20 +24,19 @@ import VehiclesPage from './pages/VehiclesPage';
 import VehicleDetailPage from './pages/VehicleDetailPage';
 import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
-import WeatherWidget from './components/WeatherWidget'; // Widget Global
+import WeatherWidget from './components/WeatherWidget';
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
 export default function App() {
-  // --- ESTADOS GLOBAIS ---
   const [currentPage, setCurrentPage] = useState('home');
   const [user, setUser] = useState(null); 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login'); 
   const [loading, setLoading] = useState(true);
   
-  // Estados de Seleção
+  // Seleções
   const [selectedNews, setSelectedNews] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -53,7 +52,7 @@ export default function App() {
   const [vehiclesData, setVehiclesData] = useState([]);
   const [guideData, setGuideData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL ---
+  // --- 1. CARREGAMENTO INICIAL E PERSISTÊNCIA ---
   const loadAllData = async () => {
     try {
       const [n, e, p, j, v, g] = await Promise.all([
@@ -67,42 +66,38 @@ export default function App() {
     }
   };
 
-  useEffect(() => { loadAllData(); }, []);
+  useEffect(() => { 
+    // Verifica se já existe um usuário salvo no navegador
+    const savedUser = localStorage.getItem('app_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    loadAllData(); 
+  }, []);
   
-  // --- CRUD (Mantido igual) ---
+  // --- CRUD ---
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
     deleteNews: async (id) => { await db.deleteNews(id); setNewsData(await db.getNews()); },
-    
     addEvent: async (item) => { await db.addEvent(item); setEventsData(await db.getEvents()); },
     updateEvent: async (item) => { await db.updateEvent(item); setEventsData(await db.getEvents()); },
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
-
-    addProperty: async (item) => { 
-      const itemWithUser = { ...item, ownerId: user.id, ownerName: user.name };
-      await db.addProperty(itemWithUser); setPropertiesData(await db.getProperties()); 
-    },
+    addProperty: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addProperty(i); setPropertiesData(await db.getProperties()); },
     updateProperty: async (item) => { await db.updateProperty(item); setPropertiesData(await db.getProperties()); },
     deleteProperty: async (id) => { await db.deleteProperty(id); setPropertiesData(await db.getProperties()); },
-
     addJob: async (item) => { await db.addJob(item); setJobsData(await db.getJobs()); },
     updateJob: async (item) => { await db.updateJob(item); setJobsData(await db.getJobs()); },
     deleteJob: async (id) => { await db.deleteJob(id); setJobsData(await db.getJobs()); },
-
-    addVehicle: async (item) => { 
-      const itemWithUser = { ...item, ownerId: user.id, ownerName: user.name };
-      await db.addVehicle(itemWithUser); setVehiclesData(await db.getVehicles()); 
-    },
+    addVehicle: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addVehicle(i); setVehiclesData(await db.getVehicles()); },
     updateVehicle: async (item) => { await db.updateVehicle(item); setVehiclesData(await db.getVehicles()); },
     deleteVehicle: async (id) => { await db.deleteVehicle(id); setVehiclesData(await db.getVehicles()); },
-
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); }
   };
 
-  // --- REGRAS DE LIMITES ---
+  // --- REGRAS ---
   const handleAddPropertyClick = (openModalCallback) => {
     if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
     if (user.role === 'admin') { openModalCallback(); return; }
@@ -119,14 +114,21 @@ export default function App() {
     else openModalCallback();
   };
 
-  // --- AUTH ---
+  // --- 2. LOGIN E LOGOUT ATUALIZADOS ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     const u = await db.findUser(e.target.email.value, e.target.password.value);
     setLoading(false);
-    if(u) { setUser(u); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } 
-    else { alert("E-mail ou senha incorretos."); }
+    if(u) { 
+      setUser(u); 
+      // SALVA NO LOCALSTORAGE
+      localStorage.setItem('app_user', JSON.stringify(u));
+      setIsLoginOpen(false); 
+      if(u.role === 'admin') setCurrentPage('admin'); 
+    } else { 
+      alert("E-mail ou senha incorretos."); 
+    }
   };
 
   const handleRegister = async (e) => {
@@ -151,9 +153,14 @@ export default function App() {
     alert("Cadastro realizado! Faça login."); setAuthMode('login');
   };
 
-  const handleLogout = () => { setUser(null); setCurrentPage('home'); };
+  const handleLogout = () => { 
+    setUser(null); 
+    // LIMPA DO LOCALSTORAGE
+    localStorage.removeItem('app_user');
+    setCurrentPage('home'); 
+  };
 
-  // --- COMPONENTES DE UI ---
+  // UI Components
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
     <button 
       onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} 
@@ -167,7 +174,6 @@ export default function App() {
     >
       <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> 
       <span className="hidden md:inline">{label}</span>
-      {/* Label para mobile bottom bar */}
       <span className="md:hidden text-[10px] mt-1">{label}</span>
     </button>
   );
@@ -187,11 +193,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
       
-      {/* --- HEADER SUPERIOR (Apenas Logo e Perfil) --- */}
+      {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          
-          {/* LOGO */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
               <Grid className="text-white" size={20} />
@@ -203,14 +207,10 @@ export default function App() {
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
             </div>
           </div>
-
-          {/* BUSCA (Apenas visual por enquanto) */}
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/>
             <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
           </div>
-
-          {/* PERFIL / LOGIN */}
           <div className="flex items-center gap-3">
             {user ? (
                <div className="flex items-center gap-3">
@@ -231,22 +231,18 @@ export default function App() {
                </div>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-full transition">
-                  Entrar
-                </button>
-                <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="hidden md:flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-full shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">
-                  Cadastrar
-                </button>
+                <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-full transition">Entrar</button>
+                <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="hidden md:flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-full shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">Cadastrar</button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* --- LAYOUT PRINCIPAL (3 COLUNAS) --- */}
+      {/* BODY */}
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-64px)]">
         
-        {/* COLUNA 1: SIDEBAR NAVEGAÇÃO (Desktop) */}
+        {/* SIDEBAR */}
         <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="news" label="Notícias" icon={List} />
@@ -259,23 +255,14 @@ export default function App() {
           <div className="my-4 border-t border-slate-200 mx-4"></div>
           <p className="px-4 text-xs font-bold text-slate-400 uppercase mb-1">Serviços</p>
           <NavItem page="guide" label="Guia Comercial" icon={Store} />
-          
-          {/* Rodapé da Sidebar */}
-          <div className="mt-8 px-4 text-xs text-slate-400">
-            © 2026 {APP_BRAND} {CITY_NAME}<br/>
-            Termos • Privacidade • Sobre
-          </div>
+          <div className="mt-8 px-4 text-xs text-slate-400">© 2026 {APP_BRAND} {CITY_NAME}<br/>Termos • Privacidade • Sobre</div>
         </aside>
 
-        {/* COLUNA 2: CONTEÚDO PRINCIPAL (Feed) */}
+        {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          {/* Roteador */}
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          
-          {/* Páginas de Detalhe e Listas */}
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
           
@@ -291,16 +278,13 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
 
-          {/* Admin */}
           {currentPage === 'admin' && user?.role === 'admin' && (
             <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} crud={crud} />
           )}
         </main>
 
-        {/* COLUNA 3: WIDGETS (Desktop Only) */}
+        {/* WIDGETS */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
-          
-          {/* Widget Clima */}
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10 flex flex-col items-center">
@@ -309,39 +293,23 @@ export default function App() {
               <p className="font-medium text-sm mt-2">{CITY_NAME} - MG</p>
             </div>
           </div>
-
-          {/* Widget Utilidade */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
             <h3 className="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wide">Útil para você</h3>
             <ul className="space-y-3">
-              <li className="flex justify-between text-sm pb-2 border-b border-slate-100">
-                <span className="text-slate-500">Farmácia Plantão</span>
-                <span className="font-bold text-slate-800">Drogaria Central</span>
-              </li>
-              <li className="flex justify-between text-sm pb-2 border-b border-slate-100">
-                <span className="text-slate-500">Lixo (Reciclável)</span>
-                <span className="font-bold text-slate-800">Quarta-feira</span>
-              </li>
-              <li className="flex justify-between text-sm">
-                <span className="text-slate-500">Horário Ônibus</span>
-                <span className="font-bold text-indigo-600 cursor-pointer hover:underline">Ver Tabela</span>
-              </li>
+              <li className="flex justify-between text-sm pb-2 border-b border-slate-100"><span className="text-slate-500">Farmácia Plantão</span><span className="font-bold text-slate-800">Drogaria Central</span></li>
+              <li className="flex justify-between text-sm pb-2 border-b border-slate-100"><span className="text-slate-500">Lixo (Reciclável)</span><span className="font-bold text-slate-800">Quarta-feira</span></li>
+              <li className="flex justify-between text-sm"><span className="text-slate-500">Horário Ônibus</span><span className="font-bold text-indigo-600 cursor-pointer hover:underline">Ver Tabela</span></li>
             </ul>
           </div>
-
-          {/* Widget Anuncie Aqui (Banner fake) */}
           <div className="bg-slate-100 rounded-2xl p-6 text-center border border-slate-200 border-dashed">
             <p className="text-slate-400 text-sm mb-2">Espaço Publicitário</p>
             <p className="font-bold text-slate-600">Sua marca aqui</p>
-            <button className="mt-3 text-xs bg-white border px-3 py-1 rounded-full text-slate-600 hover:text-indigo-600 font-bold transition">
-              Saiba mais
-            </button>
+            <button className="mt-3 text-xs bg-white border px-3 py-1 rounded-full text-slate-600 hover:text-indigo-600 font-bold transition">Saiba mais</button>
           </div>
         </aside>
-
       </div>
 
-      {/* --- BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) --- */}
+      {/* MOBILE NAV */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           <MobileTabItem page="home" label="Início" icon={Home} />
@@ -356,16 +324,14 @@ export default function App() {
         </div>
       </nav>
 
-      {/* MODAL (Mantido igual) */}
+      {/* MODAL */}
       <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title={authMode === 'login' ? "Bem-vindo de volta" : "Criar nova conta"}>
         {authMode === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <input name="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <button className="btn-primary w-full bg-indigo-600 hover:bg-indigo-700">Entrar na conta</button>
-            <div className="text-center text-xs mt-4">
-              Não tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('register')}>Cadastre-se</span>
-            </div>
+            <div className="text-center text-xs mt-4">Não tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('register')}>Cadastre-se</span></div>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-3">
@@ -380,9 +346,7 @@ export default function App() {
             </div>
             <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <button className="btn-primary w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Criar Conta</button>
-            <div className="text-center text-xs mt-4">
-              Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span>
-            </div>
+            <div className="text-center text-xs mt-4">Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span></div>
           </form>
         )}
       </Modal>
@@ -390,12 +354,3 @@ export default function App() {
     </div>
   );
 }
-
-// Estilos
-const styles = document.createElement('style');
-styles.innerHTML = `
-  .input { @apply border rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 border-slate-200 transition-all; }
-  .btn-primary { @apply text-white font-bold py-3 rounded-xl transition shadow-md hover:shadow-lg active:scale-95; }
-  body { background-color: #F0F2F5; }
-`;
-document.head.appendChild(styles);

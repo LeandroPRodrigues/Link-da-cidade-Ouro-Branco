@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Search, Bed, Bath, Maximize, Plus, MapPin, Filter } from 'lucide-react';
+import { Home, Search, Bed, Bath, Maximize, Plus, MapPin, Filter, AlertTriangle } from 'lucide-react';
 import PropertyForm from '../components/PropertyForm';
 import Modal from '../components/Modal';
 
@@ -8,17 +8,21 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
   const [filterType, setFilterType] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Proteção: Se propertiesData vier nulo, usa array vazio
-  const safeProperties = propertiesData || [];
+  // PROTEÇÃO MÁXIMA: Garante que propertiesData seja sempre uma lista
+  const safeProperties = Array.isArray(propertiesData) ? propertiesData : [];
 
   const filteredProperties = safeProperties.filter(p => {
-    // Proteção: Garante que title e location existam antes de usar toLowerCase
-    const title = p.title ? p.title.toLowerCase() : '';
-    const location = p.location ? p.location.toLowerCase() : '';
-    const type = p.type ? p.type.toLowerCase() : '';
+    // Se o imóvel estiver bugado (sem título), ignoramos ou tratamos
+    if (!p) return false;
     
-    const matchesSearch = title.includes(searchTerm.toLowerCase()) || location.includes(searchTerm.toLowerCase());
+    const title = p.title ? String(p.title).toLowerCase() : '';
+    const location = p.location ? String(p.location).toLowerCase() : '';
+    const type = p.type ? String(p.type).toLowerCase() : '';
+    const search = searchTerm.toLowerCase();
+    
+    const matchesSearch = title.includes(search) || location.includes(search);
     const matchesType = filterType === 'all' || type === filterType;
+    
     return matchesSearch && matchesType;
   });
 
@@ -31,7 +35,7 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
   return (
     <div className="animate-in fade-in pb-12">
       
-      {/* Header */}
+      {/* Header Fixo */}
       <div className="bg-white p-6 rounded-b-2xl md:rounded-2xl shadow-sm border border-slate-100 mb-6 sticky top-[70px] z-30">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
@@ -48,7 +52,7 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
           </button>
         </div>
 
-        {/* Busca e Filtros */}
+        {/* Filtros */}
         <div className="mt-4 flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <input 
@@ -75,42 +79,48 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
 
       {/* Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProperties.length > 0 ? filteredProperties.map(property => (
-          <div 
-            key={property.id} 
-            onClick={() => onSelectProperty(property)}
-            className="group bg-white rounded-2xl border border-slate-100 overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-          >
-            {/* Imagem Segura */}
-            <div className="relative h-56 bg-slate-200 overflow-hidden">
-              <img 
-                src={property.photos && property.photos.length > 0 ? property.photos[0] : 'https://placehold.co/600x400?text=Sem+Foto'} 
-                alt={property.title || 'Imóvel'} 
-                className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
-              />
-              <span className={`absolute top-3 right-3 px-3 py-1 text-[10px] font-bold rounded-full uppercase text-white shadow-sm ${property.type === 'Venda' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                {property.type || 'Oferta'}
-              </span>
-            </div>
-            
-            {/* Dados */}
-            <div className="p-5">
-              <h3 className="font-bold text-slate-800 text-lg mb-1 truncate">{property.title || 'Imóvel sem título'}</h3>
-              <p className="text-emerald-600 font-black text-xl mb-4">
-                {property.price ? Number(property.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
-              </p>
+        {filteredProperties.length > 0 ? filteredProperties.map(property => {
+          // Lógica de Foto Segura (Se não tiver foto, usa placeholder)
+          const coverPhoto = (property.photos && Array.isArray(property.photos) && property.photos.length > 0)
+            ? property.photos[0]
+            : 'https://placehold.co/600x400?text=Sem+Foto';
+
+          return (
+            <div 
+              key={property.id || Math.random()} 
+              onClick={() => onSelectProperty(property)}
+              className="group bg-white rounded-2xl border border-slate-100 overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className="relative h-56 bg-slate-200 overflow-hidden">
+                <img 
+                  src={coverPhoto} 
+                  alt={property.title || 'Imóvel'} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
+                  onError={(e) => e.target.src = 'https://placehold.co/600x400?text=Erro+Imagem'}
+                />
+                <span className={`absolute top-3 right-3 px-3 py-1 text-[10px] font-bold rounded-full uppercase text-white shadow-sm ${property.type === 'Venda' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                  {property.type || 'Oferta'}
+                </span>
+              </div>
               
-              <div className="flex justify-between items-center text-slate-500 text-xs border-t border-slate-50 pt-3">
-                <span className="flex items-center gap-1"><Bed size={14}/> {property.bedrooms || 0}</span>
-                <span className="flex items-center gap-1"><Bath size={14}/> {property.bathrooms || 0}</span>
-                <span className="flex items-center gap-1"><Maximize size={14}/> {property.area || 0}m²</span>
+              <div className="p-5">
+                <h3 className="font-bold text-slate-800 text-lg mb-1 truncate">{property.title || 'Imóvel sem título'}</h3>
+                <p className="text-emerald-600 font-black text-xl mb-4">
+                  {property.price ? Number(property.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ --'}
+                </p>
+                
+                <div className="flex justify-between items-center text-slate-500 text-xs border-t border-slate-50 pt-3">
+                  <span className="flex items-center gap-1"><Bed size={14}/> {property.bedrooms || 0}</span>
+                  <span className="flex items-center gap-1"><Bath size={14}/> {property.bathrooms || 0}</span>
+                  <span className="flex items-center gap-1"><Maximize size={14}/> {property.area || 0}m²</span>
+                </div>
               </div>
             </div>
-          </div>
-        )) : (
+          );
+        }) : (
           <div className="col-span-full py-20 text-center text-slate-400 bg-white rounded-2xl border border-dashed">
             <Filter size={48} className="mx-auto mb-3 opacity-20"/>
-            <p>Nenhum imóvel encontrado.</p>
+            <p>Nenhum imóvel cadastrado ou encontrado.</p>
           </div>
         )}
       </div>
