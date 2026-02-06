@@ -114,7 +114,7 @@ export default function App() {
     else openModalCallback();
   };
 
-  // --- 2. LOGIN E LOGOUT ATUALIZADOS ---
+  // --- LOGIN E LOGOUT ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -122,7 +122,6 @@ export default function App() {
     setLoading(false);
     if(u) { 
       setUser(u); 
-      // SALVA NO LOCALSTORAGE
       localStorage.setItem('app_user', JSON.stringify(u));
       setIsLoginOpen(false); 
       if(u.role === 'admin') setCurrentPage('admin'); 
@@ -155,7 +154,6 @@ export default function App() {
 
   const handleLogout = () => { 
     setUser(null); 
-    // LIMPA DO LOCALSTORAGE
     localStorage.removeItem('app_user');
     setCurrentPage('home'); 
   };
@@ -260,7 +258,16 @@ export default function App() {
 
         {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          
+          {/* A CORREÇÃO ESTÁ AQUI: ADICIONADO user={user} */}
+          {currentPage === 'home' && <HomePage 
+            navigate={setCurrentPage} 
+            newsData={newsData} 
+            eventsData={eventsData} 
+            user={user} 
+            onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
+          />}
+          
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
