@@ -1,133 +1,101 @@
 import React, { useState } from 'react';
-import { List, Map as MapIcon, Plus, MapPin } from 'lucide-react';
-
-// Imports dos Componentes
+import { Car, Search, Fuel, Calendar, Gauge, Plus } from 'lucide-react';
+import VehicleForm from '../components/VehicleForm';
 import Modal from '../components/Modal';
-import PropertyCard from '../components/PropertyCard';
-import PropertyForm from '../components/PropertyForm';
 
-const CITY_NAME = "Ouro Branco";
-
-// Agora este componente recebe os dados e as funções do Pai (App.jsx)
-export default function RealEstatePage({ user, navigate, onSelectProperty, propertiesData, onCrud }) {
+export default function VehiclesPage({ vehiclesData, user, onCrud, onVehicleClick, checkLimit }) {
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filter, setFilter] = useState('Todos');
-  const [viewMode, setViewMode] = useState('grid'); // grid | map
 
-  const handleOpenRegister = () => {
-    if (!user) return alert("Faça login para anunciar!");
-    
-    // Regra de negócio: Visitantes (não-admins) só podem ter 1 imóvel ativo
-    if (user.role !== 'admin') {
-      const userProps = propertiesData.filter(p => p.userId === user.id && p.status === 'active');
-      if (userProps.length >= 1) return alert("Visitantes só podem ter 1 imóvel ativo por vez.");
-    }
-    setIsModalOpen(true);
-  };
+  const filteredVehicles = vehiclesData.filter(v => 
+    v.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    v.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.model.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Funções simplificadas usando o crud do pai
-  const handleDelete = (id) => {
-    if(window.confirm("Tem certeza que deseja excluir este anúncio?")) {
-      onCrud.deleteProperty(id);
-    }
-  };
-
-  const handleStatusChange = (id, newStatus) => {
-    const prop = propertiesData.find(p => p.id === id);
-    onCrud.updateProperty({ ...prop, status: newStatus });
-  };
-
-  // Callback de Sucesso do Formulário
-  const handleFormSuccess = (property) => {
-    onCrud.addProperty(property);
+  const handleSuccess = (data) => {
+    onCrud.addVehicle(data);
     setIsModalOpen(false);
-    alert("Imóvel cadastrado com sucesso! Ele ficará ativo por 30 dias.");
+    alert("Veículo anunciado com sucesso!");
   };
-
-  // Filtragem local visual
-  const filteredProps = propertiesData.filter(p => filter === 'Todos' ? true : p.type === filter);
 
   return (
-    <div className="px-4 md:px-0 pb-12">
-      <div className="flex justify-between items-center my-8">
+    <div className="px-4 md:px-0 pb-12 animate-in fade-in">
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 pt-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Imóveis em {CITY_NAME}</h2>
-          <p className="text-slate-500">Encontre o lugar perfeito para morar ou investir.</p>
+          <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
+            <Car className="text-orange-600" /> Veículos em Ouro Branco
+          </h2>
+          <p className="text-slate-500">Carros e motos novos e seminovos.</p>
         </div>
-        <div className="flex gap-2">
-          <div className="bg-white border rounded-lg p-1 flex">
-            <button onClick={() => setViewMode('grid')} className={`p-2 rounded ${viewMode === 'grid' ? 'bg-slate-100' : ''}`} title="Lista"><List size={20}/></button>
-            <button onClick={() => setViewMode('map')} className={`p-2 rounded ${viewMode === 'map' ? 'bg-slate-100' : ''}`} title="Mapa"><MapIcon size={20}/></button>
-          </div>
-          <button onClick={handleOpenRegister} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition">
-            <Plus size={20}/> Anunciar
-          </button>
-        </div>
+
+        {/* BOTÃO ANUNCIAR (Usa checkLimit) */}
+        <button 
+          onClick={() => checkLimit(() => setIsModalOpen(true))} 
+          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2"
+        >
+          <Plus size={20} /> Vender meu Carro
+        </button>
       </div>
 
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {['Todos', 'Venda', 'Aluguel', 'Temporada'].map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${filter === f ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-            {f}
-          </button>
-        ))}
+      {/* Busca */}
+      <div className="relative mb-8">
+        <input 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Busque por modelo, marca (ex: Gol, Honda, Fiat)..." 
+          className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+        />
+        <Search className="absolute left-4 top-3.5 text-slate-400" size={20}/>
       </div>
 
-      {viewMode === 'grid' ? (
-        <div className="grid md:grid-cols-4 gap-6">
-          {filteredProps.map(prop => (
-            <PropertyCard 
-              key={prop.id} 
-              property={prop} 
-              isOwner={user?.id === prop.userId}
-              isAdmin={user?.role === 'admin'}
-              onDelete={handleDelete}
-              onStatusChange={handleStatusChange}
-              onClick={() => onSelectProperty(prop)}
-            />
-          ))}
-          {filteredProps.length === 0 && (
-            <div className="col-span-4 text-center py-12 bg-slate-50 border border-dashed rounded-xl text-slate-500">
-              Nenhum imóvel encontrado nesta categoria. Seja o primeiro a anunciar!
+      {/* Grid de Veículos */}
+      <div className="grid md:grid-cols-4 gap-6">
+        {filteredVehicles.length > 0 ? filteredVehicles.map(vehicle => (
+          <div 
+            key={vehicle.id} 
+            onClick={() => onVehicleClick(vehicle)}
+            className="bg-white rounded-xl shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden border border-slate-100 group"
+          >
+            <div className="relative h-40 bg-slate-200 overflow-hidden">
+              <img 
+                src={vehicle.photos[0]} 
+                alt={vehicle.title} 
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              />
+              <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded font-bold">
+                {vehicle.year}
+              </span>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="bg-slate-200 rounded-xl h-[600px] relative overflow-hidden border border-slate-300">
-          <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Google_Maps_Logo_2020.svg/2275px-Google_Maps_Logo_2020.svg.png')] bg-cover opacity-30 grayscale"></div>
-          {filteredProps.map(prop => (
-            prop.location?.lat && (
-              <div 
-                key={prop.id}
-                onClick={() => onSelectProperty(prop)}
-                className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer hover:scale-110 transition z-10"
-                style={{ 
-                  top: `${(prop.location.lat + 20.6) * 1000}%`, // Projeção Fictícia
-                  left: `${(prop.location.lng + 43.8) * 1000}%` 
-                }}
-              >
-                {prop.privacy === 'exact' ? (
-                  <MapPin size={40} className="text-red-600 fill-current drop-shadow-md" />
-                ) : (
-                  <div className="w-12 h-12 bg-blue-500/40 rounded-full border-2 border-blue-500"></div>
-                )}
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-white px-2 py-1 rounded shadow text-xs font-bold whitespace-nowrap opacity-0 hover:opacity-100 group-hover:opacity-100">
-                  R$ {prop.price}
-                </div>
+            
+            <div className="p-3">
+              <h3 className="font-bold text-slate-800 text-sm truncate mb-1">{vehicle.brand} {vehicle.model}</h3>
+              <p className="text-xs text-slate-500 mb-2 truncate">{vehicle.title}</p>
+              <p className="text-orange-600 font-bold text-lg mb-3">
+                {Number(vehicle.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              
+              <div className="flex justify-between items-center text-slate-400 text-[10px] border-t pt-2">
+                <span className="flex items-center gap-1"><Gauge size={12}/> {vehicle.km}km</span>
+                <span className="flex items-center gap-1"><Fuel size={12}/> {vehicle.fuel}</span>
               </div>
-            )
-          ))}
-          <div className="absolute bottom-4 left-4 bg-white/90 p-4 rounded-lg shadow-lg max-w-xs text-xs">
-            <strong>Modo Pesquisa no Mapa (Simulado)</strong><br/>
-            Neste protótipo, os pins são posicionados aleatoriamente. Em produção, use a API do Google Maps para precisão real.
+            </div>
           </div>
-        </div>
-      )}
+        )) : (
+          <div className="col-span-4 text-center py-12 bg-slate-50 rounded-xl border border-dashed">
+            <Car size={48} className="mx-auto text-slate-300 mb-4"/>
+            <p className="text-slate-500">Nenhum veículo encontrado.</p>
+          </div>
+        )}
+      </div>
 
-      {/* MODAL DE CRIAÇÃO (Aqui sempre passamos initialData={null} pois é um novo anúncio) */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Anúncio de Imóvel" large>
-        <PropertyForm user={user} onSuccess={handleFormSuccess} initialData={null} />
+      {/* Modal de Cadastro */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Anunciar Veículo">
+        <VehicleForm user={user} onSuccess={handleSuccess} />
       </Modal>
+
     </div>
   );
 }
