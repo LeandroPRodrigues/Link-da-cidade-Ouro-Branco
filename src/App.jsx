@@ -258,8 +258,7 @@ export default function App() {
 
         {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          
-          {/* A CORREÇÃO ESTÁ AQUI: ADICIONADO user={user} */}
+          {/* PASSA O USER PARA A HOME PAGE */}
           {currentPage === 'home' && <HomePage 
             navigate={setCurrentPage} 
             newsData={newsData} 
@@ -290,14 +289,12 @@ export default function App() {
           )}
         </main>
 
-        {/* WIDGETS */}
+        {/* WIDGETS (LIMPO - SEM TEXTOS DUPLICADOS) */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
-            <div className="relative z-10 flex flex-col items-center">
-              <span className="text-indigo-100 text-xs font-bold uppercase tracking-wider mb-2">Clima Agora</span>
-              <div className="scale-150 mb-2"><WeatherWidget /></div>
-              <p className="font-medium text-sm mt-2">{CITY_NAME} - MG</p>
+            <div className="relative z-10">
+              <WeatherWidget />
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
