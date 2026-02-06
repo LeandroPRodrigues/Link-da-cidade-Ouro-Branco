@@ -5,7 +5,11 @@ import {
   Send, ExternalLink
 } from 'lucide-react';
 import { db } from '../utils/database';
-import WeatherWidget from '../components/WeatherWidget'; // <--- IMPORTANTE: Importando o Clima
+import WeatherWidget from '../components/WeatherWidget'; 
+
+// --- CONSTANTES QUE FALTAVAM ---
+const CITY_NAME = "Ouro Branco";
+// -------------------------------
 
 // Componente de Atalho Rápido
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
