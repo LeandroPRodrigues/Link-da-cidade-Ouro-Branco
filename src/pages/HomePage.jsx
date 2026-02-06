@@ -5,6 +5,7 @@ import {
   Send, ExternalLink
 } from 'lucide-react';
 import { db } from '../utils/database';
+import WeatherWidget from '../components/WeatherWidget'; // <--- IMPORTANTE: Importando o Clima
 
 // Componente de Atalho Rápido
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
@@ -22,13 +23,13 @@ const EventCard = ({ event }) => (
     {/* Imagem */}
     <div className="relative h-40 overflow-hidden">
       <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-center shadow-sm">
+      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-center shadow-sm z-10">
         <span className="block text-[10px] font-bold uppercase text-red-500">{new Date(event.date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.','')}</span>
         <span className="block text-xl font-black leading-none text-slate-900">{new Date(event.date + 'T00:00:00').getDate()}</span>
       </div>
     </div>
     
-    {/* Dados */}
+    {/* Dados Normais (Visíveis quando NÃO está passando o mouse) */}
     <div className="p-3">
       <h3 className="font-bold text-slate-800 text-base truncate mb-1">{event.title}</h3>
       <div className="flex items-center gap-1 text-xs text-slate-500 mb-3">
@@ -36,27 +37,42 @@ const EventCard = ({ event }) => (
         <span className="truncate">{event.location}</span>
       </div>
       
-      {/* Botão de Ação (Link) */}
+      {/* Botão de Ação Normal */}
       {event.link && (
         <a 
           href={event.link} 
           target="_blank" 
           rel="noreferrer" 
           className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition"
-          onClick={(e) => e.stopPropagation()} // Para não abrir o modal se tiver
+          onClick={(e) => e.stopPropagation()} 
         >
           <ExternalLink size={12}/> Ingressos / Mais Info
         </a>
       )}
-      
-      {/* Descrição em Hover (Efeito Netflix) */}
-      {event.description && (
-        <div className="hidden group-hover:flex absolute inset-0 bg-white/95 p-4 flex-col animate-in fade-in">
-          <p className="font-bold text-sm text-slate-800 mb-2 border-b pb-2">Sobre o evento</p>
-          <p className="text-xs text-slate-600 leading-relaxed overflow-y-auto flex-1">{event.description}</p>
-        </div>
-      )}
     </div>
+
+    {/* DESCRIÇÃO EM HOVER (Correção: O botão agora existe AQUI DENTRO também) */}
+    {event.description && (
+      <div className="hidden group-hover:flex absolute inset-0 bg-white p-4 flex-col animate-in fade-in z-20">
+        <p className="font-bold text-sm text-slate-800 mb-2 border-b border-slate-100 pb-2">Sobre o evento</p>
+        <p className="text-xs text-slate-600 leading-relaxed overflow-y-auto flex-1 mb-2 custom-scrollbar">
+          {event.description}
+        </p>
+        
+        {/* BOTÃO DENTRO DO HOVER (Para não ficar bloqueado) */}
+        {event.link && (
+          <a 
+            href={event.link} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition shadow-md mt-auto"
+            onClick={(e) => e.stopPropagation()} 
+          >
+            <ExternalLink size={12}/> Acessar Link do Evento
+          </a>
+        )}
+      </div>
+    )}
   </div>
 );
 
@@ -71,11 +87,8 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 
   const handleLike = async () => {
     if (!user) { alert("Faça login para curtir!"); return; }
-    
-    // Atualização Otimista (Muda na tela antes de ir pro servidor)
     const newLikes = isLiked ? likes.filter(id => id !== user.id) : [...likes, user.id];
     setLikes(newLikes);
-
     await db.toggleLike('news', item.id, user.id);
   };
 
@@ -90,22 +103,16 @@ const FeedCard = ({ item, user, onNewsClick }) => {
       userId: user.id,
       date: new Date().toISOString()
     };
-
-    const newCommentsList = [...comments, newComment];
-    setComments(newCommentsList);
+    setComments([...comments, newComment]);
     setCommentText('');
-    
     await db.addComment('news', item.id, newComment);
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-      {/* Header do Post */}
       <div className="p-4 flex justify-between items-start">
         <div className="flex gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-sm bg-gradient-to-br from-blue-500 to-cyan-500">
-            NT
-          </div>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-sm bg-gradient-to-br from-blue-500 to-cyan-500">NT</div>
           <div>
             <h3 className="font-bold text-sm text-slate-800 leading-tight">Redação Link da Cidade</h3>
             <p className="text-xs text-slate-400 flex items-center gap-1">
@@ -116,45 +123,29 @@ const FeedCard = ({ item, user, onNewsClick }) => {
         <button className="text-slate-400 hover:bg-slate-100 p-1 rounded-full"><MoreHorizontal size={20} /></button>
       </div>
 
-      {/* Texto e Título */}
       <div className="px-4 pb-3">
-        <h2 onClick={() => onNewsClick(item)} className="text-lg font-bold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 leading-snug">
-          {item.title}
-        </h2>
-        <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 cursor-pointer" onClick={() => onNewsClick(item)}>
-          {item.summary}
-        </p>
+        <h2 onClick={() => onNewsClick(item)} className="text-lg font-bold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 leading-snug">{item.title}</h2>
+        <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 cursor-pointer" onClick={() => onNewsClick(item)}>{item.summary}</p>
       </div>
 
-      {/* Imagem Grande */}
       <div onClick={() => onNewsClick(item)} className="w-full h-64 sm:h-80 bg-slate-100 cursor-pointer relative group">
         <img src={item.image} alt={item.title} className="w-full h-full object-cover transition duration-500 group-hover:opacity-95" />
       </div>
 
-      {/* Barra de Ações (Curtir/Comentar) */}
       <div className="px-4 py-3 border-t border-slate-50 flex items-center justify-between select-none">
         <div className="flex gap-4">
-          <button 
-            onClick={handleLike} 
-            className={`flex items-center gap-1.5 text-sm font-medium transition group ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
-          >
+          <button onClick={handleLike} className={`flex items-center gap-1.5 text-sm font-medium transition group ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}>
             <Heart size={20} className={`transition-transform active:scale-75 ${isLiked ? 'fill-red-500' : ''}`}/> 
             <span>{likes.length}</span>
           </button>
-          <button 
-            onClick={() => setShowComments(!showComments)} 
-            className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-sm font-medium transition"
-          >
+          <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-sm font-medium transition">
             <MessageCircle size={20} />
             <span>{comments.length}</span>
           </button>
         </div>
-        <button className="text-slate-400 hover:text-indigo-600 transition">
-          <Share2 size={20} />
-        </button>
+        <button className="text-slate-400 hover:text-indigo-600 transition"><Share2 size={20} /></button>
       </div>
 
-      {/* Seção de Comentários */}
       {showComments && (
         <div className="bg-slate-50 p-4 border-t border-slate-100 animate-in slide-in-from-top-2">
           <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
@@ -164,22 +155,12 @@ const FeedCard = ({ item, user, onNewsClick }) => {
                 <span className="text-slate-600">{c.text}</span>
               </div>
             ))}
-            {comments.length === 0 && <p className="text-xs text-slate-400 italic text-center">Nenhum comentário ainda. Seja o primeiro!</p>}
+            {comments.length === 0 && <p className="text-xs text-slate-400 italic text-center">Nenhum comentário ainda.</p>}
           </div>
-          
           <form onSubmit={handleComment} className="flex gap-2 items-center">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
-              {user ? user.name[0] : '?'}
-            </div>
-            <input 
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              placeholder="Escreva um comentário..." 
-              className="flex-1 input bg-white border-slate-200 py-2 text-xs rounded-full px-4 focus:ring-1 focus:ring-indigo-500 outline-none"
-            />
-            <button disabled={!commentText.trim()} className="bg-indigo-600 disabled:bg-slate-300 text-white p-2 rounded-full hover:bg-indigo-700 transition">
-              <Send size={14}/>
-            </button>
+            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">{user ? user.name[0] : '?'}</div>
+            <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Escreva um comentário..." className="flex-1 input bg-white border-slate-200 py-2 text-xs rounded-full px-4 focus:ring-1 focus:ring-indigo-500 outline-none"/>
+            <button disabled={!commentText.trim()} className="bg-indigo-600 disabled:bg-slate-300 text-white p-2 rounded-full hover:bg-indigo-700 transition"><Send size={14}/></button>
           </form>
         </div>
       )}
@@ -188,18 +169,14 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, user }) {
-  
-  // Ordena eventos por data (mais próximos primeiro)
   const upcomingEvents = [...eventsData].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  // Ordena feed de notícias (mais recentes primeiro)
   const feedItems = [...newsData].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
       {/* 1. ATALHOS RÁPIDOS */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
         <div className="flex justify-between items-center px-2">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
           <QuickAccessItem label="Empregos" icon={Briefcase} color="bg-gradient-to-tr from-blue-400 to-blue-600" onClick={() => navigate('jobs')}/>
@@ -208,61 +185,49 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 2. CARROSSEL DE EVENTOS (NOVA POSIÇÃO) */}
+      {/* 2. WIDGET DE CLIMA (NOVA POSIÇÃO PARA DESTAQUE) */}
+      <div className="mb-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-md">
+        <div className="flex items-center gap-2 mb-2 opacity-90">
+          <MapPin size={14} className="text-indigo-200"/> 
+          <span className="text-xs font-bold uppercase tracking-wide">Clima em { CITY_NAME }</span>
+        </div>
+        <WeatherWidget />
+      </div>
+
+      {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
             <Calendar size={18} className="text-purple-600"/> Agenda Ouro Branco
           </h2>
-          <button onClick={() => navigate('events')} className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition">
-            Ver calendário completo
-          </button>
+          <button onClick={() => navigate('events')} className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition">Ver tudo</button>
         </div>
-        
-        {/* Scroll Horizontal */}
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x px-1 -mx-4 md:mx-0 px-4 md:px-0">
           {upcomingEvents.length > 0 ? upcomingEvents.map(event => (
             <EventCard key={event.id} event={event} />
           )) : (
-            <div className="w-full text-center py-10 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">
-              Nenhum evento próximo agendado.
-            </div>
+            <div className="w-full text-center py-10 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhum evento próximo.</div>
           )}
         </div>
       </div>
 
-      {/* 3. BARRA DE BUSCA / "O QUE VOCÊ PROCURA" */}
+      {/* 4. BARRA "O QUE VOCÊ PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>
         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
-          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-            {user ? user.name[0] : 'VC'}
-          </div>
+          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user ? user.name[0] : 'VC'}</div>
         </div>
-        <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">
-          O que você está procurando em Ouro Branco?
-        </div>
+        <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 4. FEED DE NOTÍCIAS */}
+      {/* 5. FEED DE NOTÍCIAS */}
       <div className="space-y-6">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Atualizações</h3>
-        
         {feedItems.length > 0 ? feedItems.map((item) => (
-          <FeedCard 
-            key={item.id} 
-            item={item} 
-            user={user} 
-            onNewsClick={onNewsClick}
-          />
+          <FeedCard key={item.id} item={item} user={user} onNewsClick={onNewsClick}/>
         )) : (
-          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-slate-400">Nenhuma notícia publicada ainda.</p>
-          </div>
+          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-400">Nenhuma notícia publicada ainda.</p></div>
         )}
-
-        <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">
-          Fim do conteúdo
-        </div>
+        <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">Fim do conteúdo</div>
       </div>
 
     </div>
