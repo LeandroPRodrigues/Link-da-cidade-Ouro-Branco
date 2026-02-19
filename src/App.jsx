@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Home, Briefcase, Car, Store, Menu, User, LogOut, 
-  List, Calendar, Loader, PlusCircle, Bell, Search,
-  Grid, Settings, ShoppingBag 
-} from 'lucide-react';
-
+import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Bell, Search, Grid, Settings, ShoppingBag } from 'lucide-react';
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
@@ -50,14 +45,15 @@ export default function App() {
   const [vehiclesData, setVehiclesData] = useState([]);
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
+  const [offersData, setOffersData] = useState([]); 
 
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
-      const [n, e, p, j, v, g, a] = await Promise.all([
-        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds()
+      const [n, e, p, j, v, g, a, o] = await Promise.all([
+        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds(), db.getOffers()
       ]);
-      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a);
+      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o);
     } catch (error) {
       console.error("Erro ao carregar:", error);
     } finally {
@@ -92,30 +88,22 @@ export default function App() {
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
     addAd: async (item) => { await db.addAd(item); setAdsData(await db.getAds()); },
     updateAd: async (item) => { await db.updateAd(item); setAdsData(await db.getAds()); },
-    deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); }
+    deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); },
+    addOffer: async (item) => { await db.addOffer(item); setOffersData(await db.getOffers()); },
+    updateOffer: async (item) => { await db.updateOffer(item); setOffersData(await db.getOffers()); },
+    deleteOffer: async (id) => { await db.deleteOffer(id); setOffersData(await db.getOffers()); }
   };
 
-  const handleAddPropertyClick = (openModalCallback) => {
-    if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
-    if (user.role === 'admin') { openModalCallback(); return; }
-    const myProperties = propertiesData.filter(p => p.ownerId === user.id);
-    if (myProperties.length >= 1) alert("Limite atingido!"); else openModalCallback();
-  };
-
-  const handleAddVehicleClick = (openModalCallback) => {
-    if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
-    if (user.role === 'admin') { openModalCallback(); return; }
-    const myVehicles = vehiclesData.filter(v => v.ownerId === user.id);
-    if (myVehicles.length >= 2) alert("Limite atingido!"); else openModalCallback();
-  };
-
+  const handleAddPropertyClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
+  const handleAddVehicleClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
+  
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true);
     const u = await db.findUser(e.target.email.value, e.target.password.value);
     setLoading(false);
     if(u) { setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } else { alert("E-mail ou senha incorretos."); }
   };
-
+  
   const handleRegister = async (e) => {
     e.preventDefault();
     const formData = { name: e.target.name.value, email: e.target.email.value, password: e.target.password.value, phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value, type: 'user', role: 'user', createdAt: new Date().toISOString() };
@@ -123,9 +111,9 @@ export default function App() {
     setLoading(true);
     if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("CPF já cadastrado."); return; }
     if (await db.checkEmailExists(formData.email)) { setLoading(false); alert("E-mail já cadastrado."); return; }
-    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado!"); setAuthMode('login');
+    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado com sucesso!"); setAuthMode('login');
   };
-
+  
   const handleLogout = () => { setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); };
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
@@ -133,7 +121,7 @@ export default function App() {
       <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> <span className="hidden md:inline">{label}</span><span className="md:hidden text-[10px] mt-1">{label}</span>
     </button>
   );
-
+  
   const MobileTabItem = ({ page, label, icon: Icon }) => (
     <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex flex-col items-center justify-center p-2 w-full transition-colors ${currentPage === page ? 'text-indigo-600' : 'text-slate-400'}`}>
       <Icon size={24} strokeWidth={currentPage === page ? 2.5 : 2} /> <span className="text-[10px] font-medium mt-1">{label}</span>
@@ -147,21 +135,12 @@ export default function App() {
       
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          
-          {/* LOGO RESTAURADA */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
-              <Grid className="text-white" size={20} />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
-            </div>
+            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200"><Grid className="text-white" size={20} /></div>
+            <div><h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1><p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p></div>
           </div>
-
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
-            <Search size={18} className="text-slate-400 mr-2"/>
-            <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
+            <Search size={18} className="text-slate-400 mr-2"/><input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
           </div>
           <div className="flex items-center gap-3">
             {user ? (
@@ -197,12 +176,13 @@ export default function App() {
           <div className="my-4 border-t border-slate-200 mx-4"></div>
           <p className="px-4 text-xs font-bold text-slate-400 uppercase mb-1">Serviços</p>
           <NavItem page="guide" label="Guia Comercial" icon={Store} />
-          <div className="mt-8 px-4 text-xs text-slate-400">© 2026 {APP_BRAND} {CITY_NAME}<br/>Termos • Privacidade • Sobre</div>
         </aside>
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          {currentPage === 'offers' && <OffersPage />}
+          
+          {currentPage === 'offers' && <OffersPage offersData={offersData} />}
+
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
@@ -215,7 +195,8 @@ export default function App() {
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
           {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
-          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} crud={crud} />}
+          
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} crud={crud} />}
         </main>
 
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
@@ -230,11 +211,6 @@ export default function App() {
               <li className="flex justify-between text-sm pb-2 border-b border-slate-100"><span className="text-slate-500">Lixo (Reciclável)</span><span className="font-bold text-slate-800">Quarta-feira</span></li>
               <li className="flex justify-between text-sm"><span className="text-slate-500">Horário Ônibus</span><span className="font-bold text-indigo-600 cursor-pointer hover:underline">Ver Tabela</span></li>
             </ul>
-          </div>
-          <div className="bg-slate-100 rounded-2xl p-6 text-center border border-slate-200 border-dashed">
-            <p className="text-slate-400 text-sm mb-2">Espaço Publicitário</p>
-            <p className="font-bold text-slate-600">Sua marca aqui</p>
-            <button className="mt-3 text-xs bg-white border px-3 py-1 rounded-full text-slate-600 hover:text-indigo-600 font-bold transition">Saiba mais</button>
           </div>
         </aside>
       </div>
@@ -262,21 +238,14 @@ export default function App() {
         ) : (
           <form onSubmit={handleRegister} className="space-y-3">
             <input name="name" placeholder="Nome Completo" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
-            <div className="grid grid-cols-2 gap-3">
-              <input name="birthDate" type="date" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
-              <input name="cpf" placeholder="CPF" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" maxLength={14} required onChange={(e) => e.target.value = formatCPF(e.target.value)}/>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-               <input name="phone" placeholder="Celular" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
-               <input name="email" type="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
-            </div>
+            <div className="grid grid-cols-2 gap-3"><input name="birthDate" type="date" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="cpf" placeholder="CPF" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" maxLength={14} required onChange={(e) => e.target.value = formatCPF(e.target.value)}/></div>
+            <div className="grid grid-cols-2 gap-3"><input name="phone" placeholder="Celular" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="email" type="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/></div>
             <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <button className="btn-primary w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Criar Conta</button>
             <div className="text-center text-xs mt-4">Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span></div>
           </form>
         )}
       </Modal>
-
     </div>
   );
 }
