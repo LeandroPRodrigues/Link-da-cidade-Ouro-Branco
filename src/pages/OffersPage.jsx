@@ -26,39 +26,6 @@ const CATEGORIES = [
   { id: 'brinquedos', label: 'Brinquedos', categoryId: 'MLB1132' },
 ];
 
-// A TÉCNICA MESTRA (JSONP) - Bypassa CORS e AdBlockers disfarçando a requisição
-const fetchJSONP = (url) => {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'ml_cb_' + Math.round(Math.random() * 1000000);
-    const script = document.createElement('script');
-    
-    // Timer de segurança (cancela se demorar mais de 8 segundos)
-    const timeout = setTimeout(() => {
-      if(document.head.contains(script)) document.head.removeChild(script);
-      delete window[callbackName];
-      reject(new Error('A requisição demorou muito.'));
-    }, 8000);
-
-    // O Mercado Livre devolve os dados direto para esta função invisível
-    window[callbackName] = (data) => {
-      clearTimeout(timeout);
-      if(document.head.contains(script)) document.head.removeChild(script);
-      delete window[callbackName];
-      resolve(data);
-    };
-
-    script.onerror = () => {
-      clearTimeout(timeout);
-      if(document.head.contains(script)) document.head.removeChild(script);
-      delete window[callbackName];
-      reject(new Error('Erro ao carregar os dados.'));
-    };
-
-    script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${callbackName}`;
-    document.head.appendChild(script);
-  });
-};
-
 export default function OffersPage() {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [products, setProducts] = useState([]);
@@ -95,34 +62,27 @@ export default function OffersPage() {
     }
   };
 
-  // BUSCA DIRETAMENTE NO NAVEGADOR USANDO JSONP (Imparável)
+  // BUSCA USANDO O PROXY NATIVO DA VERCEL (Zero CORS)
   const fetchProducts = async (categoryObj) => {
     setLoading(true);
     setError(null);
     
-    let mlUrl = `https://api.mercadolibre.com/sites/MLB/search?limit=24`;
-    if (categoryObj.categoryId) mlUrl += `&category=${categoryObj.categoryId}`;
-    if (categoryObj.query) mlUrl += `&q=${encodeURIComponent(categoryObj.query)}`;
+    // Agora o site pede para o próprio site (começa com /api/ml...) e a Vercel faz a ponte.
+    let apiUrl = `/api/ml/sites/MLB/search?limit=24`;
+    if (categoryObj.categoryId) apiUrl += `&category=${categoryObj.categoryId}`;
+    if (categoryObj.query) apiUrl += `&q=${encodeURIComponent(categoryObj.query)}`;
 
     try {
-      // Chama a nossa função JSONP mágica
-      const data = await fetchJSONP(mlUrl);
-      processData(data);
-    } catch (err) {
-      console.warn("JSONP falhou, tentando Rota B...");
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error("A conexão com o servidor falhou.");
       
-      // Rota B: Fallback de segurança caso a conexão do usuário esteja caindo
-      try {
-        const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(mlUrl)}`;
-        const response = await fetch(fallbackUrl);
-        if (!response.ok) throw new Error("Fallback failed");
-        const fallbackData = await response.json();
-        processData(fallbackData);
-      } catch (err2) {
-        console.error("Todas as conexões falharam:", err2);
-        setError("O catálogo está temporariamente inacessível. Tente novamente em instantes.");
-        setProducts([]);
-      }
+      const data = await response.json();
+      processData(data);
+
+    } catch (err) {
+      console.error("Erro na busca de produtos:", err);
+      setError("Houve um problema de conexão com o catálogo de ofertas.");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -142,7 +102,6 @@ export default function OffersPage() {
   return (
     <div className="animate-in fade-in pb-12 flex flex-col md:flex-row gap-6">
       
-      {/* MENU LATERAL */}
       <aside className="w-full md:w-64 shrink-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 h-fit sticky top-24 z-10">
         <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
           <Tag className="text-indigo-600" size={20} /> Categorias
@@ -163,7 +122,6 @@ export default function OffersPage() {
         </div>
       </aside>
 
-      {/* ÁREA DE PRODUTOS */}
       <div className="flex-1">
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-900">
@@ -194,7 +152,7 @@ export default function OffersPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-indigo-600">
             <Loader size={48} className="animate-spin mb-4" />
-            <p className="font-medium animate-pulse">Carregando catálogo ao vivo...</p>
+            <p className="font-medium animate-pulse">Buscando as melhores ofertas ao vivo...</p>
           </div>
         ) : error ? (
           <div className="col-span-full py-12 text-center text-red-500 bg-red-50 rounded-2xl flex flex-col items-center border border-red-100">

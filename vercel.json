@@ -1,6 +1,10 @@
 {
     "rewrites": [
       {
+        "source": "/api/ml/:match*",
+        "destination": "https://api.mercadolibre.com/:match*"
+      },
+      {
         "source": "/(.*)",
         "destination": "/index.html"
       }
