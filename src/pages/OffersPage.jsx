@@ -41,7 +41,6 @@ export default function OffersPage() {
     return `${cleanUrl}${separator}matt_tool=${AFFILIATE_TOOL_ID}&matt_word=${AFFILIATE_WORD}`;
   };
 
-  // Processa a lista de produtos recebida
   const processData = (data) => {
     if (data && data.results && data.results.length > 0) {
       const formattedProducts = data.results.map(item => {
@@ -63,47 +62,30 @@ export default function OffersPage() {
     }
   };
 
-  // SISTEMA ANTI-BLOQUEADOR (Tenta 3 rotas diferentes para garantir que os produtos carreguem)
+  // BUSCA USANDO A SERVERLESS FUNCTION DA VERCEL (Backend Próprio)
   const fetchProducts = async (categoryObj) => {
     setLoading(true);
     setError(null);
     
-    let mlUrl = `https://api.mercadolibre.com/sites/MLB/search?limit=24`;
-    if (categoryObj.categoryId) mlUrl += `&category=${categoryObj.categoryId}`;
-    if (categoryObj.query) mlUrl += `&q=${encodeURIComponent(categoryObj.query)}`;
-
     try {
-      // TENTATIVA 1: Rota Direta (Pode ser bloqueada pelo AdBlock)
-      const response = await fetch(mlUrl);
-      if (!response.ok) throw new Error("Bloqueio Direto");
+      // Chama a nossa própria API ao invés do ML direto
+      let apiUrl = `/api/mercadolivre?`;
+      if (categoryObj.categoryId) apiUrl += `category=${categoryObj.categoryId}&`;
+      if (categoryObj.query) apiUrl += `q=${encodeURIComponent(categoryObj.query)}`;
+
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error("Erro ao buscar ofertas no nosso servidor.");
+      }
+      
       const data = await response.json();
       processData(data);
 
     } catch (err) {
-      // TENTATIVA 2: Rota Proxy Transparente (Disfarça a requisição)
-      try {
-        console.warn("AdBlock detectado. Acionando rota proxy secundária...");
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(mlUrl)}`;
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error("Bloqueio Proxy 1");
-        const data = await response.json();
-        processData(data);
-        
-      } catch (err2) {
-        // TENTATIVA 3: Rota Proxy JSON (Impossível de ser bloqueada por AdBlock comum)
-        try {
-           console.warn("Acionando Rota de Segurança Máxima...");
-           const proxyUrl2 = `https://api.allorigins.win/get?url=${encodeURIComponent(mlUrl)}`;
-           const response = await fetch(proxyUrl2);
-           const proxyData = await response.json();
-           const data = JSON.parse(proxyData.contents);
-           processData(data);
-        } catch (err3) {
-           console.error("Todas as rotas falharam:", err3);
-           setError("Seu navegador ou antivírus está bloqueando estritamente o catálogo. Tente desativar a proteção contra rastreamento para esta página.");
-           setProducts([]);
-        }
-      }
+      console.error("Erro na busca de produtos:", err);
+      setError("Houve um problema de conexão com o catálogo de ofertas.");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -123,7 +105,6 @@ export default function OffersPage() {
   return (
     <div className="animate-in fade-in pb-12 flex flex-col md:flex-row gap-6">
       
-      {/* MENU LATERAL */}
       <aside className="w-full md:w-64 shrink-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 h-fit sticky top-24 z-10">
         <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
           <Tag className="text-indigo-600" size={20} /> Categorias
@@ -144,7 +125,6 @@ export default function OffersPage() {
         </div>
       </aside>
 
-      {/* ÁREA DE PRODUTOS */}
       <div className="flex-1">
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-900">
@@ -172,7 +152,6 @@ export default function OffersPage() {
            )}
         </div>
 
-        {/* FEEDBACK (Carregando ou Erro ou Lista de Produtos) */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-indigo-600">
             <Loader size={48} className="animate-spin mb-4" />
