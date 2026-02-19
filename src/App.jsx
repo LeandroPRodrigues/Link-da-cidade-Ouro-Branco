@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, Briefcase, Car, Store, Menu, User, LogOut, 
   List, Calendar, Loader, PlusCircle, Bell, Search,
-  Grid, Settings, ChevronRight
+  Grid, Settings, ShoppingBag // <-- Ícone ShoppingBag adicionado aqui
 } from 'lucide-react';
 
 import { db } from './utils/database';
@@ -25,6 +25,7 @@ import VehicleDetailPage from './pages/VehicleDetailPage';
 import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
 import WeatherWidget from './components/WeatherWidget';
+import OffersPage from './pages/OffersPage'; // <-- NOVO IMPORT DA PÁGINA DE OFERTAS
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
@@ -51,12 +52,10 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL COM LIMPEZA AUTOMÁTICA ---
+  // --- CARREGAMENTO INICIAL ---
   const loadAllData = async () => {
     try {
-      // Executa a limpeza de eventos de anos anteriores primeiro
       await db.cleanOldEvents();
-
       const [n, e, p, j, v, g, a] = await Promise.all([
         db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds()
       ]);
@@ -81,27 +80,21 @@ export default function App() {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
     deleteNews: async (id) => { await db.deleteNews(id); setNewsData(await db.getNews()); },
-    
     addEvent: async (item) => { await db.addEvent(item); setEventsData(await db.getEvents()); },
     updateEvent: async (item) => { await db.updateEvent(item); setEventsData(await db.getEvents()); },
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
-    
     addProperty: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addProperty(i); setPropertiesData(await db.getProperties()); },
     updateProperty: async (item) => { await db.updateProperty(item); setPropertiesData(await db.getProperties()); },
     deleteProperty: async (id) => { await db.deleteProperty(id); setPropertiesData(await db.getProperties()); },
-    
     addJob: async (item) => { await db.addJob(item); setJobsData(await db.getJobs()); },
     updateJob: async (item) => { await db.updateJob(item); setJobsData(await db.getJobs()); },
     deleteJob: async (id) => { await db.deleteJob(id); setJobsData(await db.getJobs()); },
-    
     addVehicle: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addVehicle(i); setVehiclesData(await db.getVehicles()); },
     updateVehicle: async (item) => { await db.updateVehicle(item); setVehiclesData(await db.getVehicles()); },
     deleteVehicle: async (id) => { await db.deleteVehicle(id); setVehiclesData(await db.getVehicles()); },
-    
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
-
     addAd: async (item) => { await db.addAd(item); setAdsData(await db.getAds()); },
     updateAd: async (item) => { await db.updateAd(item); setAdsData(await db.getAds()); },
     deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); }
@@ -129,48 +122,29 @@ export default function App() {
     const u = await db.findUser(e.target.email.value, e.target.password.value);
     setLoading(false);
     if(u) { 
-      setUser(u); 
-      localStorage.setItem('app_user', JSON.stringify(u));
-      setIsLoginOpen(false); 
+      setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); 
       if(u.role === 'admin') setCurrentPage('admin'); 
-    } else { 
-      alert("E-mail ou senha incorretos."); 
-    }
+    } else { alert("E-mail ou senha incorretos."); }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     const formData = {
-      name: e.target.name.value,
-      email: e.target.email.value,
-      password: e.target.password.value,
-      phone: e.target.phone.value,
-      cpf: e.target.cpf.value,
-      birthDate: e.target.birthDate.value,
+      name: e.target.name.value, email: e.target.email.value, password: e.target.password.value,
+      phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value,
       type: 'user', role: 'user', createdAt: new Date().toISOString()
     };
     if (!validateCPF(formData.cpf)) { alert("CPF inválido!"); return; }
     setLoading(true);
-    const cpfExists = await db.checkCpfExists(formData.cpf);
-    if (cpfExists) { setLoading(false); alert("Este CPF já possui cadastro."); return; }
-    const emailExists = await db.checkEmailExists(formData.email);
-    if (emailExists) { setLoading(false); alert("Este E-mail já está em uso."); return; }
-    await db.saveUser(formData);
-    setLoading(false);
-    alert("Cadastro realizado! Faça login."); setAuthMode('login');
+    if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("Este CPF já possui cadastro."); return; }
+    if (await db.checkEmailExists(formData.email)) { setLoading(false); alert("Este E-mail já está em uso."); return; }
+    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado! Faça login."); setAuthMode('login');
   };
 
-  const handleLogout = () => { 
-    setUser(null); 
-    localStorage.removeItem('app_user');
-    setCurrentPage('home'); 
-  };
+  const handleLogout = () => { setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); };
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
-    <button 
-      onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} 
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}
-    >
+    <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
       <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> 
       <span className="hidden md:inline">{label}</span>
       <span className="md:hidden text-[10px] mt-1">{label}</span>
@@ -178,10 +152,7 @@ export default function App() {
   );
 
   const MobileTabItem = ({ page, label, icon: Icon }) => (
-    <button 
-      onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} 
-      className={`flex flex-col items-center justify-center p-2 w-full transition-colors ${currentPage === page ? 'text-indigo-600' : 'text-slate-400'}`}
-    >
+    <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex flex-col items-center justify-center p-2 w-full transition-colors ${currentPage === page ? 'text-indigo-600' : 'text-slate-400'}`}>
       <Icon size={24} strokeWidth={currentPage === page ? 2.5 : 2} />
       <span className="text-[10px] font-medium mt-1">{label}</span>
     </button>
@@ -192,23 +163,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
       
-      {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          
-          {/* LOGO TEXTUAL ORIGINAL */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
               <Grid className="text-white" size={20} />
             </div>
             <div>
-              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">
-                {APP_BRAND}<span className="text-indigo-600">daCidade</span>
-              </h1>
+              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1>
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
             </div>
           </div>
-
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/>
             <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
@@ -217,18 +182,11 @@ export default function App() {
             {user ? (
                <div className="flex items-center gap-3">
                  {user.role === 'admin' && (
-                   <button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition">
-                     <Settings size={14}/> Admin
-                   </button>
+                   <button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>
                  )}
                  <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={handleLogout}>
-                   <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">
-                     {user.name[0]}
-                   </div>
-                   <div className="hidden md:block text-left leading-tight">
-                      <p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p>
-                      <p className="text-[10px] text-slate-400">Sair</p>
-                   </div>
+                   <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
+                   <div className="hidden md:block text-left leading-tight"><p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400">Sair</p></div>
                  </div>
                </div>
             ) : (
@@ -241,12 +199,14 @@ export default function App() {
         </div>
       </header>
 
-      {/* BODY */}
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-64px)]">
         
-        {/* SIDEBAR */}
         <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
+          
+          {/* MENU: NOVA ABA DE OFERTAS AQUI */}
+          <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
+          
           <NavItem page="news" label="Notícias" icon={List} />
           <NavItem page="events" label="Agenda & Eventos" icon={Calendar} />
           <div className="my-4 border-t border-slate-200 mx-4"></div>
@@ -260,47 +220,31 @@ export default function App() {
           <div className="mt-8 px-4 text-xs text-slate-400">© 2026 {APP_BRAND} {CITY_NAME}<br/>Termos • Privacidade • Sobre</div>
         </aside>
 
-        {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           
-          {currentPage === 'home' && <HomePage 
-            navigate={setCurrentPage} 
-            newsData={newsData} 
-            eventsData={eventsData} 
-            adsData={adsData} 
-            user={user} 
-            onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
-          />}
-          
+          {/* NOVA PÁGINA RENDERIZADA */}
+          {currentPage === 'offers' && <OffersPage />}
+
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
-          
           {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={propertiesData} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'property_detail' && <PropertyDetailPage property={selectedProperty} onBack={() => setCurrentPage('real_estate')} />}
-          
           {currentPage === 'jobs' && <JobsPage jobsData={jobsData} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
-          
           {currentPage === 'vehicles' && <VehiclesPage vehiclesData={vehiclesData} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
-          
           {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
-
-          {currentPage === 'admin' && user?.role === 'admin' && (
-            <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} crud={crud} />
-          )}
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} crud={crud} />}
         </main>
 
-        {/* WIDGETS LATERAIS DIREITOS */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
-            <div className="relative z-10">
-              <WeatherWidget />
-            </div>
+            <div className="relative z-10"><WeatherWidget /></div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
             <h3 className="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wide">Útil para você</h3>
@@ -318,11 +262,11 @@ export default function App() {
         </aside>
       </div>
 
-      {/* MOBILE NAV */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           <MobileTabItem page="home" label="Início" icon={Home} />
-          <MobileTabItem page="news" label="Notícias" icon={List} />
+          {/* Botão de Shopping no mobile */}
+          <MobileTabItem page="offers" label="Shopping" icon={ShoppingBag} />
           <div className="relative -top-5">
             <button onClick={() => { setIsLoginOpen(true); }} className="bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-200 hover:scale-105 transition">
               <PlusCircle size={24} />
@@ -333,7 +277,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* MODAL */}
       <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title={authMode === 'login' ? "Bem-vindo de volta" : "Criar nova conta"}>
         {authMode === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
