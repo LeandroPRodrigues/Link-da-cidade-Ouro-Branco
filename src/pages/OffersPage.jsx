@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, TrendingUp, Tag, Loader, AlertTriangle } from 'lucide-react';
 
+// === SEUS DADOS DE AFILIADO DO MERCADO LIVRE ===
 const AFFILIATE_TOOL_ID = '76548994'; 
 const AFFILIATE_WORD = 'forjadomago';
 
+// Categorias oficiais com IDs reais do Mercado Livre
 const CATEGORIES = [
   { id: 'bestsellers', label: 'Mais procurados', query: 'ofertas', icon: TrendingUp },
   { id: 'supermercado', label: 'Supermercado', categoryId: 'MLB1403' },
@@ -31,6 +33,7 @@ export default function OffersPage() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Função que embute sua comissão no link
   const makeAffiliateLink = (originalUrl) => {
     if (!originalUrl) return '#';
     const cleanUrl = originalUrl.split('#')[0]; 
@@ -59,6 +62,7 @@ export default function OffersPage() {
     }
   };
 
+  // BUSCA DIRETAMENTE NO NOSSO NOVO BACKEND DA VERCEL
   const fetchProducts = async (categoryObj) => {
     setLoading(true);
     setError(null);
@@ -71,17 +75,15 @@ export default function OffersPage() {
       const response = await fetch(apiUrl);
       const data = await response.json();
       
-      // Se a resposta não for OK, capta a mensagem exata do erro que o backend enviou
       if (!response.ok) {
-        throw new Error(data.error || "Erro desconhecido no servidor.");
+        throw new Error(data.error || "Ocorreu um erro ao carregar os produtos.");
       }
       
       processData(data);
 
     } catch (err) {
-      console.error("Erro no Front-End:", err);
-      // Mostra o erro real na tela
-      setError(`Falha de conexão: ${err.message}`);
+      console.error("Erro de conexão:", err);
+      setError(err.message || "Não conseguimos carregar as ofertas agora. O catálogo pode estar em manutenção.");
       setProducts([]);
     } finally {
       setLoading(false);
