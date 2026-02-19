@@ -19,7 +19,7 @@ const AdsCarousel = ({ ads }) => {
     return () => clearInterval(interval);
   }, [safeAds.length]);
 
-  if (safeAds.length === 0) return null; // Se não tiver anúncio, não mostra nada
+  if (safeAds.length === 0) return null; // Se não tiver anúncio, ele fica invisível
 
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-6 relative group bg-slate-100">
@@ -221,10 +221,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
-      {/* 1. PUBLICIDADE (CARROSSEL NO TOPO) */}
-      <AdsCarousel ads={adsData} />
-
-      {/* 2. ATALHOS RÁPIDOS */}
+      {/* 1. ATALHOS RÁPIDOS */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
         <div className="flex justify-between items-center px-2">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
@@ -233,6 +230,9 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
           <QuickAccessItem label="Guia" icon={Store} color="bg-gradient-to-tr from-purple-400 to-purple-600" onClick={() => navigate('guide')}/>
         </div>
       </div>
+
+      {/* 2. PUBLICIDADE (CARROSSEL MOVIDO PARA AQUI) */}
+      <AdsCarousel ads={adsData} />
 
       {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
