@@ -1,62 +1,45 @@
-import https from 'https';
-
-export default function handler(req, res) {
-  // 1. Libera as portas de segurança (CORS) para o site
+export default async function handler(req, res) {
+  // 1. Libera a segurança (CORS) para o seu site conseguir ler os dados
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
 
-  // Preflight check do navegador
+  // Resposta rápida para o preflight do navegador
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   const { category, q } = req.query;
 
-  // 2. Monta o caminho exato do Mercado Livre
-  let path = `/sites/MLB/search?limit=24`;
-  if (category && category !== 'undefined') path += `&category=${category}`;
-  if (q && q !== 'undefined') path += `&q=${encodeURIComponent(q)}`;
+  // 2. Monta a URL oficial
+  let mlUrl = `https://api.mercadolibre.com/sites/MLB/search?limit=24`;
+  
+  if (category && category !== 'undefined') mlUrl += `&category=${category}`;
+  if (q && q !== 'undefined') mlUrl += `&q=${encodeURIComponent(q)}`;
 
-  const options = {
-    hostname: 'api.mercadolibre.com',
-    path: path,
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json'
-    }
-  };
-
-  // 3. Faz a requisição usando o módulo nativo absoluto do servidor (Sem depender de fetch)
-  const request = https.request(options, (response) => {
-    let data = '';
-
-    // Recebe os pedaços de dados do Mercado Livre
-    response.on('data', (chunk) => {
-      data += chunk;
-    });
-
-    // Quando terminar de receber tudo:
-    response.on('end', () => {
-      try {
-        const jsonData = JSON.parse(data);
-        
-        // Se a resposta for OK (Status 200)
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          res.status(200).json(jsonData);
-        } else {
-          // Se o ML bloquear o servidor
-          res.status(response.statusCode).json({ error: 'Bloqueio na API do Mercado Livre', details: jsonData });
-        }
-      } catch (e) {
-        res.status(500).json({ error: 'Falha ao processar os dados do Mercado Livre.' });
+  try {
+    // 3. Faz a requisição COM O DISFARCE (User-Agent)
+    const response = await fetch(mlUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        // O SEGREDO ESTÁ AQUI: Dizemos ao Mercado Livre que somos um navegador Chrome comum
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
       }
     });
-  });
+    
+    const data = await response.json();
 
-  // Se der erro de rede na Vercel
-  request.on('error', (error) => {
-    res.status(500).json({ error: 'Erro de rede no Servidor Vercel.', details: error.message });
-  });
+    // Se mesmo com o disfarce o ML devolver 403, passamos o erro adiante
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Mercado Livre bloqueou a requisição.', details: data });
+    }
 
-  request.end();
+    // 4. Devolve os produtos com sucesso
+    res.status(200).json(data);
+
+  } catch (error) {
+    console.error("Erro interno no Servidor Vercel:", error);
+    res.status(500).json({ error: 'Falha no servidor ao processar os dados.' });
+  }
 }
