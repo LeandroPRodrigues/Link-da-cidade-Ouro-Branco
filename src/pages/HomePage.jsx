@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   MapPin, Calendar, Heart, MessageCircle, Share2, 
   MoreHorizontal, Home, Briefcase, Car, Store, 
-  Send, ExternalLink, ShoppingBag // <--- ShoppingBag adicionado
+  Send, ExternalLink, ShoppingBag
 } from 'lucide-react';
 import { db } from '../utils/database';
 
+// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
 const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -21,7 +22,7 @@ const AdsCarousel = ({ ads }) => {
   if (safeAds.length === 0) return null;
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-6 relative group bg-slate-100">
+    <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-8 relative group bg-slate-100">
       <div 
         className="flex transition-transform duration-700 ease-in-out h-32 md:h-48" 
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -55,7 +56,7 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// Componente de Atalho Rápido (Ajustado para caber 5 botões)
+// Componente de Atalho Rápido (Ajustado para 5 itens)
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   <button onClick={onClick} className="flex flex-col items-center gap-2 min-w-[65px] md:min-w-[80px] shrink-0 group transition-transform active:scale-95">
     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-all ${color}`}>
@@ -65,6 +66,7 @@ const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   </button>
 );
 
+// Componente do Cartão de Evento
 const EventCard = ({ event }) => (
   <div className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
     <div className="relative h-40 overflow-hidden">
@@ -83,13 +85,7 @@ const EventCard = ({ event }) => (
       </div>
       
       {event.link && (
-        <a 
-          href={event.link} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition"
-          onClick={(e) => e.stopPropagation()} 
-        >
+        <a href={event.link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition" onClick={(e) => e.stopPropagation()}>
           <ExternalLink size={12}/> Ingressos / Mais Info
         </a>
       )}
@@ -101,15 +97,8 @@ const EventCard = ({ event }) => (
         <p className="text-xs text-slate-600 leading-relaxed overflow-y-auto flex-1 mb-2 custom-scrollbar">
           {event.description}
         </p>
-        
         {event.link && (
-          <a 
-            href={event.link} 
-            target="_blank" 
-            rel="noreferrer" 
-            className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition shadow-md mt-auto"
-            onClick={(e) => e.stopPropagation()} 
-          >
+          <a href={event.link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition shadow-md mt-auto" onClick={(e) => e.stopPropagation()}>
             <ExternalLink size={12}/> Acessar Link do Evento
           </a>
         )}
@@ -118,6 +107,7 @@ const EventCard = ({ event }) => (
   </div>
 );
 
+// Componente de Cartão de Feed
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments, setComments] = useState(item.comments || []);
@@ -137,13 +127,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
     e.preventDefault();
     if (!user) { alert("Faça login para comentar!"); return; }
     if (!commentText.trim()) return;
-
-    const newComment = {
-      text: commentText,
-      userName: user.name,
-      userId: user.id,
-      date: new Date().toISOString()
-    };
+    const newComment = { text: commentText, userName: user.name, userId: user.id, date: new Date().toISOString() };
     setComments([...comments, newComment]);
     setCommentText('');
     await db.addComment('news', item.id, newComment);
@@ -163,16 +147,13 @@ const FeedCard = ({ item, user, onNewsClick }) => {
         </div>
         <button className="text-slate-400 hover:bg-slate-100 p-1 rounded-full"><MoreHorizontal size={20} /></button>
       </div>
-
       <div className="px-4 pb-3">
         <h2 onClick={() => onNewsClick(item)} className="text-lg font-bold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 leading-snug">{item.title}</h2>
         <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 cursor-pointer" onClick={() => onNewsClick(item)}>{item.summary}</p>
       </div>
-
       <div onClick={() => onNewsClick(item)} className="w-full h-64 sm:h-80 bg-slate-100 cursor-pointer relative group">
         <img src={item.image} alt={item.title} className="w-full h-full object-cover transition duration-500 group-hover:opacity-95" />
       </div>
-
       <div className="px-4 py-3 border-t border-slate-50 flex items-center justify-between select-none">
         <div className="flex gap-4">
           <button onClick={handleLike} className={`flex items-center gap-1.5 text-sm font-medium transition group ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}>
@@ -186,7 +167,6 @@ const FeedCard = ({ item, user, onNewsClick }) => {
         </div>
         <button className="text-slate-400 hover:text-indigo-600 transition"><Share2 size={20} /></button>
       </div>
-
       {showComments && (
         <div className="bg-slate-50 p-4 border-t border-slate-100 animate-in slide-in-from-top-2">
           <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
@@ -225,20 +205,19 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
-      {/* 1. PUBLICIDADE */}
-      <AdsCarousel ads={adsData} />
-
-      {/* 2. ATALHOS RÁPIDOS (AGORA COM 5 BOTÕES) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8">
+      {/* 1. ATALHOS RÁPIDOS COM 5 BOTÕES (Incluindo Shopping) */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
         <div className="flex justify-between md:justify-around items-center px-1 overflow-x-auto scrollbar-hide gap-3 pb-2 md:pb-0">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
           <QuickAccessItem label="Empregos" icon={Briefcase} color="bg-gradient-to-tr from-blue-400 to-blue-600" onClick={() => navigate('jobs')}/>
           <QuickAccessItem label="Veículos" icon={Car} color="bg-gradient-to-tr from-orange-400 to-orange-600" onClick={() => navigate('vehicles')}/>
           <QuickAccessItem label="Guia" icon={Store} color="bg-gradient-to-tr from-purple-400 to-purple-600" onClick={() => navigate('guide')}/>
-          {/* NOVO BOTÃO DE SHOPPING */}
           <QuickAccessItem label="Shopping" icon={ShoppingBag} color="bg-gradient-to-tr from-pink-400 to-pink-600" onClick={() => navigate('offers')}/>
         </div>
       </div>
+
+      {/* 2. PUBLICIDADE (EXATAMENTE ENTRE O MENU E OS EVENTOS) */}
+      <AdsCarousel ads={adsData} />
 
       {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">

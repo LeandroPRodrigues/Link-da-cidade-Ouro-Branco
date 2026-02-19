@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, TrendingUp, Tag, Loader, ExternalLink, AlertTriangle } from 'lucide-react';
 
-// === SEUS DADOS DE AFILIADO DO MERCADO LIVRE ===
 const AFFILIATE_TOOL_ID = '76548994'; 
 const AFFILIATE_WORD = 'forjadomago';
 
-// Lista de Categorias
 const CATEGORIES = [
   { id: 'bestsellers', label: 'Mais procurados', query: 'ofertas', icon: TrendingUp },
   { id: 'supermercado', label: 'Supermercado', query: 'supermercado ofertas' },
@@ -40,40 +38,60 @@ export default function OffersPage() {
     return `${cleanUrl}${separator}matt_tool=${AFFILIATE_TOOL_ID}&matt_word=${AFFILIATE_WORD}`;
   };
 
+  // Função centralizada para formatar os dados
+  const processData = (data) => {
+    if (data.results && data.results.length > 0) {
+      const formattedProducts = data.results.map(item => {
+        const highResImage = item.thumbnail ? item.thumbnail.replace('I.jpg', 'W.jpg') : 'https://placehold.co/400x400?text=Sem+Foto';
+        return {
+          id: item.id,
+          title: item.title || 'Produto',
+          price: item.price || 0,
+          originalPrice: item.original_price, 
+          image: highResImage,
+          link: makeAffiliateLink(item.permalink),
+          installments: item.installments ? `${item.installments.quantity}x de R$ ${item.installments.amount.toFixed(2)}` : null,
+          freeShipping: item.shipping?.free_shipping || false
+        };
+      });
+      setProducts(formattedProducts);
+    } else {
+      setProducts([]);
+    }
+  };
+
+  // --- O SISTEMA ANTI-BLOQUEIO ---
   const fetchProducts = async (queryText) => {
     setLoading(true);
     setError(null);
+    
+    const mlUrl = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(queryText)}&limit=24`;
+
     try {
-      const response = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(queryText)}&limit=24`);
+      // Tentativa 1: Conexão Direta (Pode ser bloqueada por AdBlock)
+      let response = await fetch(mlUrl, { headers: { 'Accept': 'application/json' } });
+      if (!response.ok) throw new Error("Bloqueio Direto");
       
-      if (!response.ok) throw new Error("Falha na comunicação com o Mercado Livre.");
-      
-      const data = await response.json();
-      
-      if (data.results && data.results.length > 0) {
-        const formattedProducts = data.results.map(item => {
-          // Proteção: se não vier thumbnail, usa um placeholder
-          const highResImage = item.thumbnail ? item.thumbnail.replace('I.jpg', 'W.jpg') : 'https://placehold.co/400x400?text=Sem+Foto';
-          
-          return {
-            id: item.id,
-            title: item.title || 'Produto sem título',
-            price: item.price || 0,
-            originalPrice: item.original_price, 
-            image: highResImage,
-            link: makeAffiliateLink(item.permalink),
-            installments: item.installments ? `${item.installments.quantity}x de R$ ${item.installments.amount.toFixed(2)}` : null,
-            freeShipping: item.shipping?.free_shipping || false
-          };
-        });
-        setProducts(formattedProducts);
-      } else {
+      let data = await response.json();
+      processData(data);
+
+    } catch (err) {
+      // Tentativa 2: "Plano B" - Uso de Proxy para contornar AdBlock/CORS
+      try {
+        console.warn("Tentando rota alternativa anti-bloqueio...");
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(mlUrl)}`;
+        
+        let fallbackResponse = await fetch(proxyUrl);
+        if (!fallbackResponse.ok) throw new Error("Falha no Proxy");
+        
+        let fallbackData = await fallbackResponse.json();
+        processData(fallbackData);
+        
+      } catch (fallbackErr) {
+        console.error("Ambas as rotas falharam:", fallbackErr);
+        setError("Navegador bloqueando o carregamento das ofertas. Tente desativar o AdBlock ou Escudo de Privacidade.");
         setProducts([]);
       }
-    } catch (err) {
-      console.error("Erro ao buscar ofertas:", err);
-      setError("Não foi possível carregar as ofertas. Verifique sua conexão ou se há algum bloqueador de anúncios ativo (AdBlock).");
-      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -94,7 +112,6 @@ export default function OffersPage() {
   return (
     <div className="animate-in fade-in pb-12 flex flex-col md:flex-row gap-6">
       
-      {/* MENU LATERAL */}
       <aside className="w-full md:w-64 shrink-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 h-fit sticky top-24 z-10">
         <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
           <Tag className="text-indigo-600" size={20} />
@@ -117,7 +134,6 @@ export default function OffersPage() {
         </div>
       </aside>
 
-      {/* ÁREA DE PRODUTOS */}
       <div className="flex-1">
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-900">
@@ -140,9 +156,15 @@ export default function OffersPage() {
           </form>
         </div>
 
-        <h3 className="text-xl font-bold text-slate-800 mb-4">{activeCategory.label}</h3>
+        <div className="flex justify-between items-center mb-4">
+           <h3 className="text-xl font-bold text-slate-800">{activeCategory.label}</h3>
+           {error && (
+              <button onClick={() => fetchProducts(activeCategory.query)} className="text-xs bg-indigo-100 text-indigo-700 font-bold px-3 py-1.5 rounded-full hover:bg-indigo-200 transition">
+                Tentar Novamente
+              </button>
+           )}
+        </div>
 
-        {/* TRATAMENTO DE ESTADOS (Loading, Erro ou Sucesso) */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-indigo-600">
             <Loader size={48} className="animate-spin mb-4" />

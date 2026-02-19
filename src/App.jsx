@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, Briefcase, Car, Store, Menu, User, LogOut, 
   List, Calendar, Loader, PlusCircle, Bell, Search,
-  Grid, Settings, ShoppingBag // <-- Ícone ShoppingBag adicionado aqui
+  Grid, Settings, ShoppingBag 
 } from 'lucide-react';
 
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
 
-// Páginas
 import HomePage from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
@@ -25,7 +24,7 @@ import VehicleDetailPage from './pages/VehicleDetailPage';
 import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
 import WeatherWidget from './components/WeatherWidget';
-import OffersPage from './pages/OffersPage'; // <-- NOVO IMPORT DA PÁGINA DE OFERTAS
+import OffersPage from './pages/OffersPage'; 
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
@@ -52,7 +51,6 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL ---
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
@@ -69,13 +67,10 @@ export default function App() {
 
   useEffect(() => { 
     const savedUser = localStorage.getItem('app_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    if (savedUser) { setUser(JSON.parse(savedUser)); }
     loadAllData(); 
   }, []);
   
-  // --- CRUD ---
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
@@ -104,57 +99,44 @@ export default function App() {
     if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
     if (user.role === 'admin') { openModalCallback(); return; }
     const myProperties = propertiesData.filter(p => p.ownerId === user.id);
-    if (myProperties.length >= 1) alert("Limite atingido! Você só pode cadastrar 1 imóvel gratuitamente.");
-    else openModalCallback();
+    if (myProperties.length >= 1) alert("Limite atingido!"); else openModalCallback();
   };
 
   const handleAddVehicleClick = (openModalCallback) => {
     if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
     if (user.role === 'admin') { openModalCallback(); return; }
     const myVehicles = vehiclesData.filter(v => v.ownerId === user.id);
-    if (myVehicles.length >= 2) alert("Limite atingido! Você só pode cadastrar 2 veículos gratuitamente.");
-    else openModalCallback();
+    if (myVehicles.length >= 2) alert("Limite atingido!"); else openModalCallback();
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault(); setLoading(true);
     const u = await db.findUser(e.target.email.value, e.target.password.value);
     setLoading(false);
-    if(u) { 
-      setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); 
-      if(u.role === 'admin') setCurrentPage('admin'); 
-    } else { alert("E-mail ou senha incorretos."); }
+    if(u) { setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } else { alert("E-mail ou senha incorretos."); }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    const formData = {
-      name: e.target.name.value, email: e.target.email.value, password: e.target.password.value,
-      phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value,
-      type: 'user', role: 'user', createdAt: new Date().toISOString()
-    };
+    const formData = { name: e.target.name.value, email: e.target.email.value, password: e.target.password.value, phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value, type: 'user', role: 'user', createdAt: new Date().toISOString() };
     if (!validateCPF(formData.cpf)) { alert("CPF inválido!"); return; }
     setLoading(true);
-    if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("Este CPF já possui cadastro."); return; }
-    if (await db.checkEmailExists(formData.email)) { setLoading(false); alert("Este E-mail já está em uso."); return; }
-    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado! Faça login."); setAuthMode('login');
+    if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("CPF já cadastrado."); return; }
+    if (await db.checkEmailExists(formData.email)) { setLoading(false); alert("E-mail já cadastrado."); return; }
+    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado!"); setAuthMode('login');
   };
 
   const handleLogout = () => { setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); };
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
     <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
-      <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> 
-      <span className="hidden md:inline">{label}</span>
-      <span className="md:hidden text-[10px] mt-1">{label}</span>
+      <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> <span className="hidden md:inline">{label}</span><span className="md:hidden text-[10px] mt-1">{label}</span>
     </button>
   );
 
   const MobileTabItem = ({ page, label, icon: Icon }) => (
     <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex flex-col items-center justify-center p-2 w-full transition-colors ${currentPage === page ? 'text-indigo-600' : 'text-slate-400'}`}>
-      <Icon size={24} strokeWidth={currentPage === page ? 2.5 : 2} />
-      <span className="text-[10px] font-medium mt-1">{label}</span>
+      <Icon size={24} strokeWidth={currentPage === page ? 2.5 : 2} /> <span className="text-[10px] font-medium mt-1">{label}</span>
     </button>
   );
 
@@ -165,6 +147,8 @@ export default function App() {
       
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
+          
+          {/* LOGO RESTAURADA */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
               <Grid className="text-white" size={20} />
@@ -174,6 +158,7 @@ export default function App() {
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
             </div>
           </div>
+
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/>
             <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
@@ -181,9 +166,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             {user ? (
                <div className="flex items-center gap-3">
-                 {user.role === 'admin' && (
-                   <button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>
-                 )}
+                 {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
                  <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={handleLogout}>
                    <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
                    <div className="hidden md:block text-left leading-tight"><p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400">Sair</p></div>
@@ -203,10 +186,7 @@ export default function App() {
         
         <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
-          
-          {/* MENU: NOVA ABA DE OFERTAS AQUI */}
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
-          
           <NavItem page="news" label="Notícias" icon={List} />
           <NavItem page="events" label="Agenda & Eventos" icon={Calendar} />
           <div className="my-4 border-t border-slate-200 mx-4"></div>
@@ -222,10 +202,7 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          
-          {/* NOVA PÁGINA RENDERIZADA */}
           {currentPage === 'offers' && <OffersPage />}
-
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
@@ -265,12 +242,9 @@ export default function App() {
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           <MobileTabItem page="home" label="Início" icon={Home} />
-          {/* Botão de Shopping no mobile */}
           <MobileTabItem page="offers" label="Shopping" icon={ShoppingBag} />
           <div className="relative -top-5">
-            <button onClick={() => { setIsLoginOpen(true); }} className="bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-200 hover:scale-105 transition">
-              <PlusCircle size={24} />
-            </button>
+            <button onClick={() => { setIsLoginOpen(true); }} className="bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-200 hover:scale-105 transition"><PlusCircle size={24} /></button>
           </div>
           <MobileTabItem page="events" label="Agenda" icon={Calendar} />
           <MobileTabItem page="guide" label="Guia" icon={Store} />
