@@ -15,11 +15,11 @@ const AdsCarousel = ({ ads }) => {
     if (safeAds.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % safeAds.length);
-    }, 5000); // Gira a cada 5 segundos
+    }, 5000); 
     return () => clearInterval(interval);
   }, [safeAds.length]);
 
-  if (safeAds.length === 0) return null; // Se não tiver anúncio, ele fica invisível
+  if (safeAds.length === 0) return null;
 
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-6 relative group bg-slate-100">
@@ -42,8 +42,6 @@ const AdsCarousel = ({ ads }) => {
           </div>
         ))}
       </div>
-      
-      {/* Indicadores (Bolinhas) */}
       {safeAds.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
           {safeAds.map((_, idx) => (
@@ -215,14 +213,29 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, user }) {
-  const upcomingEvents = [...eventsData].sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  // --- LÓGICA DE FILTRAGEM DE EVENTOS (NOVO) ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Define o horário para meia-noite (início do dia de hoje)
+
+  // Filtra para exibir APENAS eventos de hoje em diante, e depois os ordena
+  const upcomingEvents = [...eventsData]
+    .filter(e => {
+      const eventDate = new Date(e.date + 'T00:00:00');
+      return eventDate >= today; // Exibe apenas se a data do evento for >= hoje
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
   const feedItems = [...newsData].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
-      {/* 1. ATALHOS RÁPIDOS */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
+      {/* 1. PUBLICIDADE */}
+      <AdsCarousel ads={adsData} />
+
+      {/* 2. ATALHOS RÁPIDOS */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8">
         <div className="flex justify-between items-center px-2">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
           <QuickAccessItem label="Empregos" icon={Briefcase} color="bg-gradient-to-tr from-blue-400 to-blue-600" onClick={() => navigate('jobs')}/>
@@ -230,9 +243,6 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
           <QuickAccessItem label="Guia" icon={Store} color="bg-gradient-to-tr from-purple-400 to-purple-600" onClick={() => navigate('guide')}/>
         </div>
       </div>
-
-      {/* 2. PUBLICIDADE (CARROSSEL MOVIDO PARA AQUI) */}
-      <AdsCarousel ads={adsData} />
 
       {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
@@ -246,7 +256,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
           {upcomingEvents.length > 0 ? upcomingEvents.map(event => (
             <EventCard key={event.id} event={event} />
           )) : (
-            <div className="w-full text-center py-10 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhum evento próximo.</div>
+            <div className="w-full text-center py-10 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhum evento futuro agendado.</div>
           )}
         </div>
       </div>

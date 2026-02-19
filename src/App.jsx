@@ -36,7 +36,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login'); 
   const [loading, setLoading] = useState(true);
   
-  // Seleções
   const [selectedNews, setSelectedNews] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -44,7 +43,6 @@ export default function App() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedGuideItem, setSelectedGuideItem] = useState(null);
   
-  // Dados
   const [newsData, setNewsData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
   const [propertiesData, setPropertiesData] = useState([]);
@@ -53,9 +51,12 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL ---
+  // --- CARREGAMENTO INICIAL COM LIMPEZA AUTOMÁTICA ---
   const loadAllData = async () => {
     try {
+      // Executa a limpeza de eventos de anos anteriores primeiro
+      await db.cleanOldEvents();
+
       const [n, e, p, j, v, g, a] = await Promise.all([
         db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds()
       ]);
@@ -195,7 +196,7 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
           
-          {/* LOGO ORIGINAL RESTAURADA AQUI */}
+          {/* LOGO TEXTUAL ORIGINAL */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
               <Grid className="text-white" size={20} />

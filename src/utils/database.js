@@ -17,6 +17,24 @@ export const database = {
   addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
   updateEvent: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "events", id), data); },
   deleteEvent: async (id) => { await deleteDoc(doc(firestoreDB, "events", id)); },
+  
+  // FUNÇÃO DE LIMPEZA DE FIM DE ANO (NOVA)
+  cleanOldEvents: async () => {
+    const currentYear = new Date().getFullYear();
+    const q = await getDocs(collection(firestoreDB, "events"));
+    const allEvents = mapList(q);
+
+    for (const ev of allEvents) {
+      if (ev.date) {
+        // Pega o ano do evento
+        const evYear = new Date(ev.date + 'T00:00:00').getFullYear();
+        // Se o ano do evento for menor que o ano atual, exclui do banco
+        if (evYear < currentYear) {
+          await deleteDoc(doc(firestoreDB, "events", ev.id));
+        }
+      }
+    }
+  },
 
   // --- IMÓVEIS ---
   getProperties: async () => { const q = await getDocs(collection(firestoreDB, "properties")); return mapList(q); },
@@ -42,7 +60,7 @@ export const database = {
   updateGuideItem: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "guide", id), data); },
   deleteGuideItem: async (id) => { await deleteDoc(doc(firestoreDB, "guide", id)); },
 
-  // --- PUBLICIDADE / CARROSSEL (NOVO) ---
+  // --- PUBLICIDADE ---
   getAds: async () => { const q = await getDocs(collection(firestoreDB, "ads")); return mapList(q); },
   addAd: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "ads"), data); },
   updateAd: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "ads", id), data); },
