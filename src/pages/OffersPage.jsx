@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, TrendingUp, Tag, Loader, ExternalLink } from 'lucide-react';
+import { ShoppingCart, Search, TrendingUp, Tag, Loader, ExternalLink, AlertTriangle } from 'lucide-react';
 
 // === SEUS DADOS DE AFILIADO DO MERCADO LIVRE ===
 const AFFILIATE_TOOL_ID = '76548994'; 
 const AFFILIATE_WORD = 'forjadomago';
 
-// Lista de Categorias baseada na sua imagem
+// Lista de Categorias
 const CATEGORIES = [
   { id: 'bestsellers', label: 'Mais procurados', query: 'ofertas', icon: TrendingUp },
   { id: 'supermercado', label: 'Supermercado', query: 'supermercado ofertas' },
@@ -30,37 +30,36 @@ export default function OffersPage() {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Função para injetar os seus dados de afiliado no link do produto
   const makeAffiliateLink = (originalUrl) => {
+    if (!originalUrl) return '#';
     const cleanUrl = originalUrl.split('#')[0]; 
-    // Verifica se a URL já tem um '?' para não quebrar a estrutura do link
     const separator = cleanUrl.includes('?') ? '&' : '?';
-    
-    // Adiciona os seus códigos de rastreio no final do link de qualquer produto
     return `${cleanUrl}${separator}matt_tool=${AFFILIATE_TOOL_ID}&matt_word=${AFFILIATE_WORD}`;
   };
 
-  // Função para buscar produtos na API Pública do Mercado Livre
   const fetchProducts = async (queryText) => {
     setLoading(true);
+    setError(null);
     try {
-      // Usamos a API de busca do Brasil (MLB) ordenando por relevância
       const response = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(queryText)}&limit=24`);
+      
+      if (!response.ok) throw new Error("Falha na comunicação com o Mercado Livre.");
+      
       const data = await response.json();
       
-      if (data.results) {
-        // Formatando os dados recebidos
+      if (data.results && data.results.length > 0) {
         const formattedProducts = data.results.map(item => {
-          // A API do ML retorna uma foto pequena (thumbnail com final 'I.jpg'). Trocamos para 'W.jpg' para alta resolução
-          const highResImage = item.thumbnail.replace('I.jpg', 'W.jpg');
+          // Proteção: se não vier thumbnail, usa um placeholder
+          const highResImage = item.thumbnail ? item.thumbnail.replace('I.jpg', 'W.jpg') : 'https://placehold.co/400x400?text=Sem+Foto';
           
           return {
             id: item.id,
-            title: item.title,
-            price: item.price,
-            originalPrice: item.original_price, // Pode ser null se não tiver desconto
+            title: item.title || 'Produto sem título',
+            price: item.price || 0,
+            originalPrice: item.original_price, 
             image: highResImage,
             link: makeAffiliateLink(item.permalink),
             installments: item.installments ? `${item.installments.quantity}x de R$ ${item.installments.amount.toFixed(2)}` : null,
@@ -68,15 +67,18 @@ export default function OffersPage() {
           };
         });
         setProducts(formattedProducts);
+      } else {
+        setProducts([]);
       }
-    } catch (error) {
-      console.error("Erro ao buscar ofertas do Mercado Livre:", error);
+    } catch (err) {
+      console.error("Erro ao buscar ofertas:", err);
+      setError("Não foi possível carregar as ofertas. Verifique sua conexão ou se há algum bloqueador de anúncios ativo (AdBlock).");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Dispara a busca automática sempre que a categoria muda
   useEffect(() => {
     fetchProducts(activeCategory.query);
   }, [activeCategory]);
@@ -92,7 +94,7 @@ export default function OffersPage() {
   return (
     <div className="animate-in fade-in pb-12 flex flex-col md:flex-row gap-6">
       
-      {/* MENU LATERAL DE CATEGORIAS */}
+      {/* MENU LATERAL */}
       <aside className="w-full md:w-64 shrink-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 h-fit sticky top-24 z-10">
         <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
           <Tag className="text-indigo-600" size={20} />
@@ -117,7 +119,6 @@ export default function OffersPage() {
 
       {/* ÁREA DE PRODUTOS */}
       <div className="flex-1">
-        {/* Cabeçalho e Barra de Busca */}
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-900">
             <h2 className="text-2xl font-black flex items-center gap-2">
@@ -139,14 +140,18 @@ export default function OffersPage() {
           </form>
         </div>
 
-        {/* Título da Seção Atual */}
         <h3 className="text-xl font-bold text-slate-800 mb-4">{activeCategory.label}</h3>
 
-        {/* Grid de Produtos */}
+        {/* TRATAMENTO DE ESTADOS (Loading, Erro ou Sucesso) */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-indigo-600">
             <Loader size={48} className="animate-spin mb-4" />
             <p className="font-medium animate-pulse">Buscando as melhores ofertas ao vivo...</p>
+          </div>
+        ) : error ? (
+          <div className="col-span-full py-12 text-center text-red-500 bg-red-50 rounded-2xl flex flex-col items-center">
+            <AlertTriangle size={40} className="mb-3 opacity-50"/>
+            <p className="font-medium">{error}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -158,10 +163,8 @@ export default function OffersPage() {
                 rel="noreferrer"
                 className="bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full"
               >
-                {/* Imagem do Produto */}
                 <div className="h-48 p-4 bg-white flex items-center justify-center border-b border-slate-50 relative">
                   <img src={product.image} alt={product.title} className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform" />
-                  {/* Etiqueta de Desconto */}
                   {product.originalPrice && product.originalPrice > product.price && (
                     <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">
                       -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
@@ -169,12 +172,10 @@ export default function OffersPage() {
                   )}
                 </div>
                 
-                {/* Dados do Produto */}
                 <div className="p-4 flex flex-col flex-1">
                   <h4 className="text-xs text-slate-600 font-medium line-clamp-2 mb-2 group-hover:text-indigo-600 transition-colors">
                     {product.title}
                   </h4>
-                  
                   <div className="mt-auto">
                     {product.originalPrice && product.originalPrice > product.price && (
                       <p className="text-[10px] text-slate-400 line-through mb-0.5">
@@ -184,13 +185,11 @@ export default function OffersPage() {
                     <p className="text-xl font-black text-slate-800 leading-none">
                       {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
-                    
                     {product.installments && (
                       <p className="text-[10px] text-emerald-600 font-semibold mt-1">
                         em {product.installments}
                       </p>
                     )}
-                    
                     {product.freeShipping && (
                       <p className="text-[10px] font-bold text-emerald-600 mt-2 flex items-center gap-1 bg-emerald-50 w-fit px-1.5 py-0.5 rounded">
                         Frete grátis

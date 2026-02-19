@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   MapPin, Calendar, Heart, MessageCircle, Share2, 
   MoreHorizontal, Home, Briefcase, Car, Store, 
-  Send, ExternalLink
+  Send, ExternalLink, ShoppingBag // <--- ShoppingBag adicionado
 } from 'lucide-react';
 import { db } from '../utils/database';
 
-// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
 const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -56,17 +55,16 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// Componente de Atalho Rápido
+// Componente de Atalho Rápido (Ajustado para caber 5 botões)
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
-  <button onClick={onClick} className="flex flex-col items-center gap-2 min-w-[80px] group transition-transform active:scale-95">
+  <button onClick={onClick} className="flex flex-col items-center gap-2 min-w-[65px] md:min-w-[80px] shrink-0 group transition-transform active:scale-95">
     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-all ${color}`}>
       <Icon size={24} />
     </div>
-    <span className="text-xs font-semibold text-slate-600 group-hover:text-indigo-600">{label}</span>
+    <span className="text-[10px] md:text-xs font-semibold text-slate-600 group-hover:text-indigo-600">{label}</span>
   </button>
 );
 
-// Componente do Cartão de Evento
 const EventCard = ({ event }) => (
   <div className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
     <div className="relative h-40 overflow-hidden">
@@ -120,7 +118,6 @@ const EventCard = ({ event }) => (
   </div>
 );
 
-// Componente de Cartão de Feed
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments, setComments] = useState(item.comments || []);
@@ -213,16 +210,13 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, user }) {
-  
-  // --- LÓGICA DE FILTRAGEM DE EVENTOS (NOVO) ---
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Define o horário para meia-noite (início do dia de hoje)
+  today.setHours(0, 0, 0, 0);
 
-  // Filtra para exibir APENAS eventos de hoje em diante, e depois os ordena
   const upcomingEvents = [...eventsData]
     .filter(e => {
       const eventDate = new Date(e.date + 'T00:00:00');
-      return eventDate >= today; // Exibe apenas se a data do evento for >= hoje
+      return eventDate >= today; 
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -234,13 +228,15 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
       {/* 1. PUBLICIDADE */}
       <AdsCarousel ads={adsData} />
 
-      {/* 2. ATALHOS RÁPIDOS */}
+      {/* 2. ATALHOS RÁPIDOS (AGORA COM 5 BOTÕES) */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8">
-        <div className="flex justify-between items-center px-2">
+        <div className="flex justify-between md:justify-around items-center px-1 overflow-x-auto scrollbar-hide gap-3 pb-2 md:pb-0">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
           <QuickAccessItem label="Empregos" icon={Briefcase} color="bg-gradient-to-tr from-blue-400 to-blue-600" onClick={() => navigate('jobs')}/>
           <QuickAccessItem label="Veículos" icon={Car} color="bg-gradient-to-tr from-orange-400 to-orange-600" onClick={() => navigate('vehicles')}/>
           <QuickAccessItem label="Guia" icon={Store} color="bg-gradient-to-tr from-purple-400 to-purple-600" onClick={() => navigate('guide')}/>
+          {/* NOVO BOTÃO DE SHOPPING */}
+          <QuickAccessItem label="Shopping" icon={ShoppingBag} color="bg-gradient-to-tr from-pink-400 to-pink-600" onClick={() => navigate('offers')}/>
         </div>
       </div>
 
