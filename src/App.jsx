@@ -51,14 +51,15 @@ export default function App() {
   const [jobsData, setJobsData] = useState([]);
   const [vehiclesData, setVehiclesData] = useState([]);
   const [guideData, setGuideData] = useState([]);
+  const [adsData, setAdsData] = useState([]); // <--- NOVO: Estado dos anúncios
 
-  // --- 1. CARREGAMENTO INICIAL E PERSISTÊNCIA ---
+  // --- CARREGAMENTO INICIAL E PERSISTÊNCIA ---
   const loadAllData = async () => {
     try {
-      const [n, e, p, j, v, g] = await Promise.all([
-        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide()
+      const [n, e, p, j, v, g, a] = await Promise.all([
+        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds()
       ]);
-      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g);
+      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a);
     } catch (error) {
       console.error("Erro ao carregar:", error);
     } finally {
@@ -67,7 +68,6 @@ export default function App() {
   };
 
   useEffect(() => { 
-    // Verifica se já existe um usuário salvo no navegador
     const savedUser = localStorage.getItem('app_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -80,21 +80,31 @@ export default function App() {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
     deleteNews: async (id) => { await db.deleteNews(id); setNewsData(await db.getNews()); },
+    
     addEvent: async (item) => { await db.addEvent(item); setEventsData(await db.getEvents()); },
     updateEvent: async (item) => { await db.updateEvent(item); setEventsData(await db.getEvents()); },
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
+    
     addProperty: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addProperty(i); setPropertiesData(await db.getProperties()); },
     updateProperty: async (item) => { await db.updateProperty(item); setPropertiesData(await db.getProperties()); },
     deleteProperty: async (id) => { await db.deleteProperty(id); setPropertiesData(await db.getProperties()); },
+    
     addJob: async (item) => { await db.addJob(item); setJobsData(await db.getJobs()); },
     updateJob: async (item) => { await db.updateJob(item); setJobsData(await db.getJobs()); },
     deleteJob: async (id) => { await db.deleteJob(id); setJobsData(await db.getJobs()); },
+    
     addVehicle: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addVehicle(i); setVehiclesData(await db.getVehicles()); },
     updateVehicle: async (item) => { await db.updateVehicle(item); setVehiclesData(await db.getVehicles()); },
     deleteVehicle: async (id) => { await db.deleteVehicle(id); setVehiclesData(await db.getVehicles()); },
+    
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
-    deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); }
+    deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
+
+    // CRUD DE ANÚNCIOS
+    addAd: async (item) => { await db.addAd(item); setAdsData(await db.getAds()); },
+    updateAd: async (item) => { await db.updateAd(item); setAdsData(await db.getAds()); },
+    deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); }
   };
 
   // --- REGRAS ---
@@ -194,17 +204,16 @@ export default function App() {
       {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
-              <Grid className="text-white" size={20} />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">
-                {APP_BRAND}<span className="text-indigo-600">daCidade</span>
-              </h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
-            </div>
+          
+          {/* LOGO NOVA */}
+          <div className="flex items-center cursor-pointer group" onClick={() => setCurrentPage('home')}>
+            <img 
+              src="/logo.jpg" 
+              alt="Link da Cidade Ouro Branco" 
+              className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </div>
+
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/>
             <input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
@@ -258,11 +267,13 @@ export default function App() {
 
         {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          {/* PASSA O USER PARA A HOME PAGE */}
+          
+          {/* PASSA adsData PARA A HOME */}
           {currentPage === 'home' && <HomePage 
             navigate={setCurrentPage} 
             newsData={newsData} 
             eventsData={eventsData} 
+            adsData={adsData} 
             user={user} 
             onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
           />}
@@ -284,12 +295,13 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
 
+          {/* PASSA adsData PARA O ADMIN */}
           {currentPage === 'admin' && user?.role === 'admin' && (
-            <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} crud={crud} />
+            <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} crud={crud} />
           )}
         </main>
 
-        {/* WIDGETS (LIMPO - SEM TEXTOS DUPLICADOS) */}
+        {/* WIDGETS */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>

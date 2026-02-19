@@ -1,19 +1,18 @@
 import { db as firestoreDB } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
-// Função auxiliar
 const mapList = (snapshot) => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const database = {
-  // --- NOTÍCIAS (Agora inicia com likes e comments vazios) ---
+  // --- NOTÍCIAS ---
   getNews: async () => { const q = await getDocs(collection(firestoreDB, "news")); return mapList(q); },
   addNews: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [] }); },
   updateNews: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "news", id), data); },
   deleteNews: async (id) => { await deleteDoc(doc(firestoreDB, "news", id)); },
 
-  // --- EVENTOS (Agora inicia com likes e comments vazios) ---
+  // --- EVENTOS ---
   getEvents: async () => { const q = await getDocs(collection(firestoreDB, "events")); return mapList(q); },
   addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
   updateEvent: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "events", id), data); },
@@ -43,20 +42,22 @@ export const database = {
   updateGuideItem: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "guide", id), data); },
   deleteGuideItem: async (id) => { await deleteDoc(doc(firestoreDB, "guide", id)); },
 
-  // --- INTERAÇÕES SOCIAIS (NOVO) ---
+  // --- PUBLICIDADE / CARROSSEL (NOVO) ---
+  getAds: async () => { const q = await getDocs(collection(firestoreDB, "ads")); return mapList(q); },
+  addAd: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "ads"), data); },
+  updateAd: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "ads", id), data); },
+  deleteAd: async (id) => { await deleteDoc(doc(firestoreDB, "ads", id)); },
+
+  // --- INTERAÇÕES SOCIAIS ---
   toggleLike: async (collectionName, itemId, userId) => {
     const itemRef = doc(firestoreDB, collectionName, itemId);
     const itemSnap = await getDoc(itemRef);
-    
     if (itemSnap.exists()) {
       const data = itemSnap.data();
       const likes = data.likes || [];
-      
       if (likes.includes(userId)) {
-        // Se já curtiu, remove (Descurtir)
         await updateDoc(itemRef, { likes: arrayRemove(userId) });
       } else {
-        // Se não curtiu, adiciona (Curtir)
         await updateDoc(itemRef, { likes: arrayUnion(userId) });
       }
     }
@@ -67,22 +68,13 @@ export const database = {
     await updateDoc(itemRef, { comments: arrayUnion(comment) });
   },
 
-  // --- USUÁRIOS E AUTH (Mantido Original) ---
+  // --- USUÁRIOS E AUTH ---
   findUser: async (email, password) => {
-    // 1. Verifica se é o Admin Supremo
     if (email === 'leandro122005@hotmail.com' && password === 'Leolure123!') {
-      return { 
-        id: 'admin_master', 
-        name: 'Leandro Admin', 
-        email, 
-        role: 'admin', 
-        type: 'admin' 
-      };
+      return { id: 'admin_master', name: 'Leandro Admin', email, role: 'admin', type: 'admin' };
     }
-    // 2. Verifica usuários comuns no banco
     const q = query(collection(firestoreDB, "users"), where("email", "==", email), where("password", "==", password));
     const querySnapshot = await getDocs(q);
-    
     if (!querySnapshot.empty) {
       const docData = querySnapshot.docs[0];
       return { id: docData.id, ...docData.data(), role: 'user' };

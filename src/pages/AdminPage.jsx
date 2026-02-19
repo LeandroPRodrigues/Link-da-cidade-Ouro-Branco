@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, FileText, Calendar, Home, Briefcase, Car, Store, Edit, Trash2, Plus, Loader, UploadCloud } from 'lucide-react';
+import { Settings, FileText, Calendar, Home, Briefcase, Car, Store, Edit, Trash2, Plus, Loader, Megaphone } from 'lucide-react';
 import { NEWS_CATEGORIES } from '../data/mockData';
 import PropertyForm from '../components/PropertyForm'; 
 import JobForm from '../components/JobForm';
@@ -8,20 +8,23 @@ import GuideForm from '../components/GuideForm';
 import Modal from '../components/Modal';
 import { uploadFile } from '../utils/uploadHelper';
 
-export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, crud }) {
+export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, crud }) {
   const [activeTab, setActiveTab] = useState('news');
   const [editingItem, setEditingItem] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // --- ESTADOS DOS FORMS (Notícias e Eventos) ---
-  const [imageSource, setImageSource] = useState('url'); // 'url' ou 'upload'
+  // --- ESTADOS DOS FORMS ---
+  const [imageSource, setImageSource] = useState('url'); 
   const [selectedFile, setSelectedFile] = useState(null); 
   const [formData, setFormData] = useState({
     title: '', category: '', subcategory: '', image: '', summary: '',
     author: 'Redação Link', date: new Date().toISOString().split('T')[0],
-    time: '', location: '', description: '', link: '' // <--- Novos campos
+    time: '', location: '', description: '', link: '' 
   });
+
+  // Estado específico para Anúncios (Ads)
+  const [adData, setAdData] = useState({ title: '', link: '', image: '' });
 
   const resetForm = () => {
     setFormData({
@@ -29,6 +32,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       author: 'Redação Link', date: new Date().toISOString().split('T')[0],
       time: '', location: '', description: '', link: ''
     });
+    setAdData({ title: '', link: '', image: '' });
     setEditingItem(null);
     setModalType(null);
     setSelectedFile(null);
@@ -41,50 +45,62 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       setFormData({ ...item });
       setImageSource('url'); 
       window.scrollTo(0,0);
+    } else if (type === 'ad') {
+      setAdData({ ...item });
+      setImageSource('url'); 
+      window.scrollTo(0,0);
     } else {
       setModalType(type);
     }
   };
 
-  // --- SUBMIT NOTÍCIAS ---
+  // --- SUBMITS ---
   const handleNewsSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
+    e.preventDefault(); setLoading(true);
     let finalImageUrl = formData.image;
     if (imageSource === 'upload' && selectedFile) {
       try { finalImageUrl = await uploadFile(selectedFile, 'news'); } 
       catch (error) { alert("Erro no upload."); setLoading(false); return; }
     }
-
     const payload = { ...formData, image: finalImageUrl, id: editingItem ? editingItem.id : undefined };
     if (editingItem) crud.updateNews(payload); else crud.addNews(payload);
-    
     setLoading(false); alert("Notícia salva!"); resetForm();
   };
 
-  // --- SUBMIT EVENTOS ---
   const handleEventSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
+    e.preventDefault(); setLoading(true);
     let finalImageUrl = formData.image;
     if (imageSource === 'upload' && selectedFile) {
       try { finalImageUrl = await uploadFile(selectedFile, 'events'); } 
       catch (error) { alert("Erro no upload."); setLoading(false); return; }
     }
-
     const payload = { ...formData, image: finalImageUrl, id: editingItem ? editingItem.id : undefined };
     if (editingItem) crud.updateEvent(payload); else crud.addEvent(payload);
-    
     setLoading(false); alert("Evento salvo!"); resetForm();
+  };
+
+  // --- SUBMIT ANÚNCIO (ADS) ---
+  const handleAdSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    let finalImageUrl = adData.image;
+    if (imageSource === 'upload' && selectedFile) {
+      try { finalImageUrl = await uploadFile(selectedFile, 'ads'); } 
+      catch (error) { alert("Erro no upload."); setLoading(false); return; }
+    }
+
+    const payload = { ...adData, image: finalImageUrl, id: editingItem ? editingItem.id : undefined };
+    if (editingItem) crud.updateAd(payload); else crud.addAd(payload);
+    
+    setLoading(false); alert("Anúncio salvo!"); resetForm();
   };
 
   // Lista Genérica
   const AdminList = ({ data, type, labelField, onDelete }) => (
     <div className="space-y-2 max-h-[500px] overflow-y-auto">
-      {data.length === 0 && <p className="text-slate-400 text-sm">Nenhum item cadastrado.</p>}
-      {data.map(item => (
+      {(!data || data.length === 0) && <p className="text-slate-400 text-sm">Nenhum item cadastrado.</p>}
+      {data && data.map(item => (
         <div key={item.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
           <div>
             <span className="font-bold text-slate-700 block line-clamp-1">{item[labelField]}</span>
@@ -110,6 +126,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       {/* ABAS */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
         {[
+          { id: 'ads', label: 'Publicidade', icon: Megaphone }, // <--- ABA NOVA
           { id: 'news', label: 'Notícias', icon: FileText },
           { id: 'events', label: 'Eventos', icon: Calendar },
           { id: 'properties', label: 'Imóveis', icon: Home },
@@ -130,6 +147,58 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 min-h-[400px]">
         
+        {/* --- ABA PUBLICIDADE (ADS) --- */}
+        {activeTab === 'ads' && (
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="font-bold border-b pb-2">{editingItem ? 'Editar Anúncio' : 'Novo Anúncio (Carrossel Home)'}</h3>
+              <form onSubmit={handleAdSubmit} className="space-y-4">
+                <input 
+                  value={adData.title} 
+                  onChange={e => setAdData({...adData, title: e.target.value})} 
+                  className="input w-full font-bold" 
+                  placeholder="Nome do Anunciante (Interno)" 
+                  required
+                />
+                
+                <input 
+                  value={adData.link} 
+                  onChange={e => setAdData({...adData, link: e.target.value})} 
+                  className="input w-full" 
+                  placeholder="Link para onde o anúncio leva (Opcional - ex: https://instagram...)"
+                />
+
+                {/* IMAGEM DO ANÚNCIO */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Imagem do Banner (Formato horizontal sugerido)</label>
+                  <div className="flex gap-4 mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'url'} onChange={() => setImageSource('url')} /> Link URL
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="radio" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} /> Upload PC
+                    </label>
+                  </div>
+                  {imageSource === 'url' ? (
+                    <input value={adData.image} onChange={e => setAdData({...adData, image: e.target.value})} className="input w-full bg-white" placeholder="https://..." required={!editingItem}/>
+                  ) : (
+                    <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-700" required={!adData.image}/>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button disabled={loading} className="btn-primary flex-1 bg-blue-600 flex justify-center gap-2">{loading ? <Loader className="animate-spin" /> : "Salvar Anúncio"}</button>
+                  {editingItem && <button type="button" onClick={resetForm} className="btn-primary bg-red-50 text-red-600 hover:bg-red-100">Cancelar</button>}
+                </div>
+              </form>
+            </div>
+            <div className="lg:col-span-1 border-l pl-4">
+              <h3 className="font-bold mb-2 text-sm text-slate-400 uppercase">Anúncios Ativos</h3>
+              <AdminList data={adsData} type="ad" labelField="title" onDelete={crud.deleteAd} />
+            </div>
+          </div>
+        )}
+
         {/* --- ABA NOTÍCIAS --- */}
         {activeTab === 'news' && (
           <div className="grid lg:grid-cols-3 gap-8">
@@ -171,12 +240,13 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </form>
             </div>
             <div className="lg:col-span-1 border-l pl-4">
+              <h3 className="font-bold mb-2 text-sm text-slate-400 uppercase">Cadastrados</h3>
               <AdminList data={newsData} type="news" labelField="title" onDelete={crud.deleteNews} />
             </div>
           </div>
         )}
 
-        {/* --- ABA EVENTOS (NOVA COM CAMPOS EXTRAS) --- */}
+        {/* --- ABA EVENTOS --- */}
         {activeTab === 'events' && (
            <div className="grid lg:grid-cols-3 gap-8">
              <div className="lg:col-span-2 space-y-4">
@@ -190,7 +260,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
                 <input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="input w-full" placeholder="Local" required/>
                 
-                {/* CAMPOS NOVOS */}
                 <input value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} className="input w-full" placeholder="Link (Ingressos/Mais Info) - Opcional"/>
                 <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="input w-full h-24" placeholder="Descrição completa do evento..."/>
 
@@ -219,6 +288,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </form>
             </div>
             <div className="lg:col-span-1 border-l pl-4">
+              <h3 className="font-bold mb-2 text-sm text-slate-400 uppercase">Agendados</h3>
               <AdminList data={eventsData} type="event" labelField="title" onDelete={crud.deleteEvent} />
             </div>
            </div>
