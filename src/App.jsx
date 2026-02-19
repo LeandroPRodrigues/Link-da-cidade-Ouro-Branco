@@ -51,9 +51,9 @@ export default function App() {
   const [jobsData, setJobsData] = useState([]);
   const [vehiclesData, setVehiclesData] = useState([]);
   const [guideData, setGuideData] = useState([]);
-  const [adsData, setAdsData] = useState([]); // <--- NOVO: Estado dos anúncios
+  const [adsData, setAdsData] = useState([]);
 
-  // --- CARREGAMENTO INICIAL E PERSISTÊNCIA ---
+  // --- CARREGAMENTO INICIAL ---
   const loadAllData = async () => {
     try {
       const [n, e, p, j, v, g, a] = await Promise.all([
@@ -101,13 +101,11 @@ export default function App() {
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
 
-    // CRUD DE ANÚNCIOS
     addAd: async (item) => { await db.addAd(item); setAdsData(await db.getAds()); },
     updateAd: async (item) => { await db.updateAd(item); setAdsData(await db.getAds()); },
     deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); }
   };
 
-  // --- REGRAS ---
   const handleAddPropertyClick = (openModalCallback) => {
     if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; }
     if (user.role === 'admin') { openModalCallback(); return; }
@@ -124,7 +122,6 @@ export default function App() {
     else openModalCallback();
   };
 
-  // --- LOGIN E LOGOUT ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -168,17 +165,10 @@ export default function App() {
     setCurrentPage('home'); 
   };
 
-  // UI Components
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
     <button 
       onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} 
-      className={`
-        flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm
-        ${mobileOnly ? 'md:hidden' : ''}
-        ${currentPage === page 
-          ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
-          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
-      `}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}
     >
       <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> 
       <span className="hidden md:inline">{label}</span>
@@ -205,13 +195,17 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
           
-          {/* LOGO NOVA */}
-          <div className="flex items-center cursor-pointer group" onClick={() => setCurrentPage('home')}>
-            <img 
-              src="/logo.jpg" 
-              alt="Link da Cidade Ouro Branco" 
-              className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+          {/* LOGO ORIGINAL RESTAURADA AQUI */}
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
+            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200">
+              <Grid className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">
+                {APP_BRAND}<span className="text-indigo-600">daCidade</span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
+            </div>
           </div>
 
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
@@ -268,7 +262,6 @@ export default function App() {
         {/* MAIN */}
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           
-          {/* PASSA adsData PARA A HOME */}
           {currentPage === 'home' && <HomePage 
             navigate={setCurrentPage} 
             newsData={newsData} 
@@ -295,13 +288,12 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
 
-          {/* PASSA adsData PARA O ADMIN */}
           {currentPage === 'admin' && user?.role === 'admin' && (
             <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} crud={crud} />
           )}
         </main>
 
-        {/* WIDGETS */}
+        {/* WIDGETS LATERAIS DIREITOS */}
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>

@@ -5,11 +5,8 @@ import {
   Send, ExternalLink
 } from 'lucide-react';
 import { db } from '../utils/database';
-import WeatherWidget from '../components/WeatherWidget'; 
 
-const CITY_NAME = "Ouro Branco";
-
-// --- NOVO: COMPONENTE CARROSSEL DE ANÚNCIOS ---
+// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
 const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -27,13 +24,13 @@ const AdsCarousel = ({ ads }) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-6 relative group bg-slate-100">
       <div 
-        className="flex transition-transform duration-700 ease-in-out" 
+        className="flex transition-transform duration-700 ease-in-out h-32 md:h-48" 
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
         {safeAds.map((ad, idx) => (
           <div 
             key={ad.id || idx} 
-            className="w-full shrink-0 h-32 md:h-48 relative cursor-pointer" 
+            className="w-full h-full shrink-0 relative cursor-pointer" 
             onClick={() => {
               if (ad.link) window.open(ad.link, '_blank');
             }}
@@ -71,10 +68,9 @@ const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   </button>
 );
 
-// Componente do Cartão de Evento (Carrossel Horizontal)
+// Componente do Cartão de Evento
 const EventCard = ({ event }) => (
   <div className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
-    {/* Imagem */}
     <div className="relative h-40 overflow-hidden">
       <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-center shadow-sm z-10">
@@ -83,7 +79,6 @@ const EventCard = ({ event }) => (
       </div>
     </div>
     
-    {/* Dados Normais (Visíveis quando NÃO está passando o mouse) */}
     <div className="p-3">
       <h3 className="font-bold text-slate-800 text-base truncate mb-1">{event.title}</h3>
       <div className="flex items-center gap-1 text-xs text-slate-500 mb-3">
@@ -91,7 +86,6 @@ const EventCard = ({ event }) => (
         <span className="truncate">{event.location}</span>
       </div>
       
-      {/* Botão de Ação Normal */}
       {event.link && (
         <a 
           href={event.link} 
@@ -105,7 +99,6 @@ const EventCard = ({ event }) => (
       )}
     </div>
 
-    {/* DESCRIÇÃO EM HOVER */}
     {event.description && (
       <div className="hidden group-hover:flex absolute inset-0 bg-white p-4 flex-col animate-in fade-in z-20">
         <p className="font-bold text-sm text-slate-800 mb-2 border-b border-slate-100 pb-2">Sobre o evento</p>
@@ -113,7 +106,6 @@ const EventCard = ({ event }) => (
           {event.description}
         </p>
         
-        {/* BOTÃO DENTRO DO HOVER (Para não ficar bloqueado) */}
         {event.link && (
           <a 
             href={event.link} 
@@ -130,7 +122,7 @@ const EventCard = ({ event }) => (
   </div>
 );
 
-// Componente de Cartão de Feed (Notícias)
+// Componente de Cartão de Feed
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments, setComments] = useState(item.comments || []);
@@ -229,7 +221,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
-      {/* 1. PUBLICIDADE (CARROSSEL NOVO AQUI EM CIMA) */}
+      {/* 1. PUBLICIDADE (CARROSSEL NO TOPO) */}
       <AdsCarousel ads={adsData} />
 
       {/* 2. ATALHOS RÁPIDOS */}
@@ -242,16 +234,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 3. WIDGET DE CLIMA NO MOBILE (Aparece com destaque) */}
-      <div className="mb-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-md">
-        <div className="flex items-center gap-2 mb-2 opacity-90">
-          <MapPin size={14} className="text-indigo-200"/> 
-          <span className="text-xs font-bold uppercase tracking-wide">Clima em { CITY_NAME }</span>
-        </div>
-        <WeatherWidget />
-      </div>
-
-      {/* 4. CARROSSEL DE EVENTOS */}
+      {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -268,7 +251,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 5. BARRA "O QUE VOCÊ PROCURA" */}
+      {/* 4. BARRA "O QUE VOCÊ PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>
         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user ? user.name[0] : 'VC'}</div>
@@ -276,7 +259,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 6. FEED DE NOTÍCIAS */}
+      {/* 5. FEED DE NOTÍCIAS */}
       <div className="space-y-6">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Atualizações</h3>
         {feedItems.length > 0 ? feedItems.map((item) => (
