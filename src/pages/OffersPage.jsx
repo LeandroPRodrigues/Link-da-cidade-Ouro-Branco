@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, TrendingUp, Tag, Loader, AlertTriangle } from 'lucide-react';
 
-// === SEUS DADOS DE AFILIADO DO MERCADO LIVRE ===
 const AFFILIATE_TOOL_ID = '76548994'; 
 const AFFILIATE_WORD = 'forjadomago';
 
-// Categorias oficiais com IDs reais do Mercado Livre
 const CATEGORIES = [
   { id: 'bestsellers', label: 'Mais procurados', query: 'ofertas', icon: TrendingUp },
   { id: 'supermercado', label: 'Supermercado', categoryId: 'MLB1403' },
@@ -33,7 +31,6 @@ export default function OffersPage() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Função que embute sua comissão no link
   const makeAffiliateLink = (originalUrl) => {
     if (!originalUrl) return '#';
     const cleanUrl = originalUrl.split('#')[0]; 
@@ -62,29 +59,29 @@ export default function OffersPage() {
     }
   };
 
-  // BUSCA USANDO A SERVERLESS FUNCTION DA VERCEL (Backend Próprio)
   const fetchProducts = async (categoryObj) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Chama a nossa própria API ao invés do ML direto
       let apiUrl = `/api/mercadolivre?`;
       if (categoryObj.categoryId) apiUrl += `category=${categoryObj.categoryId}&`;
       if (categoryObj.query) apiUrl += `q=${encodeURIComponent(categoryObj.query)}`;
 
       const response = await fetch(apiUrl);
+      const data = await response.json();
       
+      // Se a resposta não for OK, capta a mensagem exata do erro que o backend enviou
       if (!response.ok) {
-        throw new Error("Erro ao buscar ofertas no nosso servidor.");
+        throw new Error(data.error || "Erro desconhecido no servidor.");
       }
       
-      const data = await response.json();
       processData(data);
 
     } catch (err) {
-      console.error("Erro na busca de produtos:", err);
-      setError("Houve um problema de conexão com o catálogo de ofertas.");
+      console.error("Erro no Front-End:", err);
+      // Mostra o erro real na tela
+      setError(`Falha de conexão: ${err.message}`);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -158,9 +155,10 @@ export default function OffersPage() {
             <p className="font-medium animate-pulse">Buscando as melhores ofertas ao vivo...</p>
           </div>
         ) : error ? (
-          <div className="col-span-full py-12 text-center text-red-500 bg-red-50 rounded-2xl flex flex-col items-center">
+          <div className="col-span-full py-12 text-center text-red-500 bg-red-50 rounded-2xl flex flex-col items-center border border-red-100">
             <AlertTriangle size={40} className="mb-3 opacity-50"/>
-            <p className="font-medium px-4">{error}</p>
+            <p className="font-bold text-lg mb-1">Ops! Erro de Conexão.</p>
+            <p className="font-medium px-4 text-sm">{error}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
