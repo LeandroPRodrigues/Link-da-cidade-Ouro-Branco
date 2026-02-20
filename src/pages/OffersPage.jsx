@@ -38,18 +38,19 @@ export default function OffersPage({ offersData }) {
   const displayedOffers = (offersData || []).filter(offer => {
     if (searchTerm) return offer.title.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Mostra tudo se for Ofertas do dia
-    if (activeCategory.id === 'bestsellers') return true; 
+    // === A MUDANÇA FOI AQUI: Removemos a regra que misturava tudo! ===
     
-    // Lógica para subgrupos de Tecnologia
+    // Lógica inteligente para subgrupos de Tecnologia
     if (activeCategory.subcategories) {
        if (activeSubCategory) {
           return offer.category === activeSubCategory.id;
        } else {
+          // Se estiver na aba mãe (Tecnologia), mostra todos os filhos juntos
           return activeCategory.subcategories.some(sub => sub.id === offer.category) || offer.category === activeCategory.id;
        }
     }
     
+    // Filtro rigoroso: Agora a aba "Ofertas do dia" (bestsellers) só vai mostrar os produtos dela mesma!
     return offer.category === activeCategory.id;
   });
 
