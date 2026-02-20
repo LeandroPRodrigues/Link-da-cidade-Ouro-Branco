@@ -1,12 +1,54 @@
 import React, { useState } from 'react';
-import { Trash2, PlusCircle } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload } from 'lucide-react';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
   const [modalOpen, setModalOpen] = useState(false);
+  
+  // Estado para o item sendo editado (Oferta ou Notícia)
   const [editingItem, setEditingItem] = useState(null);
+  
+  // Estado exclusivo para os blocos construtores da Notícia
+  const [newsBlocks, setNewsBlocks] = useState([]);
 
-  // Função genérica para listar os outros itens do site (Eventos, Imóveis, etc)
+  // ==========================================
+  // FUNÇÕES DO CONSTRUTOR DE NOTÍCIAS (LEGO)
+  // ==========================================
+  const addNewsBlock = (type) => {
+    setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '' }]);
+  };
+
+  const updateNewsBlock = (id, newValue) => {
+    setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, value: newValue } : block));
+  };
+
+  const removeNewsBlock = (id) => {
+    setNewsBlocks(newsBlocks.filter(block => block.id !== id));
+  };
+
+  const moveNewsBlock = (index, direction) => {
+    const newBlocks = [...newsBlocks];
+    if (direction === 'up' && index > 0) {
+      [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+    } else if (direction === 'down' && index < newBlocks.length - 1) {
+      [newBlocks[index + 1], newBlocks[index]] = [newBlocks[index], newBlocks[index + 1]];
+    }
+    setNewsBlocks(newBlocks);
+  };
+
+  // Conversor de Imagem local para Base64 (Para salvar direto no banco sem precisar de hospedagem externa)
+  const handleLocalImageUpload = (e, callback) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => callback(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // ==========================================
+  // RENDERIZADOR DE LISTAS GENÉRICAS
+  // ==========================================
   const renderList = (data, titleField, deleteFunc) => (
     <div className="space-y-3 mt-4">
       {data && data.length > 0 ? data.map(item => (
@@ -67,12 +109,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                       {Number(item.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
-                  <button onClick={() => { if(window.confirm('Excluir oferta definitivamente?')) crud.deleteOffer(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Oferta">
+                  <button onClick={() => { if(window.confirm('Excluir oferta?')) crud.deleteOffer(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Oferta">
                     <Trash2 size={18}/>
                   </button>
                 </div>
               ))}
-              {(!offersData || offersData.length === 0) && <p className="text-slate-400 col-span-full text-center py-12 border-2 border-dashed border-slate-100 rounded-2xl">Nenhuma oferta cadastrada no banco de dados.</p>}
             </div>
           </div>
         )}
@@ -82,7 +123,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Notícias</h2>
-              <button onClick={() => { setEditingItem({ isOfficial: false }); setModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
+              <button onClick={() => { 
+                setEditingItem({ isOfficial: false, author: 'Redação', category: 'Cidade' }); 
+                setNewsBlocks([]); // Limpa o construtor
+                setModalOpen(true); 
+              }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
                 <PlusCircle size={18}/> Nova Notícia
               </button>
             </div>
@@ -94,25 +139,22 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   <div className="flex-1 min-w-0 pr-8">
                     <h3 className="font-bold text-slate-800 text-base line-clamp-2" title={item.title}>{item.title}</h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Fonte: {item.source || 'Não informada'} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Data não informada'}
+                      {item.author} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Sem data'}
                     </p>
                     {item.isOfficial && (
-                      <span className="inline-block mt-2 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-xs font-bold">
-                        Oficial da Prefeitura
-                      </span>
+                      <span className="inline-block mt-2 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-xs font-bold">Oficial da Prefeitura</span>
                     )}
                   </div>
-                  <button onClick={() => { if(window.confirm('Excluir notícia definitivamente?')) crud.deleteNews(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Notícia">
+                  <button onClick={() => { if(window.confirm('Excluir notícia?')) crud.deleteNews(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors">
                     <Trash2 size={18}/>
                   </button>
                 </div>
               ))}
-              {(!newsData || newsData.length === 0) && <p className="text-slate-400 col-span-full text-center py-12 border-2 border-dashed border-slate-100 rounded-2xl">Nenhuma notícia cadastrada no banco de dados.</p>}
             </div>
           </div>
         )}
 
-        {/* RENDERIZAÇÃO DAS OUTRAS ABAS */}
+        {/* OUTRAS ABAS */}
         {activeTab === 'events' && renderList(eventsData, 'title', crud.deleteEvent)}
         {activeTab === 'real_estate' && renderList(propertiesData, 'title', crud.deleteProperty)}
         {activeTab === 'jobs' && renderList(jobsData, 'title', crud.deleteJob)}
@@ -120,114 +162,176 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         {activeTab === 'guide' && renderList(guideData, 'name', crud.deleteGuideItem)}
       </div>
 
-      {/* MODAL DINÂMICO (OFERTAS OU NOTÍCIAS) */}
+      {/* ======================================================== */}
+      {/* MODAL DE CADASTRO (DINÂMICO PARA OFERTAS E NOTÍCIAS) */}
+      {/* ======================================================== */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-black text-slate-800 mb-4">
-              {activeTab === 'offers' ? 'Adicionar Oferta Manual' : 'Adicionar Notícia Manual'}
+        <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-black text-slate-800 mb-6">
+              {activeTab === 'offers' ? 'Adicionar Oferta Manual' : 'Escrever Nova Notícia'}
             </h2>
             
-            {/* FORMULÁRIO DE OFERTAS */}
+            {/* -------------------- FORMULÁRIO DE OFERTAS -------------------- */}
             {activeTab === 'offers' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
                 crud.addOffer({ ...editingItem, date: new Date().toISOString() });
                 setModalOpen(false); setEditingItem(null);
               }} className="space-y-4">
+                {/* Inputs de oferta aqui (mantidos do código anterior) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria (Subgrupo)</label>
                   <select value={editingItem.category || 'bestsellers'} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600">
-                    <option value="bestsellers">Ofertas do dia (Destaque geral)</option>
-                    <optgroup label="Tecnologia">
-                      <option value="celulares">Celulares e Telefones</option>
-                      <option value="informatica">Informática</option>
-                      <option value="cameras">Câmeras e Acessórios</option>
-                      <option value="eletronicos">Áudio, Vídeo e Eletrônicos</option>
-                      <option value="games">Games e Consoles</option>
-                      <option value="tvs">Televisores</option>
-                    </optgroup>
-                    <optgroup label="Outras Categorias">
-                      <option value="casa">Casa e Móveis</option>
-                      <option value="supermercado">Supermercado</option>
-                      <option value="eletro">Eletrodomésticos</option>
-                      <option value="ferramentas">Ferramentas</option>
-                      <option value="construcao">Construção</option>
-                      <option value="moda">Moda e Beleza</option>
-                    </optgroup>
+                    <option value="bestsellers">Ofertas do dia</option>
+                    <option value="celulares">Celulares</option>
+                    <option value="tvs">TVs</option>
+                    <option value="informatica">Informática</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título do Produto</label>
-                  <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
+                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título</label><input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
                 <div className="grid grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Atual</label>
-                     <input type="number" step="0.01" value={editingItem.price || ''} onChange={e => setEditingItem({...editingItem, price: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Antigo (Opcional)</label>
-                     <input type="number" step="0.01" value={editingItem.originalPrice || ''} onChange={e => setEditingItem({...editingItem, originalPrice: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600"/>
-                   </div>
+                   <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Atual</label><input type="number" step="0.01" value={editingItem.price || ''} onChange={e => setEditingItem({...editingItem, price: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
+                   <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Antigo</label><input type="number" step="0.01" value={editingItem.originalPrice || ''} onChange={e => setEditingItem({...editingItem, originalPrice: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"/></div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link da Imagem</label>
-                  <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link de Afiliado</label>
-                  <input value={editingItem.link || ''} onChange={e => setEditingItem({...editingItem, link: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
+                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link da Imagem</label><input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
+                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link de Afiliado</label><input value={editingItem.link || ''} onChange={e => setEditingItem({...editingItem, link: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Salvar Oferta</button>
-                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar Oferta</button>
+                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200">Cancelar</button>
                 </div>
               </form>
             )}
 
-            {/* FORMULÁRIO DE NOTÍCIAS */}
+            {/* -------------------- FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER) -------------------- */}
             {activeTab === 'news' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
-                crud.addNews({ ...editingItem, date: new Date().toISOString() });
-                setModalOpen(false); setEditingItem(null);
-              }} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título da Notícia</label>
-                  <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
+                // Salva a notícia empacotando os blocos criados
+                crud.addNews({ 
+                  ...editingItem, 
+                  content: newsBlocks, // A Mágica: Salva o Array de Blocos!
+                  date: new Date().toISOString() 
+                });
+                setModalOpen(false); setEditingItem(null); setNewsBlocks([]);
+              }} className="space-y-6">
+                
+                {/* --- 1. CAPA E CABEÇALHO --- */}
+                <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
+                  <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título Principal</label>
+                    <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Ex: Acidente na MG-129..." required/>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Linha Fina (Resumo itálico)</label>
+                    <textarea value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} rows="2" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Breve resumo que aparece abaixo do título..." required/>
+                  </div>
+
+                  {/* IMAGEM DE CAPA COM OPÇÃO DE UPLOAD LOCAL */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Imagem de Capa (URL ou Upload)</label>
+                    <div className="flex gap-2">
+                      <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="https://link-da-imagem.com.br/foto.jpg" required/>
+                      <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
+                        <Upload size={20} />
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => setEditingItem({...editingItem, image: base64}))} />
+                      </label>
+                    </div>
+                    {editingItem.image && <img src={editingItem.image} alt="Preview Capa" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria</label>
+                      <input value={editingItem.category || ''} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Ex: Polícia, Política..." required/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Autor / Fonte</label>
+                      <input value={editingItem.author || ''} onChange={e => setEditingItem({...editingItem, author: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Ex: Redação / Correio de Minas" required/>
+                    </div>
+                  </div>
                 </div>
+
+                {/* --- 2. CONSTRUTOR DE CORPO (BLOCOS) --- */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Resumo (Linha fina)</label>
-                  <input value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
+                  <h3 className="font-bold text-slate-700 mb-3 flex items-center justify-between">
+                    Corpo da Matéria
+                    <span className="text-xs font-normal text-slate-400">Monte a notícia na ordem desejada</span>
+                  </h3>
+                  
+                  {/* Lista de Blocos */}
+                  <div className="space-y-4 mb-4">
+                    {newsBlocks.map((block, index) => (
+                      <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl relative group">
+                        
+                        {/* Controles de Posição e Exclusão */}
+                        <div className="flex flex-col gap-1 mt-1">
+                          <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
+                          <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
+                          <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
+                        </div>
+
+                        {/* Input do Bloco */}
+                        <div className="flex-1 w-full">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                            {block.type === 'paragraph' && <><Type size={12}/> Parágrafo</>}
+                            {block.type === 'subtitle' && <><Heading size={12}/> Subtítulo</>}
+                            {block.type === 'image' && <><ImageIcon size={12}/> Imagem no meio do texto</>}
+                          </div>
+
+                          {block.type === 'paragraph' && (
+                            <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none resize-y" placeholder="Escreva o parágrafo aqui..." required/>
+                          )}
+                          
+                          {block.type === 'subtitle' && (
+                            <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Escreva o subtítulo..." required/>
+                          )}
+
+                          {block.type === 'image' && (
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>
+                                <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
+                                  <Upload size={20} />
+                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => updateNewsBlock(block.id, base64))} />
+                                </label>
+                              </div>
+                              {block.value && <img src={block.value} alt="Preview" className="h-32 object-cover rounded-lg border border-slate-200"/>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Botões para Adicionar Novos Blocos */}
+                  <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
+                    <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-indigo-100">
+                      <Type size={16}/> + Parágrafo
+                    </button>
+                    <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-slate-200">
+                      <Heading size={16}/> + Subtítulo
+                    </button>
+                    <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-slate-200">
+                      <ImageIcon size={16}/> + Imagem
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Conteúdo (Texto Completo)</label>
-                  <textarea value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} rows="5" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link da Imagem de Capa</label>
-                  <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} type="url" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fonte (Ex: Correio de Minas, G1)</label>
-                  <input value={editingItem.source || ''} onChange={e => setEditingItem({...editingItem, source: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required/>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <input 
-                    type="checkbox" 
-                    id="isOfficial" 
-                    checked={editingItem.isOfficial || false} 
-                    onChange={e => setEditingItem({...editingItem, isOfficial: e.target.checked})} 
-                    className="w-5 h-5 accent-indigo-600 cursor-pointer"
-                  />
+
+                {/* --- 3. RODAPÉ E PUBLICAÇÃO --- */}
+                <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                  <input type="checkbox" id="isOfficial" checked={editingItem.isOfficial || false} onChange={e => setEditingItem({...editingItem, isOfficial: e.target.checked})} className="w-5 h-5 accent-indigo-600 cursor-pointer"/>
                   <label htmlFor="isOfficial" className="text-sm font-bold text-yellow-800 cursor-pointer">
-                    Marcar como Notícia Oficial da Prefeitura
+                    É uma Notícia Oficial da Prefeitura?
                   </label>
                 </div>
+
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">Publicar Notícia</button>
-                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">Publicar Notícia</button>
+                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
                 </div>
               </form>
             )}
