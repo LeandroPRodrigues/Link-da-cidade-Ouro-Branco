@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Search, TrendingUp, Tag } from 'lucide-react';
+import { ShoppingCart, Search, TrendingUp, Tag, Smartphone } from 'lucide-react';
 
 const CATEGORIES = [
-  { id: 'bestsellers', label: 'Mais procurados', icon: TrendingUp },
-  { id: 'tecnologia', label: 'Celulares e Tecnologia' },
+  { id: 'bestsellers', label: 'Ofertas do dia', icon: TrendingUp },
+  { 
+    id: 'tecnologia', 
+    label: 'Celulares e Tecnologia', 
+    icon: Smartphone,
+    subcategories: [
+      { id: 'celulares', label: 'Celulares e Telefones' },
+      { id: 'informatica', label: 'Informática' },
+      { id: 'cameras', label: 'Câmeras e Acessórios' },
+      { id: 'eletronicos', label: 'Áudio, Vídeo e Eletrônicos' },
+      { id: 'games', label: 'Games e Consoles' },
+      { id: 'tvs', label: 'Televisores' }
+    ]
+  },
   { id: 'casa', label: 'Casa e Móveis' },
   { id: 'supermercado', label: 'Supermercado' },
   { id: 'eletro', label: 'Eletrodomésticos' },
@@ -14,12 +26,30 @@ const CATEGORIES = [
 
 export default function OffersPage({ offersData }) {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
+  const [activeSubCategory, setActiveSubCategory] = useState(null); 
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtra as ofertas do Firebase de acordo com o menu ou barra de pesquisa
+  const handleCategoryChange = (cat) => {
+    setActiveCategory(cat);
+    setActiveSubCategory(null);
+    setSearchTerm('');
+  };
+
   const displayedOffers = (offersData || []).filter(offer => {
     if (searchTerm) return offer.title.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Mostra tudo se for Ofertas do dia
     if (activeCategory.id === 'bestsellers') return true; 
+    
+    // Lógica para subgrupos de Tecnologia
+    if (activeCategory.subcategories) {
+       if (activeSubCategory) {
+          return offer.category === activeSubCategory.id;
+       } else {
+          return activeCategory.subcategories.some(sub => sub.id === offer.category) || offer.category === activeCategory.id;
+       }
+    }
+    
     return offer.category === activeCategory.id;
   });
 
@@ -35,7 +65,7 @@ export default function OffersPage({ offersData }) {
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
-              onClick={() => { setActiveCategory(cat); setSearchTerm(''); }}
+              onClick={() => handleCategoryChange(cat)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap md:whitespace-normal text-left
                 ${activeCategory.id === cat.id && !searchTerm
                   ? 'bg-indigo-50 text-indigo-700 shadow-sm border-l-4 border-indigo-600' 
@@ -48,7 +78,8 @@ export default function OffersPage({ offersData }) {
       </aside>
 
       {/* ÁREA DE PRODUTOS */}
-      <div className="flex-1">
+      <div className="flex-1 w-full overflow-hidden">
+        
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-900">
             <h2 className="text-2xl font-black flex items-center gap-2">
@@ -69,6 +100,27 @@ export default function OffersPage({ offersData }) {
         <h3 className="text-xl font-bold text-slate-800 mb-4">
           {searchTerm ? `Buscando por: "${searchTerm}"` : activeCategory.label}
         </h3>
+
+        {/* === MENU DE SUBGRUPOS === */}
+        {activeCategory.subcategories && !searchTerm && (
+          <div className="flex flex-wrap gap-2 mb-6 pb-2">
+            <button 
+               onClick={() => setActiveSubCategory(null)}
+               className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${!activeSubCategory ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+            >
+              Todos
+            </button>
+            {activeCategory.subcategories.map(sub => (
+              <button 
+                 key={sub.id}
+                 onClick={() => setActiveSubCategory(sub)}
+                 className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${activeSubCategory?.id === sub.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                {sub.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* GRID DE PRODUTOS */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -106,7 +158,7 @@ export default function OffersPage({ offersData }) {
             </a>
           )) : (
             <div className="col-span-full py-12 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-              Nenhuma oferta encontrada no momento.
+              Nenhuma oferta encontrada para esta categoria no momento.
             </div>
           )}
         </div>
