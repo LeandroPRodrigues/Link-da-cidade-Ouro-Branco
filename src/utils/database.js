@@ -6,10 +6,40 @@ const mapList = (snapshot) => {
 };
 
 export const database = {
-  getNews: async () => { const q = await getDocs(collection(firestoreDB, "news")); return mapList(q); },
-  addNews: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [] }); },
-  updateNews: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "news", id), data); },
-  deleteNews: async (id) => { await deleteDoc(doc(firestoreDB, "news", id)); },
+  // === ATUALIZADO: Puxa e mistura as duas coleções ('news' e 'noticias') ===
+  getNews: async () => { 
+    const [newsQ, noticiasQ] = await Promise.all([
+      getDocs(collection(firestoreDB, "news")),
+      getDocs(collection(firestoreDB, "noticias"))
+    ]);
+    
+    // Mapeia e anota a origem de cada documento (vital para likes e comentários funcionarem)
+    const newsList = newsQ.docs.map(doc => ({ id: doc.id, _collection: 'news', ...doc.data() }));
+    const noticiasList = noticiasQ.docs.map(doc => ({ id: doc.id, _collection: 'noticias', ...doc.data() }));
+    
+    // Junta tudo em uma lista só
+    const combined = [...newsList, ...noticiasList];
+    
+    // Organiza pela data, da notícia mais recente para a mais antiga
+    combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    
+    return combined; 
+  },
+  addNews: async (item) => { 
+    const { id, _collection, ...data } = item; 
+    // Notícias cadastradas manualmente pelo Admin vão para 'news'
+    await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [] }); 
+  },
+  updateNews: async (item) => { 
+    const { id, _collection, ...data } = item; 
+    const col = _collection || "news"; // Descobre de qual aba veio para atualizar na certa
+    await updateDoc(doc(firestoreDB, col, id), data); 
+  },
+  deleteNews: async (id) => { 
+    // Deleta de ambas as coleções por garantia para não dar erro
+    await deleteDoc(doc(firestoreDB, "news", id)); 
+    await deleteDoc(doc(firestoreDB, "noticias", id)); 
+  },
 
   getEvents: async () => { const q = await getDocs(collection(firestoreDB, "events")); return mapList(q); },
   addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
@@ -53,7 +83,6 @@ export const database = {
   updateAd: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "ads", id), data); },
   deleteAd: async (id) => { await deleteDoc(doc(firestoreDB, "ads", id)); },
 
-  // === NOVO: OFERTAS (Para ler o que o n8n enviar) ===
   getOffers: async () => { const q = await getDocs(collection(firestoreDB, "offers")); return mapList(q); },
   addOffer: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "offers"), data); },
   updateOffer: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "offers", id), data); },

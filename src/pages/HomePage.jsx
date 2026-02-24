@@ -56,7 +56,7 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// Componente de Atalho Rápido (Ajustado para 5 itens)
+// Componente de Atalho Rápido
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   <button onClick={onClick} className="flex flex-col items-center gap-2 min-w-[65px] md:min-w-[80px] shrink-0 group transition-transform active:scale-95">
     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-all ${color}`}>
@@ -107,7 +107,7 @@ const EventCard = ({ event }) => (
   </div>
 );
 
-// Componente de Cartão de Feed
+// Componente de Cartão de Feed (Atualizado para Múltiplas Coleções)
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments, setComments] = useState(item.comments || []);
@@ -120,7 +120,9 @@ const FeedCard = ({ item, user, onNewsClick }) => {
     if (!user) { alert("Faça login para curtir!"); return; }
     const newLikes = isLiked ? likes.filter(id => id !== user.id) : [...likes, user.id];
     setLikes(newLikes);
-    await db.toggleLike('news', item.id, user.id);
+    // Identifica se a notícia veio de 'news' ou 'noticias'
+    const colName = item._collection || 'news';
+    await db.toggleLike(colName, item.id, user.id);
   };
 
   const handleComment = async (e) => {
@@ -130,7 +132,8 @@ const FeedCard = ({ item, user, onNewsClick }) => {
     const newComment = { text: commentText, userName: user.name, userId: user.id, date: new Date().toISOString() };
     setComments([...comments, newComment]);
     setCommentText('');
-    await db.addComment('news', item.id, newComment);
+    const colName = item._collection || 'news';
+    await db.addComment(colName, item.id, newComment);
   };
 
   return (
@@ -139,7 +142,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
         <div className="flex gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-sm bg-gradient-to-br from-blue-500 to-cyan-500">NT</div>
           <div>
-            <h3 className="font-bold text-sm text-slate-800 leading-tight">Redação Link da Cidade</h3>
+            <h3 className="font-bold text-sm text-slate-800 leading-tight">{item.author || 'Redação Link da Cidade'}</h3>
             <p className="text-xs text-slate-400 flex items-center gap-1">
               {new Date(item.date).toLocaleDateString('pt-BR')} • <span className="font-semibold text-blue-600">{item.category}</span>
             </p>
@@ -200,12 +203,13 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  const feedItems = [...newsData].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // O db já enviou a lista pronta e ordenada para cá!
+  const feedItems = newsData;
 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
       
-      {/* 1. ATALHOS RÁPIDOS COM 5 BOTÕES (Incluindo Shopping) */}
+      {/* 1. ATALHOS RÁPIDOS */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
         <div className="flex justify-between md:justify-around items-center px-1 overflow-x-auto scrollbar-hide gap-3 pb-2 md:pb-0">
           <QuickAccessItem label="Imóveis" icon={Home} color="bg-gradient-to-tr from-emerald-400 to-emerald-600" onClick={() => navigate('real_estate')}/>
@@ -216,7 +220,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 2. PUBLICIDADE (EXATAMENTE ENTRE O MENU E OS EVENTOS) */}
+      {/* 2. PUBLICIDADE */}
       <AdsCarousel ads={adsData} />
 
       {/* 3. CARROSSEL DE EVENTOS */}
