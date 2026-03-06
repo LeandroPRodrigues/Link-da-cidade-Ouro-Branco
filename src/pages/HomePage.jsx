@@ -56,7 +56,60 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// Componente de Atalho Rápido
+// --- COMPONENTE DE DESTAQUES ESTILO GLOBO ESPORTE ---
+const HeroNewsGrid = ({ news, onNewsClick }) => {
+  if (!news || news.length === 0) return null;
+  
+  const mainNews = news[0];
+  const sideNews = news.slice(1, 3);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8 px-1 md:px-0">
+      {/* Notícia Principal (Maior) */}
+      <div 
+        className="md:col-span-2 relative rounded-2xl overflow-hidden cursor-pointer group h-64 md:h-[380px] shadow-sm bg-slate-900"
+        onClick={() => onNewsClick(mainNews)}
+      >
+        <img src={mainNews.image} alt={mainNews.title} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 p-5 md:p-6 w-full">
+          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block shadow-sm">
+            {mainNews.category}
+          </span>
+          <h2 className="text-white text-xl md:text-3xl font-bold leading-tight group-hover:underline decoration-2 underline-offset-4 line-clamp-3">
+            {mainNews.title}
+          </h2>
+        </div>
+      </div>
+
+      {/* Notícias Laterais (Menores) */}
+      {sideNews.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {sideNews.map((item, idx) => (
+            <div 
+              key={item.id || idx}
+              className="relative rounded-2xl overflow-hidden cursor-pointer group h-48 md:h-[184px] shadow-sm bg-slate-900"
+              onClick={() => onNewsClick(item)}
+            >
+              <img src={item.image} alt={item.title} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+              <div className="absolute bottom-0 left-0 p-4 w-full">
+                <span className="bg-indigo-600 text-white text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block shadow-sm">
+                  {item.category}
+                </span>
+                <h3 className="text-white text-sm md:text-base font-bold leading-snug group-hover:underline decoration-2 underline-offset-2 line-clamp-3">
+                  {item.title}
+                </h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- COMPONENTE DE ATALHO RÁPIDO ---
 const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   <button onClick={onClick} className="flex flex-col items-center gap-2 min-w-[65px] md:min-w-[80px] shrink-0 group transition-transform active:scale-95">
     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-all ${color}`}>
@@ -66,7 +119,7 @@ const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   </button>
 );
 
-// Componente do Cartão de Evento
+// --- COMPONENTE DE CARTÃO DE EVENTO ---
 const EventCard = ({ event }) => (
   <div className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
     <div className="relative h-40 overflow-hidden">
@@ -107,7 +160,7 @@ const EventCard = ({ event }) => (
   </div>
 );
 
-// Componente de Cartão de Feed (Atualizado para Múltiplas Coleções)
+// --- COMPONENTE DE CARTÃO DE FEED (COM CURTIDAS E COMENTÁRIOS) ---
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments, setComments] = useState(item.comments || []);
@@ -120,7 +173,6 @@ const FeedCard = ({ item, user, onNewsClick }) => {
     if (!user) { alert("Faça login para curtir!"); return; }
     const newLikes = isLiked ? likes.filter(id => id !== user.id) : [...likes, user.id];
     setLikes(newLikes);
-    // Identifica se a notícia veio de 'news' ou 'noticias'
     const colName = item._collection || 'news';
     await db.toggleLike(colName, item.id, user.id);
   };
@@ -192,6 +244,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
   );
 };
 
+// --- COMPONENTE PRINCIPAL HOMEPAGE ---
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -203,8 +256,10 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // O db já enviou a lista pronta e ordenada para cá!
-  const feedItems = newsData;
+  // Divisão das notícias: As 3 primeiras vão para o Destaque, o resto vai para o Feed
+  const feedItems = newsData || [];
+  const topNews = feedItems.slice(0, 3);
+  const regularNews = feedItems.slice(3);
 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
@@ -223,7 +278,12 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
       {/* 2. PUBLICIDADE */}
       <AdsCarousel ads={adsData} />
 
-      {/* 3. CARROSSEL DE EVENTOS */}
+      {/* 3. DESTAQUES ESTILO GLOBO ESPORTE */}
+      {topNews.length > 0 && (
+        <HeroNewsGrid news={topNews} onNewsClick={onNewsClick} />
+      )}
+
+      {/* 4. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -240,7 +300,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 4. BARRA "O QUE VOCÊ PROCURA" */}
+      {/* 5. BARRA "O QUE VOCÊ PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>
         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user ? user.name[0] : 'VC'}</div>
@@ -248,13 +308,13 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 5. FEED DE NOTÍCIAS */}
+      {/* 6. FEED DE NOTÍCIAS (Rolagem normal com curtidas/comentários) */}
       <div className="space-y-6">
-        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Atualizações</h3>
-        {feedItems.length > 0 ? feedItems.map((item) => (
+        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Mais Notícias</h3>
+        {regularNews.length > 0 ? regularNews.map((item) => (
           <FeedCard key={item.id} item={item} user={user} onNewsClick={onNewsClick}/>
         )) : (
-          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-400">Nenhuma notícia publicada ainda.</p></div>
+          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-400">Nenhuma notícia adicional publicada.</p></div>
         )}
         <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">Fim do conteúdo</div>
       </div>
