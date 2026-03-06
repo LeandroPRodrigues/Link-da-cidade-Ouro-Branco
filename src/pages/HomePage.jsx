@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   MapPin, Calendar, Heart, MessageCircle, Share2, 
   MoreHorizontal, Home, Briefcase, Car, Store, 
-  Send, ExternalLink, ShoppingBag
+  Send, ExternalLink, ShoppingBag, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { db } from '../utils/database';
 
@@ -56,7 +56,7 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// --- NOVO: COMPONENTE MINI CARROSSEL DE OFERTAS ---
+// --- COMPONENTE MINI CARROSSEL DE OFERTAS (ATUALIZADO COM SETAS E PREÇOS) ---
 const MiniOffersCarousel = ({ offers, navigate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -67,9 +67,19 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
     if (safeOffers.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % safeOffers.length);
-    }, 4000); 
+    }, 5000); // Aumentei um pouco para 5s para dar tempo de ler os preços
     return () => clearInterval(interval);
   }, [safeOffers.length]);
+
+  const nextSlide = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % safeOffers.length);
+  };
+
+  const prevSlide = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + safeOffers.length) % safeOffers.length);
+  };
 
   if (safeOffers.length === 0) return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center">
@@ -81,7 +91,7 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
           <ShoppingBag size={16} className="text-pink-500"/> Ofertas do Dia
@@ -89,31 +99,69 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
         <button onClick={() => navigate('offers')} className="text-[10px] font-bold text-indigo-600 hover:underline">Ver todas</button>
       </div>
       
-      <div className="relative w-full h-48 rounded-xl overflow-hidden group">
+      <div className="relative w-full h-56 rounded-xl overflow-hidden group">
         <div 
           className="flex transition-transform duration-700 ease-in-out h-full" 
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          {safeOffers.map((offer, idx) => (
-            <div 
-              key={offer.id || idx} 
-              className="w-full h-full shrink-0 relative cursor-pointer" 
-              onClick={() => navigate('offers')}
-            >
-              <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-              <div className="absolute bottom-4 left-3 right-3 z-10">
-                <p className="text-white font-bold text-sm leading-tight line-clamp-2 mb-1">{offer.title}</p>
-                {offer.price && (
-                  <p className="text-emerald-400 font-black text-lg">
-                    R$ {Number(offer.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
+          {safeOffers.map((offer, idx) => {
+            const hasDiscount = offer.originalPrice && Number(offer.originalPrice) > Number(offer.price);
+            
+            return (
+              <div 
+                key={offer.id || idx} 
+                className="w-full h-full shrink-0 relative cursor-pointer bg-white" 
+                onClick={() => navigate('offers')}
+              >
+                {/* Imagem com object-contain para não cortar os produtos e com espaço na base para o texto */}
+                <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="w-full h-full object-contain p-2 pb-16" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
+                
+                {/* Selo de Desconto */}
+                {hasDiscount && (
+                  <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider shadow-sm z-10">
+                    -{Math.round(((offer.originalPrice - offer.price) / offer.originalPrice) * 100)}%
+                  </span>
                 )}
+
+                <div className="absolute bottom-4 left-3 right-3 z-10">
+                  <p className="text-white font-bold text-sm leading-tight line-clamp-2 mb-1">{offer.title}</p>
+                  <div className="flex flex-col">
+                    {hasDiscount && (
+                      <span className="text-[10px] text-slate-300 line-through leading-none mb-0.5">
+                        {Number(offer.originalPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    )}
+                    {offer.price && (
+                      <span className="text-emerald-400 font-black text-lg leading-none">
+                        {Number(offer.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
+        {/* Setas de Navegação */}
+        {safeOffers.length > 1 && (
+          <>
+            <button 
+              onClick={prevSlide}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button 
+              onClick={nextSlide}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </>
+        )}
+
         {/* Indicadores (Bolinhas) */}
         {safeOffers.length > 1 && (
           <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
@@ -315,7 +363,6 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-// Nota: Certifique-se de que o offersData está sendo passado aqui a partir do App.jsx
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, offersData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -389,11 +436,6 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">Fim do conteúdo</div>
       </div>
 
-      {/* 7. WIDGETS LATERAIS PARA DESKTOP (Invisíveis em Mobile) */}
-      <div className="hidden">
-        {/* Isto vai injetar o MiniOffersCarousel na coluna lateral do App.jsx através do layout se precisar, mas colocamos diretamente na barra lateral lá! */}
-        {/* Calma, o App.jsx gere a barra lateral direita, não o HomePage.jsx! */}
-      </div>
     </div>
   );
 }
