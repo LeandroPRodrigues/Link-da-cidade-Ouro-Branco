@@ -56,7 +56,81 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// --- COMPONENTE INDIVIDUAL DO DESTAQUE (Gere curtidas independentes) ---
+// --- NOVO: COMPONENTE MINI CARROSSEL DE OFERTAS ---
+const MiniOffersCarousel = ({ offers, navigate }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Pega as últimas 5 ofertas para o destaque
+  const safeOffers = (offers || []).filter(o => o.status !== 'inactive').slice(0, 5);
+
+  useEffect(() => {
+    if (safeOffers.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % safeOffers.length);
+    }, 4000); 
+    return () => clearInterval(interval);
+  }, [safeOffers.length]);
+
+  if (safeOffers.length === 0) return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center">
+      <h3 className="font-bold text-slate-700 mb-2 text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+        <ShoppingBag size={16} className="text-pink-500"/> Ofertas do Dia
+      </h3>
+      <p className="text-xs text-slate-400">Nenhuma oferta no momento.</p>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
+          <ShoppingBag size={16} className="text-pink-500"/> Ofertas do Dia
+        </h3>
+        <button onClick={() => navigate('offers')} className="text-[10px] font-bold text-indigo-600 hover:underline">Ver todas</button>
+      </div>
+      
+      <div className="relative w-full h-48 rounded-xl overflow-hidden group">
+        <div 
+          className="flex transition-transform duration-700 ease-in-out h-full" 
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {safeOffers.map((offer, idx) => (
+            <div 
+              key={offer.id || idx} 
+              className="w-full h-full shrink-0 relative cursor-pointer" 
+              onClick={() => navigate('offers')}
+            >
+              <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+              <div className="absolute bottom-4 left-3 right-3 z-10">
+                <p className="text-white font-bold text-sm leading-tight line-clamp-2 mb-1">{offer.title}</p>
+                {offer.price && (
+                  <p className="text-emerald-400 font-black text-lg">
+                    R$ {Number(offer.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Indicadores (Bolinhas) */}
+        {safeOffers.length > 1 && (
+          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
+            {safeOffers.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} 
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE INDIVIDUAL DO DESTAQUE ---
 const HeroItem = ({ item, user, onNewsClick, isMain }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments] = useState(item.comments || []);
@@ -64,7 +138,7 @@ const HeroItem = ({ item, user, onNewsClick, isMain }) => {
   const isLiked = user && likes.includes(user.id);
 
   const handleLike = async (e) => {
-    e.stopPropagation(); // Impede de abrir a notícia ao clicar no coração
+    e.stopPropagation(); 
     if (!user) { alert("Faça login para curtir!"); return; }
     const newLikes = isLiked ? likes.filter(id => id !== user.id) : [...likes, user.id];
     setLikes(newLikes);
@@ -80,7 +154,6 @@ const HeroItem = ({ item, user, onNewsClick, isMain }) => {
       <img src={item.image} alt={item.title} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
       
-      {/* Barra de Interação (Topo Direito) */}
       <div className="absolute top-3 right-3 flex gap-2 z-20">
         <button onClick={handleLike} className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur transition shadow-sm ${isLiked ? 'bg-red-500/90 text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}>
           <Heart size={14} className={isLiked ? 'fill-white' : ''}/> {likes.length}
@@ -242,7 +315,8 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, user }) {
+// Nota: Certifique-se de que o offersData está sendo passado aqui a partir do App.jsx
+export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, offersData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -274,7 +348,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
       {/* 2. PUBLICIDADE */}
       <AdsCarousel ads={adsData} />
 
-      {/* 3. DESTAQUES ESTILO GLOBO ESPORTE (Agora com botões de Curtir/Comentar) */}
+      {/* 3. DESTAQUES ESTILO GLOBO ESPORTE */}
       {topNews.length > 0 && (
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
@@ -304,7 +378,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 6. FEED DE NOTÍCIAS (Rolagem normal) */}
+      {/* 6. FEED DE NOTÍCIAS */}
       <div className="space-y-6">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Mais Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
@@ -315,6 +389,14 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">Fim do conteúdo</div>
       </div>
 
+      {/* 7. WIDGETS LATERAIS PARA DESKTOP (Invisíveis em Mobile) */}
+      <div className="hidden">
+        {/* Isto vai injetar o MiniOffersCarousel na coluna lateral do App.jsx através do layout se precisar, mas colocamos diretamente na barra lateral lá! */}
+        {/* Calma, o App.jsx gere a barra lateral direita, não o HomePage.jsx! */}
+      </div>
     </div>
   );
 }
+
+// Exportamos o MiniOffersCarousel para poder ser usado na barra lateral do App.jsx
+export { MiniOffersCarousel };

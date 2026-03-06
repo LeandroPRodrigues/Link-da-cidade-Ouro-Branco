@@ -4,7 +4,8 @@ import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
 
-import HomePage from './pages/HomePage';
+// === IMPORTAÇÃO ATUALIZADA: Puxando o MiniOffersCarousel junto com o HomePage ===
+import HomePage, { MiniOffersCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import RealEstatePage from './pages/RealEstatePage';
@@ -179,11 +180,11 @@ export default function App() {
         </aside>
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          {/* === ATUALIZAÇÃO NO HOMEPAGE: offersData={offersData} adicionado === */}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           
           {currentPage === 'offers' && <OffersPage offersData={offersData} />}
 
-          {/* AS DUAS LINHAS ABAIXO FORAM CORRIGIDAS COM O user={user} */}
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           
@@ -206,14 +207,10 @@ export default function App() {
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-            <h3 className="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wide">Útil para você</h3>
-            <ul className="space-y-3">
-              <li className="flex justify-between text-sm pb-2 border-b border-slate-100"><span className="text-slate-500">Farmácia Plantão</span><span className="font-bold text-slate-800">Drogaria Central</span></li>
-              <li className="flex justify-between text-sm pb-2 border-b border-slate-100"><span className="text-slate-500">Lixo (Reciclável)</span><span className="font-bold text-slate-800">Quarta-feira</span></li>
-              <li className="flex justify-between text-sm"><span className="text-slate-500">Horário Ônibus</span><span className="font-bold text-indigo-600 cursor-pointer hover:underline">Ver Tabela</span></li>
-            </ul>
-          </div>
+          
+          {/* === NOVO COMPONENTE: CARROSSEL DE OFERTAS (SUBSTITUIU "ÚTIL PARA VOCÊ") === */}
+          <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} />
+          
         </aside>
       </div>
 
