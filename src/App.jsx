@@ -183,8 +183,10 @@ export default function App() {
           
           {currentPage === 'offers' && <OffersPage offersData={offersData} />}
 
-          {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} onBack={() => setCurrentPage('news')} />}
-          {currentPage === 'news' && <NewsPage newsData={newsData} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          {/* AS DUAS LINHAS ABAIXO FORAM CORRIGIDAS COM O user={user} */}
+          {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
+          {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
           {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={propertiesData} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
