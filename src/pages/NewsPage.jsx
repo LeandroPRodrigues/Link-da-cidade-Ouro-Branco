@@ -10,8 +10,12 @@ export default function NewsPage({ newsData, onNewsClick }) {
   const categoriesList = ['Todas', ...Object.keys(NEWS_CATEGORIES)];
 
   const filteredNews = newsData.filter(n => {
-    const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          n.summary.toLowerCase().includes(searchTerm.toLowerCase());
+    // Escudo de segurança: se o título ou resumo não existirem, ele assume um texto vazio
+    const safeTitle = n.title || '';
+    const safeSummary = n.summary || '';
+
+    const matchesSearch = safeTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          safeSummary.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Todas' || n.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
