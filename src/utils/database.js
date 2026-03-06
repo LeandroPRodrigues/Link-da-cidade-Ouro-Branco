@@ -1,8 +1,18 @@
 import { db as firestoreDB } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
+// VACINA GLOBAL: Varre o documento inteiro e transforma qualquer Timestamp em Texto para não quebrar o React
 const mapList = (snapshot) => {
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    Object.keys(data).forEach(key => {
+      // Se o campo for uma data do Firebase (tem a função toDate), converte para texto ISO
+      if (data[key] && typeof data[key].toDate === 'function') {
+        data[key] = data[key].toDate().toISOString();
+      }
+    });
+    return { id: doc.id, ...data };
+  });
 };
 
 export const database = {
@@ -16,14 +26,14 @@ export const database = {
     // FUNÇÃO SALVA-VIDAS: Transforma o Timestamp do Firebase em Texto para o React não quebrar
     const formatarNoticia = (doc, nomeColecao) => {
       const data = doc.data();
-      // Se a data for um Timestamp (tiver a função toDate), converte para string ISO
-      if (data.date && typeof data.date.toDate === 'function') {
-        data.date = data.date.toDate().toISOString();
-      }
+      Object.keys(data).forEach(key => {
+        if (data[key] && typeof data[key].toDate === 'function') {
+          data[key] = data[key].toDate().toISOString();
+        }
+      });
       return { id: doc.id, _collection: nomeColecao, ...data };
     };
 
-    // Mapeia e anota a origem de cada documento passando pelo nosso formatador
     const newsList = newsQ.docs.map(doc => formatarNoticia(doc, 'news'));
     const noticiasList = noticiasQ.docs.map(doc => formatarNoticia(doc, 'noticias'));
     
