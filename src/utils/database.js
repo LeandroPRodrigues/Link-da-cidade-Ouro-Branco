@@ -13,9 +13,19 @@ export const database = {
       getDocs(collection(firestoreDB, "noticias"))
     ]);
     
-    // Mapeia e anota a origem de cada documento (vital para likes e comentários funcionarem)
-    const newsList = newsQ.docs.map(doc => ({ id: doc.id, _collection: 'news', ...doc.data() }));
-    const noticiasList = noticiasQ.docs.map(doc => ({ id: doc.id, _collection: 'noticias', ...doc.data() }));
+    // FUNÇÃO SALVA-VIDAS: Transforma o Timestamp do Firebase em Texto para o React não quebrar
+    const formatarNoticia = (doc, nomeColecao) => {
+      const data = doc.data();
+      // Se a data for um Timestamp (tiver a função toDate), converte para string ISO
+      if (data.date && typeof data.date.toDate === 'function') {
+        data.date = data.date.toDate().toISOString();
+      }
+      return { id: doc.id, _collection: nomeColecao, ...data };
+    };
+
+    // Mapeia e anota a origem de cada documento passando pelo nosso formatador
+    const newsList = newsQ.docs.map(doc => formatarNoticia(doc, 'news'));
+    const noticiasList = noticiasQ.docs.map(doc => formatarNoticia(doc, 'noticias'));
     
     // Junta tudo em uma lista só
     const combined = [...newsList, ...noticiasList];
