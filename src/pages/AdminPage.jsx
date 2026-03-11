@@ -9,17 +9,32 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [newsBlocks, setNewsBlocks] = useState([]);
 
   // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (SUPER INTELIGENTE)
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV (COM AUTO-DETECÇÃO DE ACENTOS)
   // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
+    
+    // A MUDANÇA: Lemos o arquivo como dados brutos (Buffer) para podermos consertar os acentos
     reader.onload = async (event) => {
-      // 1. Remove caracteres invisíveis do Excel (BOM) que quebram a leitura
-      const text = event.target.result.replace(/^\uFEFF/, '');
-      const lines = text.split('\n');
+      const buffer = event.target.result;
+      
+      // 1. Tenta ler no padrão da internet (UTF-8)
+      let text = new TextDecoder('utf-8').decode(buffer);
+      
+      // 2. Se o texto contiver o símbolo de erro de acento (), o arquivo veio do Excel padrão Brasil.
+      // Então, trocamos a lente e lemos novamente usando o padrão do Windows!
+      if (text.includes('')) {
+        text = new TextDecoder('windows-1252').decode(buffer);
+      }
+
+      // 3. Limpeza de formatação invisível
+      text = text.replace(/^\uFEFF/, '');
+      
+      // Divide as linhas independentemente de estar no Windows, Mac ou Linux
+      const lines = text.split(/\r?\n/);
       
       if (lines.length < 2) return alert("Arquivo CSV vazio ou sem dados suficientes.");
 
@@ -29,7 +44,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       );
       
-      // Categorias oficiais do sistema
       const validCategories = [
         "Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino",
         "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa",
@@ -37,30 +51,26 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         "Esportes & Academias", "Beleza & Estética", "Outros"
       ];
 
-      // O TRADUTOR INTELIGENTE: Corrige espaços, acentos e erros de digitação da planilha
       const findCategory = (inputCat) => {
         if (!inputCat) return "Outros";
-        // Limpa a palavra que veio da planilha (tira acento, espaço, letras maiúsculas)
         const cleanInput = inputCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         
-        // 1ª Tentativa: Checa se a palavra limpa bate perfeitamente com a categoria limpa
         for (const validCat of validCategories) {
            const cleanValid = validCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
            if (cleanValid === cleanInput) return validCat;
         }
         
-        // 2ª Tentativa: Se a pessoa digitou só uma palavra-chave, ele acerta a categoria
         if (cleanInput.includes("saude") || cleanInput.includes("bem")) return "Saúde & Bem-estar";
         if (cleanInput.includes("emergencia") || cleanInput.includes("public")) return "Emergência & Serviços Públicos";
         if (cleanInput.includes("educa") || cleanInput.includes("ensin") || cleanInput.includes("escola")) return "Educação & Ensino";
         if (cleanInput.includes("supermercado") || cleanInput.includes("aliment") || cleanInput.includes("restaurante")) return "Supermercados & Alimentação";
-        if (cleanInput.includes("auto") || cleanInput.includes("transporte") || cleanInput.includes("veiculo") || cleanInput.includes("carro")) return "Automotivo & Transportes";
-        if (cleanInput.includes("constru") || cleanInput.includes("casa")) return "Construção & Casa";
-        if (cleanInput.includes("banco") || cleanInput.includes("financeiro") || cleanInput.includes("dinheiro")) return "Bancos & Financeiro";
+        if (cleanInput.includes("auto") || cleanInput.includes("transporte") || cleanInput.includes("veiculo") || cleanInput.includes("carro") || cleanInput.includes("oficina")) return "Automotivo & Transportes";
+        if (cleanInput.includes("constru") || cleanInput.includes("casa") || cleanInput.includes("material") || cleanInput.includes("deposito")) return "Construção & Casa";
+        if (cleanInput.includes("banco") || cleanInput.includes("financeiro") || cleanInput.includes("dinheiro") || cleanInput.includes("loterica")) return "Bancos & Financeiro";
         if (cleanInput.includes("hotel") || cleanInput.includes("pousada")) return "Hotéis & Pousadas";
-        if (cleanInput.includes("religi") || cleanInput.includes("igreja")) return "Religião & Igrejas";
-        if (cleanInput.includes("esporte") || cleanInput.includes("academia")) return "Esportes & Academias";
-        if (cleanInput.includes("beleza") || cleanInput.includes("estetica") || cleanInput.includes("salao")) return "Beleza & Estética";
+        if (cleanInput.includes("religi") || cleanInput.includes("igreja") || cleanInput.includes("paroquia")) return "Religião & Igrejas";
+        if (cleanInput.includes("esporte") || cleanInput.includes("academia") || cleanInput.includes("fit")) return "Esportes & Academias";
+        if (cleanInput.includes("beleza") || cleanInput.includes("estetica") || cleanInput.includes("salao") || cleanInput.includes("cabel")) return "Beleza & Estética";
         
         return "Outros";
       };
@@ -71,7 +81,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         const line = lines[i].trim();
         if (!line) continue;
         
-        // Regex blindada: impede que vírgulas dentro do nome da loja quebrem as colunas
         const regex = new RegExp(`\\s*${separator}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`);
         const values = line.split(regex).map(v => v.replace(/^"|"$/g, '').trim());
         
@@ -82,11 +91,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            if (h.includes('categoria')) item.category = findCategory(val);
            else if (h.includes('nome')) item.name = val;
            else if (h.includes('telefone') || h.includes('celular')) item.phone = val;
-           else if (h.includes('endere')) item.address = val;
-           else if (h.includes('imagem') || h.includes('link')) item.image = val;
+           else if (h.includes('endere') || h.includes('local')) item.address = val;
+           else if (h.includes('imagem') || h.includes('link') || h.includes('foto')) item.image = val;
         });
 
-        // Prevenção caso a busca pelos cabeçalhos falhe
         if (!item.name && values.length >= 2) {
            item = {
               category: findCategory(values[0]),
@@ -106,7 +114,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       if (newItems.length === 0) return alert("Nenhum local válido encontrado no CSV.");
       
-      if (window.confirm(`Foram encontrados ${newItems.length} locais. Deseja iniciar a importação?`)) {
+      if (window.confirm(`Foram encontrados ${newItems.length} locais.\nDeseja iniciar a importação?`)) {
          try {
            for (const item of newItems) {
              await crud.addGuideItem(item);
@@ -119,7 +127,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       }
     };
     
-    reader.readAsText(file, 'UTF-8');
+    // A MÁGICA CONTINUA AQUI: Mandamos o FileReader ler como ArrayBuffer em vez de Texto forçado
+    reader.readAsArrayBuffer(file);
     e.target.value = null;
   };
 
@@ -149,7 +158,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     <div className="space-y-3 mt-4">
       {data && data.length > 0 ? data.map(item => (
         <div key={item.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <span className="font-medium text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
+          <div className="flex flex-col">
+             <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
+             {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
+          </div>
           <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
             <Trash2 size={18} />
           </button>
