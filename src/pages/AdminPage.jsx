@@ -5,14 +5,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [activeTab, setActiveTab] = useState('offers');
   const [modalOpen, setModalOpen] = useState(false);
   
-  // Estado para o item sendo editado
   const [editingItem, setEditingItem] = useState(null);
-  
-  // Estado exclusivo para os blocos construtores da Notícia
   const [newsBlocks, setNewsBlocks] = useState([]);
 
   // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA COMERCIAL)
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV (SUPER INTELIGENTE)
   // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
@@ -20,42 +17,79 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target.result;
+      // 1. Remove caracteres invisíveis do Excel (BOM) que quebram a leitura
+      const text = event.target.result.replace(/^\uFEFF/, '');
       const lines = text.split('\n');
       
       if (lines.length < 2) return alert("Arquivo CSV vazio ou sem dados suficientes.");
 
-      // Descobre se o CSV usa vírgula ou ponto-e-vírgula
       const separator = lines[0].includes(';') ? ';' : ',';
       
-      // Limpa os nomes das colunas (remove aspas e acentos) para facilitar a leitura
       const headers = lines[0].toLowerCase().split(separator).map(h => 
         h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       );
       
+      // Categorias oficiais do sistema
+      const validCategories = [
+        "Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino",
+        "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa",
+        "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas",
+        "Esportes & Academias", "Beleza & Estética", "Outros"
+      ];
+
+      // O TRADUTOR INTELIGENTE: Corrige espaços, acentos e erros de digitação da planilha
+      const findCategory = (inputCat) => {
+        if (!inputCat) return "Outros";
+        // Limpa a palavra que veio da planilha (tira acento, espaço, letras maiúsculas)
+        const cleanInput = inputCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        
+        // 1ª Tentativa: Checa se a palavra limpa bate perfeitamente com a categoria limpa
+        for (const validCat of validCategories) {
+           const cleanValid = validCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+           if (cleanValid === cleanInput) return validCat;
+        }
+        
+        // 2ª Tentativa: Se a pessoa digitou só uma palavra-chave, ele acerta a categoria
+        if (cleanInput.includes("saude") || cleanInput.includes("bem")) return "Saúde & Bem-estar";
+        if (cleanInput.includes("emergencia") || cleanInput.includes("public")) return "Emergência & Serviços Públicos";
+        if (cleanInput.includes("educa") || cleanInput.includes("ensin") || cleanInput.includes("escola")) return "Educação & Ensino";
+        if (cleanInput.includes("supermercado") || cleanInput.includes("aliment") || cleanInput.includes("restaurante")) return "Supermercados & Alimentação";
+        if (cleanInput.includes("auto") || cleanInput.includes("transporte") || cleanInput.includes("veiculo") || cleanInput.includes("carro")) return "Automotivo & Transportes";
+        if (cleanInput.includes("constru") || cleanInput.includes("casa")) return "Construção & Casa";
+        if (cleanInput.includes("banco") || cleanInput.includes("financeiro") || cleanInput.includes("dinheiro")) return "Bancos & Financeiro";
+        if (cleanInput.includes("hotel") || cleanInput.includes("pousada")) return "Hotéis & Pousadas";
+        if (cleanInput.includes("religi") || cleanInput.includes("igreja")) return "Religião & Igrejas";
+        if (cleanInput.includes("esporte") || cleanInput.includes("academia")) return "Esportes & Academias";
+        if (cleanInput.includes("beleza") || cleanInput.includes("estetica") || cleanInput.includes("salao")) return "Beleza & Estética";
+        
+        return "Outros";
+      };
+
       const newItems = [];
       
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
-        const values = line.split(separator).map(v => v.replace(/^"|"$/g, '').trim());
+        // Regex blindada: impede que vírgulas dentro do nome da loja quebrem as colunas
+        const regex = new RegExp(`\\s*${separator}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`);
+        const values = line.split(regex).map(v => v.replace(/^"|"$/g, '').trim());
+        
         let item = { date: new Date().toISOString() };
         
-        // Busca os dados baseados no nome da coluna
         headers.forEach((h, index) => {
            const val = values[index] || '';
-           if (h.includes('categoria')) item.category = val;
+           if (h.includes('categoria')) item.category = findCategory(val);
            else if (h.includes('nome')) item.name = val;
            else if (h.includes('telefone') || h.includes('celular')) item.phone = val;
            else if (h.includes('endere')) item.address = val;
            else if (h.includes('imagem') || h.includes('link')) item.image = val;
         });
 
-        // Prevenção: Se a busca por coluna falhar, assume a ordem (Categoria, Nome, Telefone, Endereço, Imagem)
+        // Prevenção caso a busca pelos cabeçalhos falhe
         if (!item.name && values.length >= 2) {
            item = {
-              category: values[0] || 'Outros',
+              category: findCategory(values[0]),
               name: values[1],
               phone: values[2] || '',
               address: values[3] || '',
@@ -74,11 +108,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       
       if (window.confirm(`Foram encontrados ${newItems.length} locais. Deseja iniciar a importação?`)) {
          try {
-           // Envia para o banco de dados um a um (para não sobrecarregar)
            for (const item of newItems) {
              await crud.addGuideItem(item);
            }
-           alert("Importação concluída com sucesso!");
+           alert("Importação concluída com sucesso! Verifique o Guia Comercial.");
          } catch(err) {
            console.error("Erro na importação:", err);
            alert("Ocorreu um erro durante a importação. Verifique o console.");
@@ -87,7 +120,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     };
     
     reader.readAsText(file, 'UTF-8');
-    e.target.value = null; // Reseta o input de arquivo
+    e.target.value = null;
   };
 
   // ==========================================
@@ -128,7 +161,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
       
-      {/* MENU DE ABAS DO ADMIN */}
       <div className="flex overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-hide">
         {[
           { id: 'offers', label: 'Shopping / Ofertas' },
@@ -151,7 +183,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
-        {/* === ABA DO GUIA COMERCIAL (ATUALIZADA) === */}
+        {/* === ABA DO GUIA COMERCIAL === */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -165,7 +197,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </div>
             </div>
 
-            {/* Dica de formatação */}
             <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-lg mb-4 flex items-start gap-2">
               <span className="font-bold uppercase tracking-wider mt-0.5">Aviso:</span>
               <p>O seu arquivo CSV deve ter as colunas separadas por vírgula (,) ou ponto e vírgula (;).<br/>
@@ -254,7 +285,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-2xl font-black text-slate-800 mb-6">
               {activeTab === 'offers' ? 'Adicionar Oferta Manual' : 'Escrever Nova Notícia'}
             </h2>
@@ -289,7 +320,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </form>
             )}
 
-            {/* -------------------- FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER) -------------------- */}
+            {/* -------------------- FORMULÁRIO DE NOTÍCIAS -------------------- */}
             {activeTab === 'news' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -301,25 +332,23 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 setModalOpen(false); setEditingItem(null); setNewsBlocks([]);
               }} className="space-y-6">
                 
-                {/* --- 1. CAPA E CABEÇALHO --- */}
                 <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
                   <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
                   
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título Principal</label>
-                    <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Ex: Acidente na MG-129..." required/>
+                    <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" required/>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Linha Fina (Resumo itálico)</label>
-                    <textarea value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} rows="2" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Breve resumo que aparece abaixo do título..." required/>
+                    <textarea value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} rows="2" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
                   </div>
 
-                  {/* IMAGEM DE CAPA COM OPÇÃO DE UPLOAD LOCAL */}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Imagem de Capa (URL ou Upload)</label>
                     <div className="flex gap-2">
-                      <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="https://link-da-imagem.com.br/foto.jpg" required/>
+                      <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
                       <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
                         <Upload size={20} />
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => setEditingItem({...editingItem, image: base64}))} />
@@ -331,57 +360,34 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria</label>
-                      <input value={editingItem.category || ''} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Ex: Polícia, Política..." required/>
+                      <input value={editingItem.category || ''} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Autor / Fonte</label>
-                      <input value={editingItem.author || ''} onChange={e => setEditingItem({...editingItem, author: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Ex: Redação / Correio de Minas" required/>
+                      <input value={editingItem.author || ''} onChange={e => setEditingItem({...editingItem, author: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
                     </div>
                   </div>
                 </div>
 
-                {/* --- 2. CONSTRUTOR DE CORPO (BLOCOS) --- */}
                 <div>
                   <h3 className="font-bold text-slate-700 mb-3 flex items-center justify-between">
                     Corpo da Matéria
-                    <span className="text-xs font-normal text-slate-400">Monte a notícia na ordem desejada</span>
                   </h3>
                   
                   <div className="space-y-4 mb-4">
                     {newsBlocks.map((block, index) => (
                       <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl relative group">
-                        
                         <div className="flex flex-col gap-1 mt-1">
                           <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
                           <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
                           <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
                         </div>
-
                         <div className="flex-1 w-full">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
-                            {block.type === 'paragraph' && <><Type size={12}/> Parágrafo</>}
-                            {block.type === 'subtitle' && <><Heading size={12}/> Subtítulo</>}
-                            {block.type === 'image' && <><ImageIcon size={12}/> Imagem no meio do texto</>}
-                          </div>
-
-                          {block.type === 'paragraph' && (
-                            <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none resize-y" placeholder="Escreva o parágrafo aqui..." required/>
-                          )}
-                          
-                          {block.type === 'subtitle' && (
-                            <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Escreva o subtítulo..." required/>
-                          )}
-
+                          {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
+                          {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
                           {block.type === 'image' && (
-                            <div className="space-y-2">
-                              <div className="flex gap-2">
-                                <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>
-                                <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
-                                  <Upload size={20} />
-                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => updateNewsBlock(block.id, base64))} />
-                                </label>
-                              </div>
-                              {block.value && <img src={block.value} alt="Preview" className="h-32 object-cover rounded-lg border border-slate-200"/>}
+                            <div className="flex gap-2">
+                              <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>
                             </div>
                           )}
                         </div>
@@ -390,16 +396,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </div>
 
                   <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
-                    <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-indigo-100"><Type size={16}/> + Parágrafo</button>
-                    <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-slate-200"><Heading size={16}/> + Subtítulo</button>
-                    <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors border border-slate-200"><ImageIcon size={16}/> + Imagem</button>
+                    <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> + Parágrafo</button>
+                    <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> + Subtítulo</button>
+                    <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> + Imagem</button>
                   </div>
-                </div>
-
-                {/* --- 3. RODAPÉ E PUBLICAÇÃO --- */}
-                <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <input type="checkbox" id="isOfficial" checked={editingItem.isOfficial || false} onChange={e => setEditingItem({...editingItem, isOfficial: e.target.checked})} className="w-5 h-5 accent-indigo-600 cursor-pointer"/>
-                  <label htmlFor="isOfficial" className="text-sm font-bold text-yellow-800 cursor-pointer">É uma Notícia Oficial da Prefeitura?</label>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -408,7 +408,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
               </form>
             )}
-
           </div>
         </div>
       )}
