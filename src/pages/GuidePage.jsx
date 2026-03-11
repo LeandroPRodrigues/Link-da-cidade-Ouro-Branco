@@ -17,34 +17,49 @@ export default function GuidePage({ guideData, onLocalClick }) {
 
   const clearFilters = () => { setSearchTerm(''); setSelectedCategory(null); };
 
-  // Componente de Item da Lista (Estilo App)
+  // Componente de Item da Lista (Estilo App com Imagem)
   const GuideListItem = ({ item }) => {
-    const cleanPhone = item.phone.replace(/\D/g, '');
+    // Garante que não dá erro se o item vier sem telefone na planilha
+    const cleanPhone = (item.phone || '').replace(/\D/g, '');
     const isMobile = cleanPhone.length >= 10 && cleanPhone.startsWith('319');
 
     return (
       <div className="p-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition group flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 cursor-pointer" onClick={() => onLocalClick(item)}>
-          <h3 className="font-bold text-slate-800 text-base group-hover:text-indigo-600 transition mb-1">
-            {item.name}
-          </h3>
-          <p className="text-xs text-slate-500 mb-1">{item.description}</p>
-          <div className="flex items-center gap-1 text-[11px] text-slate-400">
-            <MapPin size={12}/> {item.address}
+        
+        <div className="flex flex-1 gap-4 items-center w-full">
+          {/* Se o local tiver imagem vinda da planilha, ela aparece aqui */}
+          {item.image && (
+            <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-sm" />
+          )}
+          
+          <div className="flex-1 cursor-pointer" onClick={() => onLocalClick(item)}>
+            <h3 className="font-bold text-slate-800 text-base group-hover:text-indigo-600 transition mb-1">
+              {item.name}
+            </h3>
+            {item.description && <p className="text-xs text-slate-500 mb-1 line-clamp-2">{item.description}</p>}
+            <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
+              <MapPin size={12} className="shrink-0"/> <span className="truncate">{item.address || 'Endereço não informado'}</span>
+            </div>
           </div>
         </div>
 
-        <div className="w-full sm:w-auto flex gap-2">
-           {isMobile ? (
-              <a href={`https://wa.me/55${cleanPhone}`} target="_blank" rel="noreferrer"
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2 rounded-lg text-xs font-bold transition">
-                <MessageCircle size={14}/> WhatsApp
-              </a>
+        <div className="w-full sm:w-auto flex gap-2 mt-3 sm:mt-0">
+           {cleanPhone ? (
+             isMobile ? (
+                <a href={`https://wa.me/55${cleanPhone}`} target="_blank" rel="noreferrer"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2 rounded-lg text-xs font-bold transition">
+                  <MessageCircle size={14}/> WhatsApp
+                </a>
+             ) : (
+                <a href={`tel:${cleanPhone}`}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-xs font-bold transition">
+                  <Phone size={14}/> Ligar
+                </a>
+             )
            ) : (
-              <a href={`tel:${cleanPhone}`}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-xs font-bold transition">
-                <Phone size={14}/> Ligar
-              </a>
+              <span className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-50 text-slate-400 px-4 py-2 rounded-lg text-xs font-bold">
+                Sem Telefone
+              </span>
            )}
         </div>
       </div>
