@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -9,57 +9,30 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [newsBlocks, setNewsBlocks] = useState([]);
 
   // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (COM AUTO-DETECÇÃO DE ACENTOS)
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV
   // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    
-    // A MUDANÇA: Lemos o arquivo como dados brutos (Buffer) para podermos consertar os acentos
     reader.onload = async (event) => {
       const buffer = event.target.result;
-      
-      // 1. Tenta ler no padrão da internet (UTF-8)
       let text = new TextDecoder('utf-8').decode(buffer);
-      
-      // 2. Se o texto contiver o símbolo de erro de acento (), o arquivo veio do Excel padrão Brasil.
-      // Então, trocamos a lente e lemos novamente usando o padrão do Windows!
-      if (text.includes('')) {
-        text = new TextDecoder('windows-1252').decode(buffer);
-      }
-
-      // 3. Limpeza de formatação invisível
+      if (text.includes('')) text = new TextDecoder('windows-1252').decode(buffer);
       text = text.replace(/^\uFEFF/, '');
-      
-      // Divide as linhas independentemente de estar no Windows, Mac ou Linux
       const lines = text.split(/\r?\n/);
-      
       if (lines.length < 2) return alert("Arquivo CSV vazio ou sem dados suficientes.");
-
       const separator = lines[0].includes(';') ? ';' : ',';
-      
-      const headers = lines[0].toLowerCase().split(separator).map(h => 
-        h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      );
-      
-      const validCategories = [
-        "Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino",
-        "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa",
-        "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas",
-        "Esportes & Academias", "Beleza & Estética", "Outros"
-      ];
+      const headers = lines[0].toLowerCase().split(separator).map(h => h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+      const validCategories = ["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"];
 
       const findCategory = (inputCat) => {
         if (!inputCat) return "Outros";
         const cleanInput = inputCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        
         for (const validCat of validCategories) {
            const cleanValid = validCat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
            if (cleanValid === cleanInput) return validCat;
         }
-        
         if (cleanInput.includes("saude") || cleanInput.includes("bem")) return "Saúde & Bem-estar";
         if (cleanInput.includes("emergencia") || cleanInput.includes("public")) return "Emergência & Serviços Públicos";
         if (cleanInput.includes("educa") || cleanInput.includes("ensin") || cleanInput.includes("escola")) return "Educação & Ensino";
@@ -71,21 +44,16 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         if (cleanInput.includes("religi") || cleanInput.includes("igreja") || cleanInput.includes("paroquia")) return "Religião & Igrejas";
         if (cleanInput.includes("esporte") || cleanInput.includes("academia") || cleanInput.includes("fit")) return "Esportes & Academias";
         if (cleanInput.includes("beleza") || cleanInput.includes("estetica") || cleanInput.includes("salao") || cleanInput.includes("cabel")) return "Beleza & Estética";
-        
         return "Outros";
       };
 
       const newItems = [];
-      
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
         const regex = new RegExp(`\\s*${separator}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`);
         const values = line.split(regex).map(v => v.replace(/^"|"$/g, '').trim());
-        
         let item = { date: new Date().toISOString() };
-        
         headers.forEach((h, index) => {
            const val = values[index] || '';
            if (h.includes('categoria')) item.category = findCategory(val);
@@ -96,16 +64,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         });
 
         if (!item.name && values.length >= 2) {
-           item = {
-              category: findCategory(values[0]),
-              name: values[1],
-              phone: values[2] || '',
-              address: values[3] || '',
-              image: values[4] || '',
-              date: new Date().toISOString()
-           };
+           item = { category: findCategory(values[0]), name: values[1], phone: values[2] || '', address: values[3] || '', image: values[4] || '', date: new Date().toISOString() };
         }
-
         if (item.name) {
            if (!item.category) item.category = 'Outros';
            newItems.push(item);
@@ -113,28 +73,17 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       }
 
       if (newItems.length === 0) return alert("Nenhum local válido encontrado no CSV.");
-      
       if (window.confirm(`Foram encontrados ${newItems.length} locais.\nDeseja iniciar a importação?`)) {
          try {
-           for (const item of newItems) {
-             await crud.addGuideItem(item);
-           }
+           for (const item of newItems) { await crud.addGuideItem(item); }
            alert("Importação concluída com sucesso! Verifique o Guia Comercial.");
-         } catch(err) {
-           console.error("Erro na importação:", err);
-           alert("Ocorreu um erro durante a importação. Verifique o console.");
-         }
+         } catch(err) { alert("Ocorreu um erro durante a importação."); }
       }
     };
-    
-    // A MÁGICA CONTINUA AQUI: Mandamos o FileReader ler como ArrayBuffer em vez de Texto forçado
     reader.readAsArrayBuffer(file);
     e.target.value = null;
   };
 
-  // ==========================================
-  // FUNÇÕES DO CONSTRUTOR DE NOTÍCIAS (LEGO)
-  // ==========================================
   const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '' }]);
   const updateNewsBlock = (id, newValue) => setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, value: newValue } : block));
   const removeNewsBlock = (id) => setNewsBlocks(newsBlocks.filter(block => block.id !== id));
@@ -170,6 +119,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     </div>
   );
 
+  // A MÁGICA: Separando os itens pendentes do Guia Comercial
+  const pendingGuideItems = guideData?.filter(i => i.status === 'pending') || [];
+  const activeGuideItems = guideData?.filter(i => i.status !== 'pending') || [];
+
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
       
@@ -181,26 +134,27 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'real_estate', label: 'Imóveis' },
           { id: 'jobs', label: 'Vagas' },
           { id: 'vehicles', label: 'Veículos' },
-          { id: 'guide', label: 'Guia Comercial' }
+          { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length} Novos)` : 'Guia Comercial' }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors ${activeTab === tab.id ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+            className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors relative ${activeTab === tab.id ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
           >
             {tab.label}
+            {/* Bolinha vermelha de notificação se houver aprovações pendentes */}
+            {tab.id === 'guide' && pendingGuideItems.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
           </button>
         ))}
       </div>
 
       <div className="p-6">
         
-        {/* === ABA DO GUIA COMERCIAL === */}
+        {/* === ABA DO GUIA COMERCIAL (SALA DE ESPERA E LISTA ATIVA) === */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Guia Comercial</h2>
-              
               <div className="flex gap-2 w-full md:w-auto">
                 <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm flex-1 md:flex-none">
                   <Upload size={18}/> Importar Planilha CSV
@@ -209,13 +163,42 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-lg mb-4 flex items-start gap-2">
-              <span className="font-bold uppercase tracking-wider mt-0.5">Aviso:</span>
-              <p>O seu arquivo CSV deve ter as colunas separadas por vírgula (,) ou ponto e vírgula (;).<br/>
-              A primeira linha deve conter os títulos: <strong>Categoria, Nome, Telefone, Endereco, Imagem</strong>.</p>
-            </div>
+            {/* SEÇÃO 1: APROVAÇÕES PENDENTES (SÓ APARECE SE TIVER ALGO NOVO) */}
+            {pendingGuideItems.length > 0 && (
+              <div className="mb-10 bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
+                  <Clock size={20}/> Solicitações Aguardando Aprovação
+                </h3>
+                <div className="space-y-3">
+                  {pendingGuideItems.map(item => (
+                     <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-white border border-amber-200 shadow-sm rounded-xl gap-4">
+                        <div className="flex items-center gap-4 flex-1">
+                           {item.image && <img src={item.image} alt={item.name} className="w-14 h-14 rounded-lg object-cover bg-slate-100 border border-slate-200 shrink-0"/>}
+                           <div>
+                             <span className="font-bold text-slate-800 block text-lg leading-tight mb-1">{item.name}</span>
+                             <span className="inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-1">{item.category}</span>
+                             <p className="text-xs text-slate-500 font-medium">{item.phone} • {item.address}</p>
+                           </div>
+                        </div>
+                        
+                        {/* Botões de Ação: Aprovar ou Recusar */}
+                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                           <button onClick={() => { if(window.confirm('Aprovar e publicar este local?')) crud.updateGuideItem({...item, status: 'active'}); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
+                             <CheckCircle size={18}/> Aprovar
+                           </button>
+                           <button onClick={() => { if(window.confirm('Recusar e apagar este envio?')) crud.deleteGuideItem(item.id); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
+                             <XCircle size={18}/> Recusar
+                           </button>
+                        </div>
+                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
-            {renderList(guideData, 'name', crud.deleteGuideItem)}
+            {/* SEÇÃO 2: LOCAIS ATIVOS (A LISTA NORMAL) */}
+            <h3 className="font-bold text-slate-600 mb-2 uppercase text-xs tracking-wider">Locais Já Publicados</h3>
+            {renderList(activeGuideItems, 'name', crud.deleteGuideItem)}
           </div>
         )}
 
@@ -293,7 +276,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL DE CADASTRO (DINÂMICO PARA OFERTAS E NOTÍCIAS) */}
+      {/* MODAL DE CADASTRO ADMIN */}
       {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
@@ -302,7 +285,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               {activeTab === 'offers' ? 'Adicionar Oferta Manual' : 'Escrever Nova Notícia'}
             </h2>
             
-            {/* -------------------- FORMULÁRIO DE OFERTAS -------------------- */}
+            {/* FORMULÁRIO DE OFERTAS */}
             {activeTab === 'offers' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -332,7 +315,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </form>
             )}
 
-            {/* -------------------- FORMULÁRIO DE NOTÍCIAS -------------------- */}
+            {/* FORMULÁRIO DE NOTÍCIAS */}
             {activeTab === 'news' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -346,17 +329,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 
                 <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
                   <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
-                  
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título Principal</label>
                     <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" required/>
                   </div>
-
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Linha Fina (Resumo itálico)</label>
                     <textarea value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} rows="2" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
                   </div>
-
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Imagem de Capa (URL ou Upload)</label>
                     <div className="flex gap-2">
@@ -368,7 +348,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     </div>
                     {editingItem.image && <img src={editingItem.image} alt="Preview Capa" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria</label>
@@ -382,10 +361,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-slate-700 mb-3 flex items-center justify-between">
-                    Corpo da Matéria
-                  </h3>
-                  
+                  <h3 className="font-bold text-slate-700 mb-3 flex items-center justify-between">Corpo da Matéria</h3>
                   <div className="space-y-4 mb-4">
                     {newsBlocks.map((block, index) => (
                       <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl relative group">
@@ -397,16 +373,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                         <div className="flex-1 w-full">
                           {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
                           {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
-                          {block.type === 'image' && (
-                            <div className="flex gap-2">
-                              <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>
-                            </div>
-                          )}
+                          {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
                         </div>
                       </div>
                     ))}
                   </div>
-
                   <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
                     <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> + Parágrafo</button>
                     <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> + Subtítulo</button>

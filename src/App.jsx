@@ -4,7 +4,6 @@ import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
 
-// === IMPORTAÇÃO ATUALIZADA: Puxando o MiniOffersCarousel junto com o HomePage ===
 import HomePage, { MiniOffersCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
@@ -133,7 +132,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
-      
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
@@ -163,7 +161,6 @@ export default function App() {
       </header>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-64px)]">
-        
         <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
@@ -180,14 +177,10 @@ export default function App() {
         </aside>
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          {/* === ATUALIZAÇÃO NO HOMEPAGE: offersData={offersData} adicionado === */}
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          
           {currentPage === 'offers' && <OffersPage offersData={offersData} />}
-
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
-          
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
           {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={propertiesData} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
@@ -196,7 +189,9 @@ export default function App() {
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
           {currentPage === 'vehicles' && <VehiclesPage vehiclesData={vehiclesData} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
-          {currentPage === 'guide' && <GuidePage guideData={guideData} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
+          
+          {/* === A MUDANÇA: ADICIONADO crud={crud} AQUI === */}
+          {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} crud={crud} />}
@@ -207,10 +202,7 @@ export default function App() {
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>
           </div>
-          
-          {/* === NOVO COMPONENTE: CARROSSEL DE OFERTAS (SUBSTITUIU "ÚTIL PARA VOCÊ") === */}
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} />
-          
         </aside>
       </div>
 
