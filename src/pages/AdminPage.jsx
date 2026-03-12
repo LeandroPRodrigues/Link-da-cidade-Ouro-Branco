@@ -9,7 +9,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [newsBlocks, setNewsBlocks] = useState([]);
 
   // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
   // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
@@ -75,7 +75,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       if (newItems.length === 0) return alert("Nenhum local válido encontrado no CSV.");
       if (window.confirm(`Foram encontrados ${newItems.length} locais.\nDeseja iniciar a importação?`)) {
          try {
-           for (const item of newItems) { await crud.addGuideItem(item); }
+           for (const item of newItems) { await crud.addGuideItem({...item, status: 'active'}); }
            alert("Importação concluída com sucesso! Verifique o Guia Comercial.");
          } catch(err) { alert("Ocorreu um erro durante a importação."); }
       }
@@ -84,6 +84,124 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
+  // ==========================================
+  // FUNÇÕES AUXILIARES DE FORMULÁRIO E MODAL
+  // ==========================================
+  const handleLocalImageUpload = (e, callback) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => callback(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const openEditModal = (item = {}) => {
+    if (activeTab === 'news') setNewsBlocks(item.content || []);
+    // Para Veículos e Imóveis, puxar a imagem do array de fotos
+    const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
+    setEditingItem({ ...item, image: imageValue });
+    setModalOpen(true);
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    let payload = { ...editingItem };
+    
+    // Tratamentos específicos antes de salvar
+    if (activeTab === 'news') payload.content = newsBlocks;
+    if (activeTab === 'real_estate' || activeTab === 'vehicles') {
+      payload.photos = payload.image ? [payload.image] : [];
+    }
+
+    if (payload.id) {
+      // ATUALIZAR (EDITAR)
+      if (activeTab === 'offers') crud.updateOffer(payload);
+      if (activeTab === 'news') crud.updateNews(payload);
+      if (activeTab === 'events') crud.updateEvent(payload);
+      if (activeTab === 'real_estate') crud.updateProperty(payload);
+      if (activeTab === 'jobs') crud.updateJob(payload);
+      if (activeTab === 'vehicles') crud.updateVehicle(payload);
+      if (activeTab === 'guide') crud.updateGuideItem(payload);
+    } else {
+      // ADICIONAR NOVO
+      payload.date = payload.date || new Date().toISOString();
+      if (activeTab === 'offers') crud.addOffer(payload);
+      if (activeTab === 'news') crud.addNews(payload);
+      if (activeTab === 'events') crud.addEvent(payload);
+      if (activeTab === 'real_estate') crud.addProperty({...payload, status: 'active', createdAt: new Date().toISOString()});
+      if (activeTab === 'jobs') crud.addJob({...payload, createdAt: new Date().toISOString()});
+      if (activeTab === 'vehicles') crud.addVehicle({...payload, status: 'active', createdAt: new Date().toISOString()});
+      if (activeTab === 'guide') crud.addGuideItem({...payload, status: 'active'});
+    }
+    
+    setModalOpen(false);
+    setEditingItem(null);
+    setNewsBlocks([]);
+  };
+
+  // Componentes Inteligentes para o Formulário do Modal
+  const FormField = ({ label, field, type="text", required=false, options }) => {
+    const val = editingItem?.[field] || '';
+    const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
+    return (
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
+        {type === 'select' ? (
+          <select value={val} onChange={onChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required={required}>
+            <option value="">Selecione...</option>
+            {options?.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
+          </select>
+        ) : type === 'textarea' ? (
+          <textarea value={val} onChange={onChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" rows="3" required={required}/>
+        ) : (
+          <input type={type} value={val} onChange={onChange} step={type === 'number' ? '0.01' : undefined} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required={required}/>
+        )}
+      </div>
+    );
+  };
+
+  const ImageField = ({ label="Imagem (URL ou Upload)", field="image", required=false }) => {
+    const val = editingItem?.[field] || '';
+    const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
+    return (
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
+        <div className="flex gap-2">
+          <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Link da imagem..." required={required}/>
+          <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
+            <Upload size={20} />
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => setEditingItem({...editingItem, [field]: base64}))} />
+          </label>
+        </div>
+        {val && <img src={val} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
+      </div>
+    );
+  };
+
+  // Renderizador de Listas Universal
+  const renderList = (data, titleField, deleteFunc) => (
+    <div className="space-y-3 mt-4">
+      {data && data.length > 0 ? data.map(item => (
+        <div key={item.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+             <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
+             {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => openEditModal(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Editar">
+              <Edit size={18} />
+            </button>
+            <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Excluir">
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </div>
+      )) : <p className="text-slate-500 text-center py-8">Nenhum item cadastrado nesta categoria.</p>}
+    </div>
+  );
+
+  // Blocos da Notícia
   const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '' }]);
   const updateNewsBlock = (id, newValue) => setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, value: newValue } : block));
   const removeNewsBlock = (id) => setNewsBlocks(newsBlocks.filter(block => block.id !== id));
@@ -94,45 +212,13 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setNewsBlocks(newBlocks);
   };
 
-  const handleLocalImageUpload = (e, callback) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => callback(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Atualizado para receber a função de Editar futuramente
-  const renderList = (data, titleField, deleteFunc, editFunc) => (
-    <div className="space-y-3 mt-4">
-      {data && data.length > 0 ? data.map(item => (
-        <div key={item.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex flex-col">
-             <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
-             {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
-          </div>
-          <div className="flex gap-2">
-            {editFunc && (
-              <button onClick={() => editFunc(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors">
-                <Edit size={18} />
-              </button>
-            )}
-            <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-              <Trash2 size={18} />
-            </button>
-          </div>
-        </div>
-      )) : <p className="text-slate-500 text-center py-8">Nenhum item cadastrado nesta categoria.</p>}
-    </div>
-  );
-
   const pendingGuideItems = guideData?.filter(i => i.status === 'pending') || [];
   const activeGuideItems = guideData?.filter(i => i.status !== 'pending') || [];
 
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
       
+      {/* MENU DE ABAS */}
       <div className="flex overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-hide">
         {[
           { id: 'offers', label: 'Shopping / Ofertas' },
@@ -141,7 +227,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'real_estate', label: 'Imóveis' },
           { id: 'jobs', label: 'Vagas' },
           { id: 'vehicles', label: 'Veículos' },
-          { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length} Novos)` : 'Guia Comercial' }
+          { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' }
         ].map(tab => (
           <button
             key={tab.id}
@@ -162,8 +248,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Guia Comercial</h2>
               <div className="flex gap-2 w-full md:w-auto">
-                <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm flex-1 md:flex-none">
-                  <Upload size={18}/> Importar Planilha CSV
+                <button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 w-full md:w-auto">
+                  <PlusCircle size={18}/> Novo Local
+                </button>
+                <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
+                  <Upload size={18}/> Importar CSV
                   <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
                 </label>
               </div>
@@ -171,9 +260,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
             {pendingGuideItems.length > 0 && (
               <div className="mb-10 bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
-                  <Clock size={20}/> Solicitações Aguardando Aprovação
-                </h3>
+                <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2"><Clock size={20}/> Solicitações Aguardando Aprovação</h3>
                 <div className="space-y-3">
                   {pendingGuideItems.map(item => (
                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-white border border-amber-200 shadow-sm rounded-xl gap-4">
@@ -185,14 +272,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                              <p className="text-xs text-slate-500 font-medium">{item.phone} • {item.address}</p>
                            </div>
                         </div>
-                        
-                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                           <button onClick={() => { if(window.confirm('Aprovar e publicar este local?')) crud.updateGuideItem({...item, status: 'active'}); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
-                             <CheckCircle size={18}/> Aprovar
-                           </button>
-                           <button onClick={() => { if(window.confirm('Recusar e apagar este envio?')) crud.deleteGuideItem(item.id); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
-                             <XCircle size={18}/> Recusar
-                           </button>
+                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0 flex-wrap">
+                           <button onClick={() => openEditModal(item)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"><Edit size={18}/> Editar</button>
+                           <button onClick={() => { if(window.confirm('Aprovar este local?')) crud.updateGuideItem({...item, status: 'active'}); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"><CheckCircle size={18}/> Aprovar</button>
+                           <button onClick={() => { if(window.confirm('Recusar e apagar este envio?')) crud.deleteGuideItem(item.id); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"><XCircle size={18}/> Recusar</button>
                         </div>
                      </div>
                   ))}
@@ -210,31 +293,22 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Banco de Ofertas</h2>
-              <button onClick={() => { setEditingItem({ category: 'bestsellers' }); setModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
+              <button onClick={() => openEditModal({ category: 'bestsellers' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
                 <PlusCircle size={18}/> Adicionar Oferta
               </button>
             </div>
-            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {offersData?.map(item => (
                 <div key={item.id} className="flex gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 relative group hover:border-indigo-200 transition-colors">
                   <img src={item.image} alt="Produto" className="w-20 h-20 object-contain bg-white rounded-lg border border-slate-200 p-1"/>
-                  <div className="flex-1 min-w-0 pr-16">
+                  <div className="flex-1 min-w-0 pr-20">
                     <h3 className="font-bold text-slate-800 text-sm line-clamp-2" title={item.title}>{item.title}</h3>
                     <p className="text-xs text-slate-500 mt-1 uppercase font-semibold">{item.category}</p>
-                    <p className="text-sm font-black text-indigo-600 mt-1">
-                      {Number(item.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
+                    <p className="text-sm font-black text-indigo-600 mt-1">{Number(item.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                   </div>
-                  
-                  {/* BOTÕES EDITAR E EXCLUIR */}
                   <div className="absolute top-4 right-4 flex gap-2">
-                    <button onClick={() => { setEditingItem(item); setModalOpen(true); }} className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Editar Oferta">
-                      <Edit size={18}/>
-                    </button>
-                    <button onClick={() => { if(window.confirm('Excluir oferta?')) crud.deleteOffer(item.id); }} className="p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Oferta">
-                      <Trash2 size={18}/>
-                    </button>
+                    <button onClick={() => openEditModal(item)} className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Editar"><Edit size={18}/></button>
+                    <button onClick={() => { if(window.confirm('Excluir oferta?')) crud.deleteOffer(item.id); }} className="p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir"><Trash2 size={18}/></button>
                   </div>
                 </div>
               ))}
@@ -247,166 +321,225 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Notícias</h2>
-              <button onClick={() => { 
-                setEditingItem({ isOfficial: false, author: 'Redação', category: 'Cidade' }); 
-                setNewsBlocks([]); 
-                setModalOpen(true); 
-              }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
+              <button onClick={() => openEditModal({ isOfficial: false, author: 'Redação', category: 'Cidade' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
                 <PlusCircle size={18}/> Nova Notícia
               </button>
             </div>
-            
             <div className="grid grid-cols-1 gap-4">
               {newsData?.map(item => (
                 <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 relative group hover:border-indigo-200 transition-colors">
                   {item.image && <img src={item.image} alt="Capa" className="w-full sm:w-32 h-24 object-cover bg-white rounded-lg border border-slate-200"/>}
-                  <div className="flex-1 min-w-0 pr-8">
+                  <div className="flex-1 min-w-0 pr-20">
                     <h3 className="font-bold text-slate-800 text-base line-clamp-2" title={item.title}>{item.title}</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {item.author} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Sem data'}
-                    </p>
-                    {item.isOfficial && (
-                      <span className="inline-block mt-2 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-xs font-bold">Oficial da Prefeitura</span>
-                    )}
+                    <p className="text-xs text-slate-500 mt-1">{item.author} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Sem data'}</p>
+                    {item.isOfficial && <span className="inline-block mt-2 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-xs font-bold">Oficial</span>}
                   </div>
-                  <button onClick={() => { if(window.confirm('Excluir notícia?')) crud.deleteNews(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors">
-                    <Trash2 size={18}/>
-                  </button>
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button onClick={() => openEditModal(item)} className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg shadow-sm border border-slate-200 transition-colors"><Edit size={18}/></button>
+                    <button onClick={() => { if(window.confirm('Excluir notícia?')) crud.deleteNews(item.id); }} className="p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors"><Trash2 size={18}/></button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* OUTRAS ABAS (Serão atualizadas nos próximos passos) */}
-        {activeTab === 'events' && renderList(eventsData, 'title', crud.deleteEvent)}
-        {activeTab === 'real_estate' && renderList(propertiesData, 'title', crud.deleteProperty)}
-        {activeTab === 'jobs' && renderList(jobsData, 'title', crud.deleteJob)}
-        {activeTab === 'vehicles' && renderList(vehiclesData, 'title', crud.deleteVehicle)}
+        {/* OUTRAS ABAS COM BOTÃO ADICIONAR */}
+        {activeTab === 'events' && (
+          <div>
+            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Eventos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
+            {renderList(eventsData, 'title', crud.deleteEvent)}
+          </div>
+        )}
+        {activeTab === 'real_estate' && (
+           <div>
+             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Imóveis</h2><button onClick={() => openEditModal({type: 'Venda'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
+             {renderList(propertiesData, 'title', crud.deleteProperty)}
+           </div>
+        )}
+        {activeTab === 'jobs' && (
+           <div>
+             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Vagas</h2><button onClick={() => openEditModal({type: 'CLT'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Nova Vaga</button></div>
+             {renderList(jobsData, 'title', crud.deleteJob)}
+           </div>
+        )}
+        {activeTab === 'vehicles' && (
+           <div>
+             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Veículos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
+             {renderList(vehiclesData, 'title', crud.deleteVehicle)}
+           </div>
+        )}
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL DE CADASTRO E EDIÇÃO ADMIN */}
+      {/* MODAL DE CADASTRO E EDIÇÃO (O "CANIVETE SUÍÇO") */}
       {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             
-            <h2 className="text-2xl font-black text-slate-800 mb-6">
-              {activeTab === 'offers' && (editingItem?.id ? 'Editar Oferta' : 'Adicionar Oferta Manual')}
-              {activeTab === 'news' && 'Escrever Nova Notícia'}
+            <h2 className="text-2xl font-black text-slate-800 mb-6 border-b border-slate-100 pb-4">
+              {editingItem?.id ? 'Editar Informações' : 'Novo Cadastro'}
             </h2>
             
-            {/* FORMULÁRIO DE OFERTAS (AGORA COM FUNÇÃO DE UPDATE) */}
-            {activeTab === 'offers' && (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (editingItem.id) {
-                  crud.updateOffer(editingItem);
-                } else {
-                  crud.addOffer({ ...editingItem, date: new Date().toISOString() });
-                }
-                setModalOpen(false); setEditingItem(null);
-              }} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria (Subgrupo)</label>
-                  <select value={editingItem.category || 'bestsellers'} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600">
-                    <option value="bestsellers">Ofertas do dia</option>
-                    <option value="celulares">Celulares</option>
-                    <option value="tvs">TVs</option>
-                    <option value="informatica">Informática</option>
-                  </select>
-                </div>
-                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título</label><input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Atual</label><input type="number" step="0.01" value={editingItem.price || ''} onChange={e => setEditingItem({...editingItem, price: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
-                   <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço Antigo</label><input type="number" step="0.01" value={editingItem.originalPrice || ''} onChange={e => setEditingItem({...editingItem, originalPrice: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl"/></div>
-                </div>
-                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link da Imagem</label><input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
-                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link de Afiliado</label><input value={editingItem.link || ''} onChange={e => setEditingItem({...editingItem, link: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
-                <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar Alterações</button>
-                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200">Cancelar</button>
-                </div>
-              </form>
-            )}
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              
+              {/* FORMULÁRIO DE OFERTAS */}
+              {activeTab === 'offers' && (
+                <>
+                  <FormField label="Categoria (Subgrupo)" field="category" type="select" options={[
+                    {value: 'bestsellers', label: 'Ofertas do dia'}, {value: 'celulares', label: 'Celulares'}, {value: 'tvs', label: 'TVs'}, {value: 'informatica', label: 'Informática'}
+                  ]} required/>
+                  <FormField label="Título" field="title" required/>
+                  <div className="grid grid-cols-2 gap-4">
+                     <FormField label="Preço Atual" field="price" type="number" required/>
+                     <FormField label="Preço Antigo" field="originalPrice" type="number"/>
+                  </div>
+                  <ImageField />
+                  <FormField label="Link de Afiliado" field="link" required/>
+                </>
+              )}
 
-            {/* FORMULÁRIO DE NOTÍCIAS */}
-            {activeTab === 'news' && (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                crud.addNews({ 
-                  ...editingItem, 
-                  content: newsBlocks,
-                  date: new Date().toISOString() 
-                });
-                setModalOpen(false); setEditingItem(null); setNewsBlocks([]);
-              }} className="space-y-6">
-                
-                <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
-                  <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título Principal</label>
-                    <input value={editingItem.title || ''} onChange={e => setEditingItem({...editingItem, title: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" required/>
+              {/* FORMULÁRIO DE EVENTOS */}
+              {activeTab === 'events' && (
+                <>
+                  <FormField label="Título do Evento" field="title" required/>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField label="Data" field="date" type="date" required/>
+                    <FormField label="Hora" field="time" type="time" required/>
+                    <FormField label="Categoria" field="category" required/>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Linha Fina (Resumo itálico)</label>
-                    <textarea value={editingItem.summary || ''} onChange={e => setEditingItem({...editingItem, summary: e.target.value})} rows="2" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
+                  <FormField label="Local do Evento" field="location" required/>
+                  <ImageField />
+                  <FormField label="Descrição" field="description" type="textarea"/>
+                  <FormField label="Link para Ingressos (Opcional)" field="link" />
+                </>
+              )}
+
+              {/* FORMULÁRIO DE IMÓVEIS */}
+              {activeTab === 'real_estate' && (
+                <>
+                  <FormField label="Título do Anúncio" field="title" required/>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Tipo de Negócio" field="type" type="select" options={['Venda', 'Aluguel']} required/>
+                    <FormField label="Preço (R$)" field="price" type="number" required/>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Imagem de Capa (URL ou Upload)</label>
-                    <div className="flex gap-2">
-                      <input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
-                      <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
-                        <Upload size={20} />
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => setEditingItem({...editingItem, image: base64}))} />
-                      </label>
-                    </div>
-                    {editingItem.image && <img src={editingItem.image} alt="Preview Capa" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
+                  <div className="grid grid-cols-4 gap-4">
+                    <FormField label="Quartos" field="bedrooms" type="number"/>
+                    <FormField label="Banheiros" field="bathrooms" type="number"/>
+                    <FormField label="Vagas" field="garage" type="number"/>
+                    <FormField label="Área (m²)" field="area" type="number"/>
+                  </div>
+                  <FormField label="Endereço (Bairro / Rua)" field="address" required/>
+                  <ImageField label="Foto Principal (Capa)"/>
+                </>
+              )}
+
+              {/* FORMULÁRIO DE VAGAS */}
+              {activeTab === 'jobs' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Cargo / Título" field="title" required/>
+                    <FormField label="Empresa" field="company" required/>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria</label>
-                      <input value={editingItem.category || ''} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Autor / Fonte</label>
-                      <input value={editingItem.author || ''} onChange={e => setEditingItem({...editingItem, author: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" required/>
-                    </div>
+                    <FormField label="Categoria" field="category" type="select" options={["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"]} required/>
+                    <FormField label="Tipo de Vaga" field="type" type="select" options={['CLT', 'Estágio', 'PJ', 'Temporário']} required/>
                   </div>
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Salário" field="salary" placeholder="Ex: R$ 1.500,00 ou A combinar"/>
+                    <FormField label="Localização / Bairro" field="location" required/>
+                  </div>
+                  <FormField label="Descrição da Vaga" field="description" type="textarea" required/>
+                  <FormField label="Requisitos" field="requirements" type="textarea"/>
+                  <FormField label="Contato para Envio de Currículo" field="contact" required placeholder="E-mail ou WhatsApp"/>
+                </>
+              )}
 
-                <div>
-                  <h3 className="font-bold text-slate-700 mb-3 flex items-center justify-between">Corpo da Matéria</h3>
-                  <div className="space-y-4 mb-4">
-                    {newsBlocks.map((block, index) => (
-                      <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl relative group">
-                        <div className="flex flex-col gap-1 mt-1">
-                          <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
-                          <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
-                          <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
-                        </div>
-                        <div className="flex-1 w-full">
-                          {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
-                          {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
-                          {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
-                        </div>
-                      </div>
-                    ))}
+              {/* FORMULÁRIO DE VEÍCULOS */}
+              {activeTab === 'vehicles' && (
+                <>
+                  <FormField label="Título Breve" field="title" placeholder="Ex: Gol 1.0 Completo" required/>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField label="Marca" field="brand" required/>
+                    <FormField label="Modelo" field="model" required/>
+                    <FormField label="Ano" field="year" type="number" required/>
                   </div>
-                  <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
-                    <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> + Parágrafo</button>
-                    <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> + Subtítulo</button>
-                    <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> + Imagem</button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Preço (R$)" field="price" type="number" required/>
+                    <FormField label="Quilometragem" field="km" type="number" required/>
                   </div>
-                </div>
+                  <FormField label="Descrição do Veículo" field="description" type="textarea"/>
+                  <ImageField label="Foto Principal (Capa)"/>
+                </>
+              )}
 
-                <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">Publicar Notícia</button>
-                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+              {/* FORMULÁRIO DO GUIA COMERCIAL */}
+              {activeTab === 'guide' && (
+                <>
+                  <FormField label="Nome do Estabelecimento" field="name" required/>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Categoria" field="category" type="select" options={["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"]} required/>
+                    <FormField label="Telefone / Celular" field="phone"/>
+                  </div>
+                  <FormField label="Endereço Completo" field="address"/>
+                  <FormField label="Breve Descrição (Opcional)" field="description" type="textarea"/>
+                  <ImageField label="Logotipo ou Foto da Fachada"/>
+                </>
+              )}
+
+              {/* FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER ESPECIAL) */}
+              {activeTab === 'news' && (
+                <div className="space-y-6">
+                  <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
+                    <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
+                    <FormField label="Título Principal" field="title" required/>
+                    <FormField label="Linha Fina (Resumo itálico)" field="summary" type="textarea" required/>
+                    <ImageField label="Imagem de Capa"/>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Categoria" field="category" required/>
+                      <FormField label="Autor / Fonte" field="author" required/>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-slate-700 mb-3">Corpo da Matéria</h3>
+                    <div className="space-y-4 mb-4">
+                      {newsBlocks.map((block, index) => (
+                        <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl">
+                          <div className="flex flex-col gap-1 mt-1">
+                            <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
+                            <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
+                            <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
+                          </div>
+                          <div className="flex-1 w-full">
+                            {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
+                            {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
+                            {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
+                      <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> Parágrafo</button>
+                      <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> Subtítulo</button>
+                      <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> Imagem</button>
+                    </div>
+                  </div>
                 </div>
-              </form>
-            )}
+              )}
+
+              {/* BOTÕES GLOBAIS DE SALVAR/CANCELAR */}
+              <div className="flex gap-3 pt-6 border-t border-slate-100 mt-4">
+                <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">
+                  {editingItem?.id ? 'Guardar Alterações' : 'Publicar Agora'}
+                </button>
+                <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
       )}
