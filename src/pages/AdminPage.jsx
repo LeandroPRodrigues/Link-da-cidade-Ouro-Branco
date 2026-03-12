@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -103,7 +103,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     }
   };
 
-  const renderList = (data, titleField, deleteFunc) => (
+  // Atualizado para receber a função de Editar futuramente
+  const renderList = (data, titleField, deleteFunc, editFunc) => (
     <div className="space-y-3 mt-4">
       {data && data.length > 0 ? data.map(item => (
         <div key={item.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
@@ -111,15 +112,21 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
              {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
           </div>
-          <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-            <Trash2 size={18} />
-          </button>
+          <div className="flex gap-2">
+            {editFunc && (
+              <button onClick={() => editFunc(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors">
+                <Edit size={18} />
+              </button>
+            )}
+            <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+              <Trash2 size={18} />
+            </button>
+          </div>
         </div>
       )) : <p className="text-slate-500 text-center py-8">Nenhum item cadastrado nesta categoria.</p>}
     </div>
   );
 
-  // A MÁGICA: Separando os itens pendentes do Guia Comercial
   const pendingGuideItems = guideData?.filter(i => i.status === 'pending') || [];
   const activeGuideItems = guideData?.filter(i => i.status !== 'pending') || [];
 
@@ -142,7 +149,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors relative ${activeTab === tab.id ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
           >
             {tab.label}
-            {/* Bolinha vermelha de notificação se houver aprovações pendentes */}
             {tab.id === 'guide' && pendingGuideItems.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
           </button>
         ))}
@@ -150,7 +156,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
-        {/* === ABA DO GUIA COMERCIAL (SALA DE ESPERA E LISTA ATIVA) === */}
+        {/* === ABA DO GUIA COMERCIAL === */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -163,7 +169,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </div>
             </div>
 
-            {/* SEÇÃO 1: APROVAÇÕES PENDENTES (SÓ APARECE SE TIVER ALGO NOVO) */}
             {pendingGuideItems.length > 0 && (
               <div className="mb-10 bg-amber-50 border border-amber-200 rounded-2xl p-5">
                 <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
@@ -181,7 +186,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                            </div>
                         </div>
                         
-                        {/* Botões de Ação: Aprovar ou Recusar */}
                         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                            <button onClick={() => { if(window.confirm('Aprovar e publicar este local?')) crud.updateGuideItem({...item, status: 'active'}); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
                              <CheckCircle size={18}/> Aprovar
@@ -196,7 +200,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               </div>
             )}
             
-            {/* SEÇÃO 2: LOCAIS ATIVOS (A LISTA NORMAL) */}
             <h3 className="font-bold text-slate-600 mb-2 uppercase text-xs tracking-wider">Locais Já Publicados</h3>
             {renderList(activeGuideItems, 'name', crud.deleteGuideItem)}
           </div>
@@ -208,7 +211,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Banco de Ofertas</h2>
               <button onClick={() => { setEditingItem({ category: 'bestsellers' }); setModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
-                <PlusCircle size={18}/> Adicionar Manualmente
+                <PlusCircle size={18}/> Adicionar Oferta
               </button>
             </div>
             
@@ -216,16 +219,23 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               {offersData?.map(item => (
                 <div key={item.id} className="flex gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 relative group hover:border-indigo-200 transition-colors">
                   <img src={item.image} alt="Produto" className="w-20 h-20 object-contain bg-white rounded-lg border border-slate-200 p-1"/>
-                  <div className="flex-1 min-w-0 pr-8">
+                  <div className="flex-1 min-w-0 pr-16">
                     <h3 className="font-bold text-slate-800 text-sm line-clamp-2" title={item.title}>{item.title}</h3>
                     <p className="text-xs text-slate-500 mt-1 uppercase font-semibold">{item.category}</p>
                     <p className="text-sm font-black text-indigo-600 mt-1">
                       {Number(item.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
-                  <button onClick={() => { if(window.confirm('Excluir oferta?')) crud.deleteOffer(item.id); }} className="absolute top-4 right-4 p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Oferta">
-                    <Trash2 size={18}/>
-                  </button>
+                  
+                  {/* BOTÕES EDITAR E EXCLUIR */}
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button onClick={() => { setEditingItem(item); setModalOpen(true); }} className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Editar Oferta">
+                      <Edit size={18}/>
+                    </button>
+                    <button onClick={() => { if(window.confirm('Excluir oferta?')) crud.deleteOffer(item.id); }} className="p-2 bg-white text-red-600 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Excluir Oferta">
+                      <Trash2 size={18}/>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -268,7 +278,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* OUTRAS ABAS */}
+        {/* OUTRAS ABAS (Serão atualizadas nos próximos passos) */}
         {activeTab === 'events' && renderList(eventsData, 'title', crud.deleteEvent)}
         {activeTab === 'real_estate' && renderList(propertiesData, 'title', crud.deleteProperty)}
         {activeTab === 'jobs' && renderList(jobsData, 'title', crud.deleteJob)}
@@ -276,20 +286,26 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL DE CADASTRO ADMIN */}
+      {/* MODAL DE CADASTRO E EDIÇÃO ADMIN */}
       {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            
             <h2 className="text-2xl font-black text-slate-800 mb-6">
-              {activeTab === 'offers' ? 'Adicionar Oferta Manual' : 'Escrever Nova Notícia'}
+              {activeTab === 'offers' && (editingItem?.id ? 'Editar Oferta' : 'Adicionar Oferta Manual')}
+              {activeTab === 'news' && 'Escrever Nova Notícia'}
             </h2>
             
-            {/* FORMULÁRIO DE OFERTAS */}
+            {/* FORMULÁRIO DE OFERTAS (AGORA COM FUNÇÃO DE UPDATE) */}
             {activeTab === 'offers' && (
               <form onSubmit={(e) => {
                 e.preventDefault();
-                crud.addOffer({ ...editingItem, date: new Date().toISOString() });
+                if (editingItem.id) {
+                  crud.updateOffer(editingItem);
+                } else {
+                  crud.addOffer({ ...editingItem, date: new Date().toISOString() });
+                }
                 setModalOpen(false); setEditingItem(null);
               }} className="space-y-4">
                 <div>
@@ -309,7 +325,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link da Imagem</label><input value={editingItem.image || ''} onChange={e => setEditingItem({...editingItem, image: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link de Afiliado</label><input value={editingItem.link || ''} onChange={e => setEditingItem({...editingItem, link: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl" required/></div>
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar Oferta</button>
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar Alterações</button>
                   <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200">Cancelar</button>
                 </div>
               </form>
