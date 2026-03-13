@@ -99,36 +99,20 @@ export const database = {
     }
   },
 
-  // ==========================================
-  // NOVA FUNÇÃO: LOGIN COM GOOGLE
-  // ==========================================
   loginWithGoogle: async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
       if (user.email === 'leandro122005@hotmail.com') {
         return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin' };
       }
-
-      // Verifica se a conta já existe no nosso banco de dados
       const q = query(collection(firestoreDB, "users"), where("uid", "==", user.uid));
       const snap = await getDocs(q);
-
       if (snap.empty) {
-        // Se for o primeiro acesso, cria um perfil automático
-        const newUser = { 
-          uid: user.uid, 
-          name: user.displayName || 'Usuário', 
-          email: user.email, 
-          type: 'user', 
-          role: 'user', 
-          createdAt: new Date().toISOString() 
-        };
+        const newUser = { uid: user.uid, name: user.displayName || 'Usuário', email: user.email, type: 'user', role: 'user', createdAt: new Date().toISOString() };
         await addDoc(collection(firestoreDB, "users"), newUser);
         return { id: user.uid, ...newUser };
       } else {
-        // Se já existir, apenas retorna os dados logados
         return { id: user.uid, ...snap.docs[0].data(), role: 'user' };
       }
     } catch (error) {
@@ -142,6 +126,25 @@ export const database = {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await addDoc(collection(firestoreDB, "users"), { uid: userCredential.user.uid, email, ...rest });
     return true;
+  },
+
+  // ==========================================
+  // NOVA FUNÇÃO: ATUALIZAR PERFIL
+  // ==========================================
+  updateUserProfile: async (uid, updatedData) => {
+    try {
+      const q = query(collection(firestoreDB, "users"), where("uid", "==", uid));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const userDocRef = doc(firestoreDB, "users", snap.docs[0].id);
+        await updateDoc(userDocRef, updatedData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erro ao atualizar perfil:", error);
+      return false;
+    }
   },
 
   logoutUser: async () => {

@@ -20,6 +20,7 @@ import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
 import WeatherWidget from './components/WeatherWidget';
 import OffersPage from './pages/OffersPage'; 
+import ProfilePage from './pages/ProfilePage'; // <--- IMPORT DA NOVA PÁGINA
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
@@ -31,6 +32,9 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login'); 
   const [loading, setLoading] = useState(true);
   
+  // ESTADO DO NOVO MENU FLUTUANTE DE PERFIL
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
   const [selectedNews, setSelectedNews] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -107,9 +111,6 @@ export default function App() {
     } else { alert("E-mail ou senha incorretos."); }
   };
 
-  // ===============================================
-  // AÇÃO DO CLIQUE NO BOTÃO "LOGIN COM GOOGLE"
-  // ===============================================
   const handleGoogleLogin = async () => {
     setLoading(true);
     const u = await db.loginWithGoogle();
@@ -120,7 +121,6 @@ export default function App() {
       setIsLoginOpen(false);
       if(u.role === 'admin') setCurrentPage('admin');
     }
-    // Se cancelar, não faz nada (não precisa dar alert)
   };
   
   const handleRegister = async (e) => {
@@ -128,9 +128,7 @@ export default function App() {
     const formData = { name: e.target.name.value, email: e.target.email.value, password: e.target.password.value, phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value, type: 'user', role: 'user', createdAt: new Date().toISOString() };
     if (!validateCPF(formData.cpf)) { alert("CPF inválido!"); return; }
     setLoading(true);
-    
     if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("CPF já cadastrado."); return; }
-    
     try {
       await db.registerUser(formData);
       setLoading(false); alert("Cadastro realizado com sucesso! Faça login para continuar."); setAuthMode('login');
@@ -144,7 +142,7 @@ export default function App() {
   
   const handleLogout = async () => { 
     await db.logoutUser();
-    setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); 
+    setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); setIsUserMenuOpen(false);
   };
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
@@ -170,17 +168,44 @@ export default function App() {
             <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200"><Grid className="text-white" size={20} /></div>
             <div><h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1><p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p></div>
           </div>
+          
           <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
             <Search size={18} className="text-slate-400 mr-2"/><input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
           </div>
+          
           <div className="flex items-center gap-3">
             {user ? (
                <div className="flex items-center gap-3">
                  {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
-                 <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={handleLogout}>
-                   <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
-                   <div className="hidden md:block text-left leading-tight"><p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400">Sair</p></div>
+                 
+                 {/* NOVO MENU FLUTUANTE DO USUÁRIO */}
+                 <div className="relative">
+                   <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
+                     {user.image ? (
+                        <img src={user.image} alt="Perfil" className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
+                     ) : (
+                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
+                     )}
+                     <div className="hidden md:block text-left leading-tight"><p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400">Minha Conta</p></div>
+                   </div>
+                   
+                   {isUserMenuOpen && (
+                     <>
+                       {/* Overlay invisível para fechar o menu ao clicar fora */}
+                       <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)}></div>
+                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2">
+                         <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
+                           <User size={16}/> Meu Perfil
+                         </button>
+                         <div className="h-px bg-slate-100 my-1"></div>
+                         <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
+                           <LogOut size={16}/> Sair do Site
+                         </button>
+                       </div>
+                     </>
+                   )}
                  </div>
+
                </div>
             ) : (
               <div className="flex gap-2">
@@ -224,6 +249,9 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} crud={crud} />}
+          
+          {/* CARREGA A NOVA PÁGINA DE PERFIL AQUI */}
+          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} />}
         </main>
 
         <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
@@ -253,26 +281,11 @@ export default function App() {
             <input name="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <button className="btn-primary w-full bg-indigo-600 hover:bg-indigo-700">Entrar na conta</button>
-            
-            <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            {/* BOTÃO DO GOOGLE DESENHADO */}
+            <div className="relative flex items-center py-4"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
             <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
-              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
-                  <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
-                  <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
-                  <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
-                  <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
-                </g>
-              </svg>
+              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>
               Continuar com Google
             </button>
-
             <div className="text-center text-xs mt-4">Não tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('register')}>Cadastre-se</span></div>
           </form>
         ) : (
@@ -282,25 +295,11 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3"><input name="phone" placeholder="Celular" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="email" type="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/></div>
             <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
             <button className="btn-primary w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Criar Conta</button>
-            
-            <div className="relative flex items-center py-2 mt-2">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-
+            <div className="relative flex items-center py-2 mt-2"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
             <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
-               <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
-                  <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
-                  <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
-                  <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
-                  <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
-                </g>
-              </svg>
-              Inscrever com Google
+               <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>
+               Inscrever com Google
             </button>
-
             <div className="text-center text-xs mt-2">Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span></div>
           </form>
         )}
