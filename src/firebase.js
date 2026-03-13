@@ -1,9 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; 
-import { getAuth } from "firebase/auth"; // <--- NOVO IMPORT DA AUTENTICAÇÃO
+import { getAuth, GoogleAuthProvider } from "firebase/auth"; // <--- NOVO IMPORT AQUI
 
-// Estas são as suas chaves reais. Não mudam!
 const firebaseConfig = {
   apiKey: "AIzaSyDH062yVHGjXFjlxRv0MO7tewxhPwXolks",
   authDomain: "link-ouro-branco.firebaseapp.com",
@@ -17,4 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app); 
-export const auth = getAuth(app); // <--- LIGAMOS A SEGURANÇA (COFRE) AQUI
+export const auth = getAuth(app); 
+// CRIAMOS O MOTOR DO GOOGLE ABAIXO:
+export const googleProvider = new GoogleAuthProvider();

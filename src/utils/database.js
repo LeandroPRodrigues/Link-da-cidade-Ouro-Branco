@@ -1,8 +1,7 @@
-import { db as firestoreDB, auth } from '../firebase';
+import { db as firestoreDB, auth, googleProvider } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, signInWithPopup } from 'firebase/auth';
 
-// VACINA GLOBAL PARA TIMESTAMPS
 const mapList = (snapshot) => {
   return snapshot.docs.map(doc => {
     const data = doc.data();
@@ -37,7 +36,7 @@ export const database = {
   addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
   updateEvent: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "events", id), data); },
   deleteEvent: async (id) => { await deleteDoc(doc(firestoreDB, "events", id)); },
-  cleanOldEvents: async () => { /* Mantido leve para performance */ },
+  cleanOldEvents: async () => { },
 
   getProperties: async () => { const q = await getDocs(collection(firestoreDB, "properties")); return mapList(q); },
   addProperty: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "properties"), data); },
@@ -81,20 +80,13 @@ export const database = {
   },
   addComment: async (colName, itemId, comment) => { await updateDoc(doc(firestoreDB, colName, itemId), { comments: arrayUnion(comment) }); },
 
-  // ==========================================
-  // O NOVO MOTOR DE AUTENTICAÇÃO CRIPTOGRAFADA
-  // ==========================================
   loginUser: async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
-      // Validação blindada do Admin
       if (user.email === 'leandro122005@hotmail.com') {
         return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin' };
       }
-      
-      // Busca os dados públicos do utilizador (Nome, etc)
       const q = query(collection(firestoreDB, "users"), where("uid", "==", user.uid));
       const snap = await getDocs(q);
       if (!snap.empty) {
@@ -107,11 +99,47 @@ export const database = {
     }
   },
 
+  // ==========================================
+  // NOVA FUNÇÃO: LOGIN COM GOOGLE
+  // ==========================================
+  loginWithGoogle: async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      if (user.email === 'leandro122005@hotmail.com') {
+        return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin' };
+      }
+
+      // Verifica se a conta já existe no nosso banco de dados
+      const q = query(collection(firestoreDB, "users"), where("uid", "==", user.uid));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        // Se for o primeiro acesso, cria um perfil automático
+        const newUser = { 
+          uid: user.uid, 
+          name: user.displayName || 'Usuário', 
+          email: user.email, 
+          type: 'user', 
+          role: 'user', 
+          createdAt: new Date().toISOString() 
+        };
+        await addDoc(collection(firestoreDB, "users"), newUser);
+        return { id: user.uid, ...newUser };
+      } else {
+        // Se já existir, apenas retorna os dados logados
+        return { id: user.uid, ...snap.docs[0].data(), role: 'user' };
+      }
+    } catch (error) {
+      console.error("Erro no login com Google:", error);
+      return null;
+    }
+  },
+
   registerUser: async (userData) => {
     const { email, password, ...rest } = userData;
-    // 1. Cria conta segura no Google Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // 2. Salva o perfil público no banco de dados (SEM GRAVAR A SENHA)
     await addDoc(collection(firestoreDB, "users"), { uid: userCredential.user.uid, email, ...rest });
     return true;
   },
