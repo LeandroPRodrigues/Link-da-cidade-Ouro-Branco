@@ -97,11 +97,17 @@ export default function App() {
   const handleAddPropertyClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
   const handleAddVehicleClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
   
+  // ==============================================================
+  // PASSO 4: NOVAS FUNÇÕES DE LOGIN/REGISTO SEGURAS COM FIREBASE
+  // ==============================================================
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true);
-    const u = await db.findUser(e.target.email.value, e.target.password.value);
+    const u = await db.loginUser(e.target.email.value, e.target.password.value);
     setLoading(false);
-    if(u) { setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } else { alert("E-mail ou senha incorretos."); }
+    if(u) { 
+      setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); 
+      if(u.role === 'admin') setCurrentPage('admin'); 
+    } else { alert("E-mail ou senha incorretos."); }
   };
   
   const handleRegister = async (e) => {
@@ -109,12 +115,25 @@ export default function App() {
     const formData = { name: e.target.name.value, email: e.target.email.value, password: e.target.password.value, phone: e.target.phone.value, cpf: e.target.cpf.value, birthDate: e.target.birthDate.value, type: 'user', role: 'user', createdAt: new Date().toISOString() };
     if (!validateCPF(formData.cpf)) { alert("CPF inválido!"); return; }
     setLoading(true);
+    
     if (await db.checkCpfExists(formData.cpf)) { setLoading(false); alert("CPF já cadastrado."); return; }
-    if (await db.checkEmailExists(formData.email)) { setLoading(false); alert("E-mail já cadastrado."); return; }
-    await db.saveUser(formData); setLoading(false); alert("Cadastro realizado com sucesso!"); setAuthMode('login');
+    
+    try {
+      await db.registerUser(formData);
+      setLoading(false); alert("Cadastro realizado com sucesso! Faça login para continuar."); setAuthMode('login');
+    } catch (err) {
+      setLoading(false);
+      if (err.code === 'auth/email-already-in-use') alert("E-mail já cadastrado no sistema.");
+      else if (err.code === 'auth/weak-password') alert("A senha deve ter no mínimo 6 caracteres.");
+      else alert("Erro ao criar conta. Verifique os dados.");
+    }
   };
   
-  const handleLogout = () => { setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); };
+  const handleLogout = async () => { 
+    await db.logoutUser();
+    setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); 
+  };
+  // ==============================================================
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
     <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
@@ -132,6 +151,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
+      
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
         <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
@@ -161,6 +181,7 @@ export default function App() {
       </header>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-64px)]">
+        
         <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
@@ -189,8 +210,6 @@ export default function App() {
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
           {currentPage === 'vehicles' && <VehiclesPage vehiclesData={vehiclesData} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
-          
-          {/* === A MUDANÇA: ADICIONADO crud={crud} AQUI === */}
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
