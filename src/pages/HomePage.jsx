@@ -22,7 +22,7 @@ const AdsCarousel = ({ ads }) => {
   if (safeAds.length === 0) return null;
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-8 relative group bg-slate-100">
+    <div className="w-full overflow-hidden rounded-2xl shadow-sm mb-6 relative group bg-slate-100">
       <div 
         className="flex transition-transform duration-700 ease-in-out h-32 md:h-48" 
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -56,18 +56,17 @@ const AdsCarousel = ({ ads }) => {
   );
 };
 
-// --- COMPONENTE MINI CARROSSEL DE OFERTAS (ATUALIZADO COM SETAS E PREÇOS) ---
+// --- COMPONENTE MINI CARROSSEL DE OFERTAS ---
 const MiniOffersCarousel = ({ offers, navigate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Pega as últimas 5 ofertas para o destaque
   const safeOffers = (offers || []).filter(o => o.status !== 'inactive').slice(0, 5);
 
   useEffect(() => {
     if (safeOffers.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % safeOffers.length);
-    }, 5000); // Aumentei um pouco para 5s para dar tempo de ler os preços
+    }, 5000);
     return () => clearInterval(interval);
   }, [safeOffers.length]);
 
@@ -113,11 +112,9 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
                 className="w-full h-full shrink-0 relative cursor-pointer bg-white" 
                 onClick={() => navigate('offers')}
               >
-                {/* Imagem com object-contain para não cortar os produtos e com espaço na base para o texto */}
                 <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="w-full h-full object-contain p-2 pb-16" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
                 
-                {/* Selo de Desconto */}
                 {hasDiscount && (
                   <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider shadow-sm z-10">
                     -{Math.round(((offer.originalPrice - offer.price) / offer.originalPrice) * 100)}%
@@ -144,7 +141,6 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
           })}
         </div>
         
-        {/* Setas de Navegação */}
         {safeOffers.length > 1 && (
           <>
             <button 
@@ -162,7 +158,6 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
           </>
         )}
 
-        {/* Indicadores (Bolinhas) */}
         {safeOffers.length > 1 && (
           <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
             {safeOffers.map((_, idx) => (
@@ -223,7 +218,7 @@ const HeroItem = ({ item, user, onNewsClick, isMain }) => {
   );
 };
 
-// --- COMPONENTE DE DESTAQUES ESTILO GLOBO ESPORTE ---
+// --- COMPONENTE DE DESTAQUES ---
 const HeroNewsGrid = ({ news, user, onNewsClick }) => {
   if (!news || news.length === 0) return null;
   const mainNews = news[0];
@@ -363,7 +358,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, eventsData, adsData, offersData, user }) {
+export default function HomePage({ navigate, newsData, onNewsClick, eventsData, offersData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -392,10 +387,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 2. PUBLICIDADE */}
-      <AdsCarousel ads={adsData} />
-
-      {/* 3. DESTAQUES ESTILO GLOBO ESPORTE */}
+      {/* 3. DESTAQUES */}
       {topNews.length > 0 && (
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
@@ -440,5 +432,5 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   );
 }
 
-// Exportamos o MiniOffersCarousel para poder ser usado na barra lateral do App.jsx
-export { MiniOffersCarousel };
+// Exportamos também o AdsCarousel para ser usado de forma global no App.jsx
+export { MiniOffersCarousel, AdsCarousel };

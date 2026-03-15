@@ -4,7 +4,7 @@ import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
 
-import HomePage, { MiniOffersCarousel } from './pages/HomePage';
+import HomePage, { MiniOffersCarousel, AdsCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import RealEstatePage from './pages/RealEstatePage';
@@ -50,9 +50,6 @@ export default function App() {
   const [adsData, setAdsData] = useState([]);
   const [offersData, setOffersData] = useState([]); 
 
-  // Estado para armazenar a publicidade global exibida no topo das páginas
-  const [globalAd, setGlobalAd] = useState(null);
-
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
@@ -72,13 +69,6 @@ export default function App() {
     if (savedUser) { setUser(JSON.parse(savedUser)); }
     loadAllData(); 
   }, []);
-
-  // Lógica para alternar a publicidade sempre que a página muda
-  useEffect(() => {
-    if (adsData && adsData.length > 0) {
-      setGlobalAd(adsData[Math.floor(Math.random() * adsData.length)]);
-    }
-  }, [adsData, currentPage]);
   
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
@@ -242,30 +232,12 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           
-          {/* BANNER DE PUBLICIDADE GLOBAL C/ TÉCNICA "BLUR BACKGROUND" */}
-          {currentPage !== 'home' && globalAd && (
-            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-md border border-slate-200 animate-in fade-in">
-              {globalAd.link ? (
-                <a href={globalAd.link} target="_blank" rel="noopener noreferrer" className="block w-full h-28 md:h-40 relative group bg-slate-900 overflow-hidden">
-                   {/* Fundo Desfocado (Cobre 100% sem barras brancas) */}
-                   <img src={globalAd.image} className="absolute inset-0 w-full h-full object-cover opacity-60 blur-2xl scale-125" alt="Fundo" />
-                   {/* Imagem Principal (Mantém as proporções reais sem cortes) */}
-                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="relative z-10 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
-                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-20 shadow-sm">Publicidade</div>
-                </a>
-              ) : (
-                <div className="block w-full h-28 md:h-40 relative group bg-slate-900 overflow-hidden">
-                   {/* Fundo Desfocado (Cobre 100% sem barras brancas) */}
-                   <img src={globalAd.image} className="absolute inset-0 w-full h-full object-cover opacity-60 blur-2xl scale-125" alt="Fundo" />
-                   {/* Imagem Principal (Mantém as proporções reais sem cortes) */}
-                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="relative z-10 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
-                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-20 shadow-sm">Publicidade</div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* CARROSSEL GLOBAL DE PUBLICIDADE EXATAMENTE COMO NA HOME */}
+          <div className="px-4 md:px-0">
+             <AdsCarousel ads={adsData} />
+          </div>
 
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'offers' && <OffersPage offersData={offersData} />}
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
