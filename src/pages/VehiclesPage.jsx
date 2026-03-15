@@ -7,13 +7,13 @@ import VehicleForm from '../components/VehicleForm';
 export default function VehiclesPage({ vehiclesData, onVehicleClick, user, onCrud }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterType, setFilterType] = useState('Todos'); // Todos, Carros, Motos (Simulado)
+  const [filterType, setFilterType] = useState('Todos'); 
 
-  // Filtra os veículos
+  // Filtra os veículos (Agora o status será lido corretamente)
   const filteredVehicles = vehiclesData.filter(v => {
-    const matchesSearch = v.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          v.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          v.brand.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = v.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          v.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          v.brand?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch && v.status === 'active';
   });
 
@@ -22,7 +22,8 @@ export default function VehiclesPage({ vehiclesData, onVehicleClick, user, onCru
     
     // Regra: Usuário comum só pode ter 1 anúncio ativo
     if (user.role !== 'admin') {
-       const myAds = vehiclesData.filter(v => v.userId === user.id && v.status === 'active');
+       // Correção aqui: Verificar o ownerId em vez de userId
+       const myAds = vehiclesData.filter(v => v.ownerId === user.id && v.status === 'active');
        if (myAds.length > 0) return alert("Usuários gratuitos só podem ter 1 anúncio ativo por vez.");
     }
     
@@ -78,9 +79,9 @@ export default function VehiclesPage({ vehiclesData, onVehicleClick, user, onCru
             key={vehicle.id} 
             vehicle={vehicle} 
             onClick={() => onVehicleClick(vehicle)}
-            isOwner={user?.id === vehicle.userId}
+            isOwner={user?.id === vehicle.ownerId} // Correção aqui também
             isAdmin={user?.role === 'admin'}
-            onEdit={() => alert("Para editar, acesse o painel Admin.")} // Simplificação para view pública
+            onEdit={() => alert("Para editar, acesse o painel Admin.")} 
             onDelete={() => alert("Para excluir, acesse o painel Admin.")} 
           />
         ))}
