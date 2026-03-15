@@ -118,7 +118,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     if (payload.id) {
       // ATUALIZAR (EDITAR)
       if (activeTab === 'offers') crud.updateOffer(payload);
-      if (activeTab === 'ads') crud.updateAd(payload); // <--- ATUALIZA A PUBLICIDADE
+      if (activeTab === 'ads') crud.updateAd(payload);
       if (activeTab === 'news') crud.updateNews(payload);
       if (activeTab === 'events') crud.updateEvent(payload);
       if (activeTab === 'real_estate') crud.updateProperty(payload);
@@ -128,7 +128,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       // ADICIONAR NOVO
       payload.date = payload.date || new Date().toISOString();
       if (activeTab === 'offers') crud.addOffer(payload);
-      if (activeTab === 'ads') crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()}); // <--- ADICIONA NOVA PUBLICIDADE
+      if (activeTab === 'ads') crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()});
       if (activeTab === 'news') crud.addNews(payload);
       if (activeTab === 'events') crud.addEvent(payload);
       if (activeTab === 'real_estate') crud.addProperty({...payload, status: 'active', createdAt: new Date().toISOString()});
@@ -222,7 +222,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       <div className="flex overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-hide">
         {[
           { id: 'offers', label: 'Shopping / Ofertas' },
-          { id: 'ads', label: 'Publicidade (Banners)' }, // <--- ABA NOVA AQUI
+          { id: 'ads', label: 'Publicidade (Banners)' },
           { id: 'news', label: 'Notícias' },
           { id: 'events', label: 'Eventos' },
           { id: 'real_estate', label: 'Imóveis' },
@@ -420,11 +420,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               /* PARA AS OUTRAS ABAS, USA O FORMULÁRIO GENÉRICO */
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
-                {/* FORMULÁRIO DE PUBLICIDADE (NOVO) */}
+                {/* FORMULÁRIO DE PUBLICIDADE (NOVO E AJUSTADO) */}
                 {activeTab === 'ads' && (
                   <>
                     <FormField label="Título da Campanha (Empresa/Anunciante)" field="title" placeholder="Ex: Ótica Visual" required/>
-                    <FormField label="Link de Destino" field="link" placeholder="Para onde vai ao clicar? (ex: WhatsApp, Instagram)" required/>
+                    <FormField label="Link de Destino (Opcional)" field="link" placeholder="Para onde vai ao clicar? (ex: WhatsApp, Instagram)" />
                     <ImageField label="Banner (Imagem formato horizontal recomendada)" required/>
                   </>
                 )}

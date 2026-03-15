@@ -246,11 +246,20 @@ export default function App() {
           
           {/* BANNER DE PUBLICIDADE GLOBAL (Oculto apenas na Home, onde já existe o destaque) */}
           {currentPage !== 'home' && globalAd && (
-            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 animate-in fade-in">
-              <a href={globalAd.link || '#'} target="_blank" rel="noopener noreferrer" className="block w-full h-24 md:h-32 relative group">
-                 <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
-                 <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm">Publicidade</div>
-              </a>
+            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white animate-in fade-in flex justify-center items-center">
+              {globalAd.link ? (
+                <a href={globalAd.link} target="_blank" rel="noopener noreferrer" className="block w-full h-24 md:h-32 relative group flex justify-center items-center bg-slate-50">
+                   {/* Alterado para object-contain para caber perfeitamente sem cortes */}
+                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
+                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10">Publicidade</div>
+                </a>
+              ) : (
+                <div className="block w-full h-24 md:h-32 relative group flex justify-center items-center bg-slate-50">
+                   {/* Versão sem link (não clicável) também com object-contain */}
+                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
+                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10">Publicidade</div>
+                </div>
+              )}
             </div>
           )}
 
