@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
+import VehicleForm from '../components/VehicleForm'; // <--- IMPORTAMOS O FORMULÁRIO AVANÇADO AQUI
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -98,9 +99,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
   const openEditModal = (item = {}) => {
     if (activeTab === 'news') setNewsBlocks(item.content || []);
-    // Para Veículos e Imóveis, puxar a imagem do array de fotos
+    // Para Veículos e Imóveis, garantimos que a foto de capa e o array de fotos estão prontos
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
-    setEditingItem({ ...item, image: imageValue });
+    const photosValue = item.photos || (item.image ? [item.image] : []);
+    setEditingItem({ ...item, image: imageValue, photos: photosValue });
     setModalOpen(true);
   };
 
@@ -110,7 +112,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     
     // Tratamentos específicos antes de salvar
     if (activeTab === 'news') payload.content = newsBlocks;
-    if (activeTab === 'real_estate' || activeTab === 'vehicles') {
+    if (activeTab === 'real_estate') {
       payload.photos = payload.image ? [payload.image] : [];
     }
 
@@ -121,7 +123,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       if (activeTab === 'events') crud.updateEvent(payload);
       if (activeTab === 'real_estate') crud.updateProperty(payload);
       if (activeTab === 'jobs') crud.updateJob(payload);
-      if (activeTab === 'vehicles') crud.updateVehicle(payload);
+      // Nota: Veículos são tratados pelo componente próprio abaixo
       if (activeTab === 'guide') crud.updateGuideItem(payload);
     } else {
       // ADICIONAR NOVO
@@ -131,7 +133,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       if (activeTab === 'events') crud.addEvent(payload);
       if (activeTab === 'real_estate') crud.addProperty({...payload, status: 'active', createdAt: new Date().toISOString()});
       if (activeTab === 'jobs') crud.addJob({...payload, createdAt: new Date().toISOString()});
-      if (activeTab === 'vehicles') crud.addVehicle({...payload, status: 'active', createdAt: new Date().toISOString()});
+      // Nota: Veículos são tratados pelo componente próprio abaixo
       if (activeTab === 'guide') crud.addGuideItem({...payload, status: 'active'});
     }
     
@@ -140,8 +142,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setNewsBlocks([]);
   };
 
-  // Componentes Inteligentes para o Formulário do Modal
-  const FormField = ({ label, field, type="text", required=false, options }) => {
+  // Componentes Inteligentes para o Formulário Genérico
+  const FormField = ({ label, field, type="text", required=false, options, placeholder }) => {
     const val = editingItem?.[field] || '';
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
     return (
@@ -153,9 +155,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             {options?.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
           </select>
         ) : type === 'textarea' ? (
-          <textarea value={val} onChange={onChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" rows="3" required={required}/>
+          <textarea value={val} onChange={onChange} placeholder={placeholder} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" rows="3" required={required}/>
         ) : (
-          <input type={type} value={val} onChange={onChange} step={type === 'number' ? '0.01' : undefined} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required={required}/>
+          <input type={type} value={val} onChange={onChange} placeholder={placeholder} step={type === 'number' ? '0.01' : undefined} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required={required}/>
         )}
       </div>
     );
@@ -372,7 +374,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL DE CADASTRO E EDIÇÃO (O "CANIVETE SUÍÇO") */}
+      {/* MODAL DE CADASTRO E EDIÇÃO */}
       {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
@@ -382,163 +384,168 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               {editingItem?.id ? 'Editar Informações' : 'Novo Cadastro'}
             </h2>
             
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              
-              {/* FORMULÁRIO DE OFERTAS */}
-              {activeTab === 'offers' && (
-                <>
-                  <FormField label="Categoria (Subgrupo)" field="category" type="select" options={[
-                    {value: 'bestsellers', label: 'Ofertas do dia'}, {value: 'celulares', label: 'Celulares'}, {value: 'tvs', label: 'TVs'}, {value: 'informatica', label: 'Informática'}
-                  ]} required/>
-                  <FormField label="Título" field="title" required/>
-                  <div className="grid grid-cols-2 gap-4">
-                     <FormField label="Preço Atual" field="price" type="number" required/>
-                     <FormField label="Preço Antigo" field="originalPrice" type="number"/>
-                  </div>
-                  <ImageField />
-                  <FormField label="Link de Afiliado" field="link" required/>
-                </>
-              )}
-
-              {/* FORMULÁRIO DE EVENTOS */}
-              {activeTab === 'events' && (
-                <>
-                  <FormField label="Título do Evento" field="title" required/>
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField label="Data" field="date" type="date" required/>
-                    <FormField label="Hora" field="time" type="time" required/>
-                    <FormField label="Categoria" field="category" required/>
-                  </div>
-                  <FormField label="Local do Evento" field="location" required/>
-                  <ImageField />
-                  <FormField label="Descrição" field="description" type="textarea"/>
-                  <FormField label="Link para Ingressos (Opcional)" field="link" />
-                </>
-              )}
-
-              {/* FORMULÁRIO DE IMÓVEIS */}
-              {activeTab === 'real_estate' && (
-                <>
-                  <FormField label="Título do Anúncio" field="title" required/>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Tipo de Negócio" field="type" type="select" options={['Venda', 'Aluguel']} required/>
-                    <FormField label="Preço (R$)" field="price" type="number" required/>
-                  </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    <FormField label="Quartos" field="bedrooms" type="number"/>
-                    <FormField label="Banheiros" field="bathrooms" type="number"/>
-                    <FormField label="Vagas" field="garage" type="number"/>
-                    <FormField label="Área (m²)" field="area" type="number"/>
-                  </div>
-                  <FormField label="Endereço (Bairro / Rua)" field="address" required/>
-                  <ImageField label="Foto Principal (Capa)"/>
-                </>
-              )}
-
-              {/* FORMULÁRIO DE VAGAS */}
-              {activeTab === 'jobs' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Cargo / Título" field="title" required/>
-                    <FormField label="Empresa" field="company" required/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Categoria" field="category" type="select" options={["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"]} required/>
-                    <FormField label="Tipo de Vaga" field="type" type="select" options={['CLT', 'Estágio', 'PJ', 'Temporário']} required/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Salário" field="salary" placeholder="Ex: R$ 1.500,00 ou A combinar"/>
-                    <FormField label="Localização / Bairro" field="location" required/>
-                  </div>
-                  <FormField label="Descrição da Vaga" field="description" type="textarea" required/>
-                  <FormField label="Requisitos" field="requirements" type="textarea"/>
-                  <FormField label="Contato para Envio de Currículo" field="contact" required placeholder="E-mail ou WhatsApp"/>
-                </>
-              )}
-
-              {/* FORMULÁRIO DE VEÍCULOS */}
-              {activeTab === 'vehicles' && (
-                <>
-                  <FormField label="Título Breve" field="title" placeholder="Ex: Gol 1.0 Completo" required/>
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField label="Marca" field="brand" required/>
-                    <FormField label="Modelo" field="model" required/>
-                    <FormField label="Ano" field="year" type="number" required/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Preço (R$)" field="price" type="number" required/>
-                    <FormField label="Quilometragem" field="km" type="number" required/>
-                  </div>
-                  <FormField label="Descrição do Veículo" field="description" type="textarea"/>
-                  <ImageField label="Foto Principal (Capa)"/>
-                </>
-              )}
-
-              {/* FORMULÁRIO DO GUIA COMERCIAL */}
-              {activeTab === 'guide' && (
-                <>
-                  <FormField label="Nome do Estabelecimento" field="name" required/>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Categoria" field="category" type="select" options={["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"]} required/>
-                    <FormField label="Telefone / Celular" field="phone"/>
-                  </div>
-                  <FormField label="Endereço Completo" field="address"/>
-                  <FormField label="Breve Descrição (Opcional)" field="description" type="textarea"/>
-                  <ImageField label="Logotipo ou Foto da Fachada"/>
-                </>
-              )}
-
-              {/* FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER ESPECIAL) */}
-              {activeTab === 'news' && (
-                <div className="space-y-6">
-                  <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
-                    <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
-                    <FormField label="Título Principal" field="title" required/>
-                    <FormField label="Linha Fina (Resumo itálico)" field="summary" type="textarea" required/>
-                    <ImageField label="Imagem de Capa"/>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Categoria" field="category" required/>
-                      <FormField label="Autor / Fonte" field="author" required/>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-slate-700 mb-3">Corpo da Matéria</h3>
-                    <div className="space-y-4 mb-4">
-                      {newsBlocks.map((block, index) => (
-                        <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl">
-                          <div className="flex flex-col gap-1 mt-1">
-                            <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
-                            <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
-                            <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
-                          </div>
-                          <div className="flex-1 w-full">
-                            {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
-                            {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
-                            {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
-                      <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> Parágrafo</button>
-                      <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> Subtítulo</button>
-                      <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> Imagem</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* BOTÕES GLOBAIS DE SALVAR/CANCELAR */}
-              <div className="flex gap-3 pt-6 border-t border-slate-100 mt-4">
-                <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">
-                  {editingItem?.id ? 'Guardar Alterações' : 'Publicar Agora'}
-                </button>
-                <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors">
-                  Cancelar
+            {/* SE A ABA FOR VEÍCULOS, RENDERIZA O NOSSO FORMULÁRIO AVANÇADO */}
+            {activeTab === 'vehicles' ? (
+              <div className="mt-4">
+                <VehicleForm 
+                  user={{ id: 'admin', name: 'Administrador', email: 'admin@linkdacidade.com', phone: '', role: 'admin' }} 
+                  initialData={editingItem} 
+                  onSuccess={(formData) => {
+                    if (editingItem && editingItem.id) {
+                      crud.updateVehicle(formData);
+                    } else {
+                      crud.addVehicle(formData);
+                    }
+                    setModalOpen(false);
+                    setEditingItem(null);
+                  }} 
+                />
+                <button onClick={() => setModalOpen(false)} className="w-full mt-3 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
+                  Cancelar e Voltar
                 </button>
               </div>
-            </form>
+            ) : (
+              /* PARA AS OUTRAS ABAS, USA O FORMULÁRIO GENÉRICO */
+              <form onSubmit={handleFormSubmit} className="space-y-4">
+                
+                {/* FORMULÁRIO DE OFERTAS */}
+                {activeTab === 'offers' && (
+                  <>
+                    <FormField label="Categoria (Subgrupo)" field="category" type="select" options={[
+                      {value: 'bestsellers', label: 'Ofertas do dia'}, {value: 'celulares', label: 'Celulares'}, {value: 'tvs', label: 'TVs'}, {value: 'informatica', label: 'Informática'}
+                    ]} required/>
+                    <FormField label="Título" field="title" required/>
+                    <div className="grid grid-cols-2 gap-4">
+                       <FormField label="Preço Atual" field="price" type="number" required/>
+                       <FormField label="Preço Antigo" field="originalPrice" type="number"/>
+                    </div>
+                    <ImageField />
+                    <FormField label="Link de Afiliado" field="link" required/>
+                  </>
+                )}
+
+                {/* FORMULÁRIO DE EVENTOS */}
+                {activeTab === 'events' && (
+                  <>
+                    <FormField label="Título do Evento" field="title" required/>
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField label="Data" field="date" type="date" required/>
+                      <FormField label="Hora" field="time" type="time" required/>
+                      <FormField label="Categoria" field="category" required/>
+                    </div>
+                    <FormField label="Local do Evento" field="location" required/>
+                    <ImageField />
+                    <FormField label="Descrição" field="description" type="textarea"/>
+                    <FormField label="Link para Ingressos (Opcional)" field="link" />
+                  </>
+                )}
+
+                {/* FORMULÁRIO DE IMÓVEIS */}
+                {activeTab === 'real_estate' && (
+                  <>
+                    <FormField label="Título do Anúncio" field="title" required/>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Tipo de Negócio" field="type" type="select" options={['Venda', 'Aluguel']} required/>
+                      <FormField label="Preço (R$)" field="price" type="number" required/>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <FormField label="Quartos" field="bedrooms" type="number"/>
+                      <FormField label="Banheiros" field="bathrooms" type="number"/>
+                      <FormField label="Vagas" field="garage" type="number"/>
+                      <FormField label="Área (m²)" field="area" type="number"/>
+                    </div>
+                    <FormField label="Endereço (Bairro / Rua)" field="address" required/>
+                    <ImageField label="Foto Principal (Capa)"/>
+                  </>
+                )}
+
+                {/* FORMULÁRIO DE VAGAS */}
+                {activeTab === 'jobs' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Cargo / Título" field="title" required/>
+                      <FormField label="Empresa" field="company" required/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Categoria" field="category" type="select" options={["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"]} required/>
+                      <FormField label="Tipo de Vaga" field="type" type="select" options={['CLT', 'Estágio', 'PJ', 'Temporário']} required/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Salário" field="salary" placeholder="Ex: R$ 1.500,00 ou A combinar"/>
+                      <FormField label="Localização / Bairro" field="location" required/>
+                    </div>
+                    <FormField label="Descrição da Vaga" field="description" type="textarea" required/>
+                    <FormField label="Requisitos" field="requirements" type="textarea"/>
+                    <FormField label="Contato para Envio de Currículo" field="contact" required placeholder="E-mail ou WhatsApp"/>
+                  </>
+                )}
+
+                {/* FORMULÁRIO DO GUIA COMERCIAL */}
+                {activeTab === 'guide' && (
+                  <>
+                    <FormField label="Nome do Estabelecimento" field="name" required/>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField label="Categoria" field="category" type="select" options={["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"]} required/>
+                      <FormField label="Telefone / Celular" field="phone"/>
+                    </div>
+                    <FormField label="Endereço Completo" field="address"/>
+                    <FormField label="Breve Descrição (Opcional)" field="description" type="textarea"/>
+                    <ImageField label="Logotipo ou Foto da Fachada"/>
+                  </>
+                )}
+
+                {/* FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER ESPECIAL) */}
+                {activeTab === 'news' && (
+                  <div className="space-y-6">
+                    <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
+                      <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
+                      <FormField label="Título Principal" field="title" required/>
+                      <FormField label="Linha Fina (Resumo itálico)" field="summary" type="textarea" required/>
+                      <ImageField label="Imagem de Capa"/>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField label="Categoria" field="category" required/>
+                        <FormField label="Autor / Fonte" field="author" required/>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-slate-700 mb-3">Corpo da Matéria</h3>
+                      <div className="space-y-4 mb-4">
+                        {newsBlocks.map((block, index) => (
+                          <div key={block.id} className="flex gap-2 items-start bg-slate-50 p-3 border border-slate-200 rounded-xl">
+                            <div className="flex flex-col gap-1 mt-1">
+                              <button type="button" onClick={() => moveNewsBlock(index, 'up')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowUp size={16}/></button>
+                              <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
+                              <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
+                            </div>
+                            <div className="flex-1 w-full">
+                              {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
+                              {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
+                              {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
+                        <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> Parágrafo</button>
+                        <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> Subtítulo</button>
+                        <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> Imagem</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* BOTÕES GLOBAIS DE SALVAR/CANCELAR PARA AS OUTRAS ABAS */}
+                <div className="flex gap-3 pt-6 border-t border-slate-100 mt-4">
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">
+                    {editingItem?.id ? 'Guardar Alterações' : 'Publicar Agora'}
+                  </button>
+                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
 
           </div>
         </div>
