@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { uploadFile } from '../utils/uploadHelper';
 import { Loader, UploadCloud, X, CheckSquare } from 'lucide-react';
 
-// Banco de dados expandido com as marcas e modelos mais populares no Brasil
 const CAR_DATABASE = {
   "Chevrolet": ["Agile", "Astra", "Blazer", "Camaro", "Captiva", "Celta", "Chevette", "Classic", "Cobalt", "Corsa", "Cruze", "Equinox", "Kadett", "Meriva", "Montana", "Monza", "Onix", "Opala", "Prisma", "S10", "Spin", "Tracker", "Trailblazer", "Vectra", "Zafira"],
   "Fiat": ["Argo", "Bravo", "Cronos", "Doblo", "Ducato", "Fastback", "Fiorino", "Freemont", "Idea", "Linea", "Marea", "Mobi", "Palio", "Punto", "Pulse", "Siena", "Stilo", "Strada", "Tempra", "Titano", "Toro", "Uno"],
@@ -31,10 +30,8 @@ const CAR_DATABASE = {
   "Chery / CAOA": ["Arrizo 6", "Celer", "iCar", "QQ", "Tiggo 2", "Tiggo 3X", "Tiggo 5X", "Tiggo 7", "Tiggo 8"]
 };
 
-// Organiza as marcas por ordem alfabética
 const BRANDS = Object.keys(CAR_DATABASE).sort();
 
-// Lista completa de Opcionais e Acessórios
 const VEHICLE_FEATURES = [
   "Ar Condicionado", "Direção Hidráulica", "Direção Elétrica", "Vidros Elétricos",
   "Travas Elétricas", "Alarme", "Kit Multimídia", "Bancos de Couro", 
@@ -45,15 +42,15 @@ const VEHICLE_FEATURES = [
   "Câmbio Borboleta", "Partida Start/Stop", "Único Dono", "IPVA Pago"
 ];
 
-export default function VehicleForm({ user, onSuccess }) {
+// O form agora aceita "initialData" para carregar dados na edição (Admin)
+export default function VehicleForm({ user, onSuccess, initialData = null }) {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState([]);
-  const [selectedBrand, setSelectedBrand] = useState('');
   
-  // Estado para armazenar os opcionais marcados
-  const [selectedFeatures, setSelectedFeatures] = useState([]);
+  // Se for edição, puxa a marca e os opcionais antigos. Se for novo, fica vazio.
+  const [selectedBrand, setSelectedBrand] = useState(initialData?.brand || '');
+  const [selectedFeatures, setSelectedFeatures] = useState(initialData?.features || []);
 
-  // Função para marcar/desmarcar opcionais
   const toggleFeature = (feature) => {
     if (selectedFeatures.includes(feature)) {
       setSelectedFeatures(selectedFeatures.filter(f => f !== feature));
@@ -67,13 +64,18 @@ export default function VehicleForm({ user, onSuccess }) {
     setLoading(true);
 
     try {
-      const photoUrls = [];
+      let photoUrls = initialData?.photos || []; // Mantém fotos antigas se for edição
+      
+      // Adiciona novas fotos, se houver
       if (files.length > 0) {
+        const newPhotoUrls = [];
         for (const file of files) {
           const url = await uploadFile(file, 'vehicles');
-          photoUrls.push(url);
+          newPhotoUrls.push(url);
         }
-      } else {
+        // Se já tinha fotos e enviou novas, substitui ou junta. Vamos substituir se enviar novas.
+        photoUrls = newPhotoUrls; 
+      } else if (photoUrls.length === 0) {
         photoUrls.push('https://placehold.co/600x400?text=Sem+Foto');
       }
 
@@ -87,20 +89,20 @@ export default function VehicleForm({ user, onSuccess }) {
         fuel: e.target.fuel.value,
         transmission: e.target.transmission.value, 
         plateEnd: e.target.plateEnd.value, 
-        
-        // Novos campos adicionados
         phone: e.target.phone.value,
         email: e.target.email.value,
         description: e.target.description.value,
-        features: selectedFeatures, // Array com todos os opcionais marcados
-        
+        features: selectedFeatures,
         photos: photoUrls,
-        ownerId: user.id,
-        ownerName: user.name,
-        status: 'active', 
-        createdAt: new Date().toISOString()
+        ownerId: initialData?.ownerId || user.id,
+        ownerName: initialData?.ownerName || user.name,
+        status: initialData?.status || 'active', 
+        createdAt: initialData?.createdAt || new Date().toISOString()
       };
       
+      // Se estamos editando, passamos o ID original junto
+      if (initialData?.id) formData.id = initialData.id;
+
       onSuccess(formData);
     } catch (error) {
       console.error(error);
@@ -128,31 +130,28 @@ export default function VehicleForm({ user, onSuccess }) {
             required
           >
             <option value="" disabled>Selecione a Marca...</option>
-            {BRANDS.map(brand => (
-              <option key={brand} value={brand}>{brand}</option>
-            ))}
+            {BRANDS.map(brand => <option key={brand} value={brand}>{brand}</option>)}
           </select>
           
           <select 
             name="model" 
             disabled={!selectedBrand}
+            defaultValue={initialData?.model || ''}
             className="input w-full bg-white font-medium disabled:bg-slate-100 disabled:text-slate-400" 
             required
           >
-            <option value="" disabled selected>Selecione o Modelo...</option>
-            {availableModels.map(model => (
-              <option key={model} value={model}>{model}</option>
-            ))}
+            <option value="" disabled>Selecione o Modelo...</option>
+            {availableModels.map(model => <option key={model} value={model}>{model}</option>)}
           </select>
         </div>
         
-        <input name="title" placeholder="Título Breve (ex: Lindo carro, Único dono, Completo)" className="input w-full bg-white font-bold" required/>
+        <input name="title" defaultValue={initialData?.title || ''} placeholder="Título Breve (ex: Lindo carro, Único dono, Completo)" className="input w-full bg-white font-bold" required/>
 
         <div className="grid grid-cols-3 gap-3">
-          <input name="year" type="number" placeholder="Ano (ex: 2018)" className="input w-full bg-white" required/>
-          <input name="km" type="number" placeholder="KM" className="input w-full bg-white" required/>
-          <select name="fuel" className="input w-full bg-white" required>
-             <option value="" disabled selected>Combustível</option>
+          <input name="year" type="number" defaultValue={initialData?.year || ''} placeholder="Ano" className="input w-full bg-white" required/>
+          <input name="km" type="number" defaultValue={initialData?.km || ''} placeholder="KM" className="input w-full bg-white" required/>
+          <select name="fuel" defaultValue={initialData?.fuel || ''} className="input w-full bg-white" required>
+             <option value="" disabled>Combustível</option>
              <option value="Flex">Flex</option>
              <option value="Gasolina">Gasolina</option>
              <option value="Diesel">Diesel</option>
@@ -162,12 +161,12 @@ export default function VehicleForm({ user, onSuccess }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <select name="transmission" className="input w-full bg-white" required>
-             <option value="" disabled selected>Câmbio...</option>
+          <select name="transmission" defaultValue={initialData?.transmission || ''} className="input w-full bg-white" required>
+             <option value="" disabled>Câmbio...</option>
              <option value="Manual">Manual</option>
              <option value="Automático">Automático</option>
           </select>
-          <input name="plateEnd" type="number" placeholder="Final da Placa (ex: 9)" min="0" max="9" className="input w-full bg-white" required/>
+          <input name="plateEnd" type="number" defaultValue={initialData?.plateEnd || ''} placeholder="Final da Placa" min="0" max="9" className="input w-full bg-white" required/>
         </div>
       </div>
 
@@ -175,7 +174,7 @@ export default function VehicleForm({ user, onSuccess }) {
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço de Venda (R$)</label>
-          <input name="price" type="number" placeholder="Ex: 45000" className="input w-full text-lg font-bold text-green-700" required/>
+          <input name="price" type="number" defaultValue={initialData?.price || ''} placeholder="Ex: 45000" className="input w-full text-lg font-bold text-green-700" required/>
         </div>
         
         <div>
@@ -183,17 +182,18 @@ export default function VehicleForm({ user, onSuccess }) {
           <textarea 
             name="description" 
             rows="4" 
-            placeholder="Conte mais detalhes sobre o veículo: estado de conservação, motivo da venda, se aceita troca..." 
+            defaultValue={initialData?.description || ''}
+            placeholder="Conte mais detalhes sobre o veículo..." 
             className="input w-full resize-none"
             required
           ></textarea>
         </div>
       </div>
 
-      {/* SEÇÃO 3: OPCIONAIS E ACESSÓRIOS */}
+      {/* SEÇÃO 3: OPCIONAIS */}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
-          <CheckSquare size={16} className="text-blue-500"/> Opcionais e Acessórios do Veículo
+          <CheckSquare size={16} className="text-blue-500"/> Opcionais e Acessórios
         </label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-200 h-64 overflow-y-auto">
           {VEHICLE_FEATURES.map(feature => (
@@ -212,20 +212,20 @@ export default function VehicleForm({ user, onSuccess }) {
 
       {/* SEÇÃO 4: CONTATO */}
       <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-3">
-        <h3 className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Seus Contatos para Venda</h3>
+        <h3 className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Contatos para Venda</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
              <label className="block text-xs text-orange-700 mb-1">WhatsApp / Telefone</label>
-             <input name="phone" defaultValue={user?.phone || ''} placeholder="(00) 00000-0000" className="input w-full bg-white border-orange-200 focus:border-orange-500" required/>
+             <input name="phone" defaultValue={initialData?.phone || user?.phone || ''} placeholder="(00) 00000-0000" className="input w-full bg-white border-orange-200 focus:border-orange-500" required/>
           </div>
           <div>
              <label className="block text-xs text-orange-700 mb-1">E-mail de Contato</label>
-             <input name="email" type="email" defaultValue={user?.email || ''} placeholder="seu@email.com" className="input w-full bg-white border-orange-200 focus:border-orange-500" required/>
+             <input name="email" type="email" defaultValue={initialData?.email || user?.email || ''} placeholder="seu@email.com" className="input w-full bg-white border-orange-200 focus:border-orange-500" required/>
           </div>
         </div>
       </div>
 
-      {/* ÁREA DE UPLOAD DE FOTOS */}
+      {/* ÁREA DE UPLOAD */}
       <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative">
         <input 
           type="file" 
@@ -236,8 +236,8 @@ export default function VehicleForm({ user, onSuccess }) {
         />
         <div className="flex flex-col items-center text-slate-500">
           <UploadCloud size={32} className="mb-2 text-blue-500"/>
-          <span className="font-bold text-sm">Adicionar Fotos do Veículo</span>
-          <span className="text-xs">A primeira foto será a capa do anúncio</span>
+          <span className="font-bold text-sm">Atualizar Fotos do Veículo</span>
+          <span className="text-xs">{initialData ? "Envie novas fotos para substituir as antigas" : "A primeira foto será a capa"}</span>
         </div>
       </div>
 
@@ -246,12 +246,7 @@ export default function VehicleForm({ user, onSuccess }) {
           {files.map((file, idx) => (
             <div key={idx} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border-2 border-slate-200 shadow-sm">
               <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="preview" />
-              {idx === 0 && <span className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[10px] font-bold text-center py-0.5">CAPA</span>}
-              <button 
-                type="button" 
-                onClick={() => setFiles(files.filter((_, i) => i !== idx))}
-                className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg shadow-sm hover:bg-red-600 transition"
-              >
+              <button type="button" onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg shadow-sm">
                 <X size={14}/>
               </button>
             </div>
@@ -260,7 +255,7 @@ export default function VehicleForm({ user, onSuccess }) {
       )}
 
       <button disabled={loading} className="btn-primary w-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2 py-4 text-lg">
-        {loading ? <Loader className="animate-spin" /> : "Publicar Anúncio Agora"}
+        {loading ? <Loader className="animate-spin" /> : (initialData ? "Salvar Alterações" : "Publicar Anúncio Agora")}
       </button>
     </form>
   );
