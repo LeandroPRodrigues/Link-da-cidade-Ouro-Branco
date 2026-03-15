@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Bell, Search, Grid, Settings, ShoppingBag } from 'lucide-react';
+import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Bell, Search, Grid, Settings, ShoppingBag, ExternalLink } from 'lucide-react';
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
@@ -20,7 +20,7 @@ import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
 import WeatherWidget from './components/WeatherWidget';
 import OffersPage from './pages/OffersPage'; 
-import ProfilePage from './pages/ProfilePage'; // <--- IMPORT DA NOVA PÁGINA
+import ProfilePage from './pages/ProfilePage';
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
@@ -32,7 +32,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login'); 
   const [loading, setLoading] = useState(true);
   
-  // ESTADO DO NOVO MENU FLUTUANTE DE PERFIL
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const [selectedNews, setSelectedNews] = useState(null);
@@ -50,6 +49,9 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
   const [offersData, setOffersData] = useState([]); 
+
+  // Estado para armazenar a publicidade global exibida no topo das páginas
+  const [globalAd, setGlobalAd] = useState(null);
 
   const loadAllData = async () => {
     try {
@@ -70,6 +72,13 @@ export default function App() {
     if (savedUser) { setUser(JSON.parse(savedUser)); }
     loadAllData(); 
   }, []);
+
+  // Lógica para alternar a publicidade sempre que a página muda
+  useEffect(() => {
+    if (adsData && adsData.length > 0) {
+      setGlobalAd(adsData[Math.floor(Math.random() * adsData.length)]);
+    }
+  }, [adsData, currentPage]);
   
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
@@ -234,6 +243,17 @@ export default function App() {
         </aside>
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
+          
+          {/* BANNER DE PUBLICIDADE GLOBAL (Oculto apenas na Home, onde já existe o destaque) */}
+          {currentPage !== 'home' && globalAd && (
+            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-100 animate-in fade-in">
+              <a href={globalAd.link || '#'} target="_blank" rel="noopener noreferrer" className="block w-full h-24 md:h-32 relative group">
+                 <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+                 <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm">Publicidade</div>
+              </a>
+            </div>
+          )}
+
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} adsData={adsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'offers' && <OffersPage offersData={offersData} />}
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
@@ -250,7 +270,6 @@ export default function App() {
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} crud={crud} />}
           
-          {/* CARREGA A NOVA PÁGINA DE PERFIL AQUI */}
           {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} />}
         </main>
 

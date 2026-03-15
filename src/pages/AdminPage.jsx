@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
-import VehicleForm from '../components/VehicleForm'; // <--- IMPORTAMOS O FORMULÁRIO AVANÇADO AQUI
+import VehicleForm from '../components/VehicleForm'; 
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -99,7 +99,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
   const openEditModal = (item = {}) => {
     if (activeTab === 'news') setNewsBlocks(item.content || []);
-    // Para Veículos e Imóveis, garantimos que a foto de capa e o array de fotos estão prontos
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
     const photosValue = item.photos || (item.image ? [item.image] : []);
     setEditingItem({ ...item, image: imageValue, photos: photosValue });
@@ -119,21 +118,21 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     if (payload.id) {
       // ATUALIZAR (EDITAR)
       if (activeTab === 'offers') crud.updateOffer(payload);
+      if (activeTab === 'ads') crud.updateAd(payload); // <--- ATUALIZA A PUBLICIDADE
       if (activeTab === 'news') crud.updateNews(payload);
       if (activeTab === 'events') crud.updateEvent(payload);
       if (activeTab === 'real_estate') crud.updateProperty(payload);
       if (activeTab === 'jobs') crud.updateJob(payload);
-      // Nota: Veículos são tratados pelo componente próprio abaixo
       if (activeTab === 'guide') crud.updateGuideItem(payload);
     } else {
       // ADICIONAR NOVO
       payload.date = payload.date || new Date().toISOString();
       if (activeTab === 'offers') crud.addOffer(payload);
+      if (activeTab === 'ads') crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()}); // <--- ADICIONA NOVA PUBLICIDADE
       if (activeTab === 'news') crud.addNews(payload);
       if (activeTab === 'events') crud.addEvent(payload);
       if (activeTab === 'real_estate') crud.addProperty({...payload, status: 'active', createdAt: new Date().toISOString()});
       if (activeTab === 'jobs') crud.addJob({...payload, createdAt: new Date().toISOString()});
-      // Nota: Veículos são tratados pelo componente próprio abaixo
       if (activeTab === 'guide') crud.addGuideItem({...payload, status: 'active'});
     }
     
@@ -203,7 +202,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     </div>
   );
 
-  // Blocos da Notícia
   const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '' }]);
   const updateNewsBlock = (id, newValue) => setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, value: newValue } : block));
   const removeNewsBlock = (id) => setNewsBlocks(newsBlocks.filter(block => block.id !== id));
@@ -224,6 +222,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       <div className="flex overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-hide">
         {[
           { id: 'offers', label: 'Shopping / Ofertas' },
+          { id: 'ads', label: 'Publicidade (Banners)' }, // <--- ABA NOVA AQUI
           { id: 'news', label: 'Notícias' },
           { id: 'events', label: 'Eventos' },
           { id: 'real_estate', label: 'Imóveis' },
@@ -318,6 +317,19 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
+        {/* === ABA DE PUBLICIDADE === */}
+        {activeTab === 'ads' && (
+          <div>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-xl font-black text-slate-800">Gerenciar Publicidade (Banners)</h2>
+              <button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
+                <PlusCircle size={18}/> Adicionar Banner
+              </button>
+            </div>
+            {renderList(adsData, 'title', crud.deleteAd)}
+          </div>
+        )}
+
         {/* === ABA DE NOTÍCIAS === */}
         {activeTab === 'news' && (
           <div>
@@ -408,6 +420,15 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               /* PARA AS OUTRAS ABAS, USA O FORMULÁRIO GENÉRICO */
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
+                {/* FORMULÁRIO DE PUBLICIDADE (NOVO) */}
+                {activeTab === 'ads' && (
+                  <>
+                    <FormField label="Título da Campanha (Empresa/Anunciante)" field="title" placeholder="Ex: Ótica Visual" required/>
+                    <FormField label="Link de Destino" field="link" placeholder="Para onde vai ao clicar? (ex: WhatsApp, Instagram)" required/>
+                    <ImageField label="Banner (Imagem formato horizontal recomendada)" required/>
+                  </>
+                )}
+
                 {/* FORMULÁRIO DE OFERTAS */}
                 {activeTab === 'offers' && (
                   <>
