@@ -187,7 +187,6 @@ export default function App() {
                <div className="flex items-center gap-3">
                  {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
                  
-                 {/* NOVO MENU FLUTUANTE DO USUÁRIO */}
                  <div className="relative">
                    <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
                      {user.image ? (
@@ -200,7 +199,6 @@ export default function App() {
                    
                    {isUserMenuOpen && (
                      <>
-                       {/* Overlay invisível para fechar o menu ao clicar fora */}
                        <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)}></div>
                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2">
                          <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
@@ -244,20 +242,24 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           
-          {/* BANNER DE PUBLICIDADE GLOBAL (Oculto apenas na Home, onde já existe o destaque) */}
+          {/* BANNER DE PUBLICIDADE GLOBAL C/ TÉCNICA "BLUR BACKGROUND" */}
           {currentPage !== 'home' && globalAd && (
-            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white animate-in fade-in flex justify-center items-center">
+            <div className="mb-6 mx-4 md:mx-0 rounded-2xl overflow-hidden shadow-md border border-slate-200 animate-in fade-in">
               {globalAd.link ? (
-                <a href={globalAd.link} target="_blank" rel="noopener noreferrer" className="block w-full h-24 md:h-32 relative group flex justify-center items-center bg-slate-50">
-                   {/* Alterado para object-contain para caber perfeitamente sem cortes */}
-                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
-                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10">Publicidade</div>
+                <a href={globalAd.link} target="_blank" rel="noopener noreferrer" className="block w-full h-28 md:h-40 relative group bg-slate-900 overflow-hidden">
+                   {/* Fundo Desfocado (Cobre 100% sem barras brancas) */}
+                   <img src={globalAd.image} className="absolute inset-0 w-full h-full object-cover opacity-60 blur-2xl scale-125" alt="Fundo" />
+                   {/* Imagem Principal (Mantém as proporções reais sem cortes) */}
+                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="relative z-10 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
+                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-20 shadow-sm">Publicidade</div>
                 </a>
               ) : (
-                <div className="block w-full h-24 md:h-32 relative group flex justify-center items-center bg-slate-50">
-                   {/* Versão sem link (não clicável) também com object-contain */}
-                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
-                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10">Publicidade</div>
+                <div className="block w-full h-28 md:h-40 relative group bg-slate-900 overflow-hidden">
+                   {/* Fundo Desfocado (Cobre 100% sem barras brancas) */}
+                   <img src={globalAd.image} className="absolute inset-0 w-full h-full object-cover opacity-60 blur-2xl scale-125" alt="Fundo" />
+                   {/* Imagem Principal (Mantém as proporções reais sem cortes) */}
+                   <img src={globalAd.image} alt={globalAd.title || "Publicidade"} className="relative z-10 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"/>
+                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-20 shadow-sm">Publicidade</div>
                 </div>
               )}
             </div>

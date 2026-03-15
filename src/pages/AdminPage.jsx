@@ -9,9 +9,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [editingItem, setEditingItem] = useState(null);
   const [newsBlocks, setNewsBlocks] = useState([]);
 
-  // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
-  // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -85,9 +82,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // ==========================================
-  // FUNÇÕES AUXILIARES DE FORMULÁRIO E MODAL
-  // ==========================================
   const handleLocalImageUpload = (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -109,7 +103,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.preventDefault();
     let payload = { ...editingItem };
     
-    // Tratamentos específicos antes de salvar
     if (activeTab === 'news') payload.content = newsBlocks;
     if (activeTab === 'real_estate') {
       payload.photos = payload.image ? [payload.image] : [];
@@ -141,7 +134,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setNewsBlocks([]);
   };
 
-  // Componentes Inteligentes para o Formulário Genérico
   const FormField = ({ label, field, type="text", required=false, options, placeholder }) => {
     const val = editingItem?.[field] || '';
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
@@ -180,7 +172,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     );
   };
 
-  // Renderizador de Listas Universal
   const renderList = (data, titleField, deleteFunc) => (
     <div className="space-y-3 mt-4">
       {data && data.length > 0 ? data.map(item => (
@@ -396,7 +387,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               {editingItem?.id ? 'Editar Informações' : 'Novo Cadastro'}
             </h2>
             
-            {/* SE A ABA FOR VEÍCULOS, RENDERIZA O NOSSO FORMULÁRIO AVANÇADO */}
             {activeTab === 'vehicles' ? (
               <div className="mt-4">
                 <VehicleForm 
@@ -417,15 +407,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </button>
               </div>
             ) : (
-              /* PARA AS OUTRAS ABAS, USA O FORMULÁRIO GENÉRICO */
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
                 {/* FORMULÁRIO DE PUBLICIDADE (NOVO E AJUSTADO) */}
                 {activeTab === 'ads' && (
                   <>
                     <FormField label="Título da Campanha (Empresa/Anunciante)" field="title" placeholder="Ex: Ótica Visual" required/>
-                    <FormField label="Link de Destino (Opcional)" field="link" placeholder="Para onde vai ao clicar? (ex: WhatsApp, Instagram)" />
-                    <ImageField label="Banner (Imagem formato horizontal recomendada)" required/>
+                    <FormField label="Link de Destino (Opcional)" field="link" placeholder="Deixe em branco se for apenas uma imagem estática" />
+                    <ImageField label="Banner (Qualquer formato de imagem serve)" required/>
                   </>
                 )}
 
@@ -515,7 +504,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DE NOTÍCIAS (LEGO BUILDER ESPECIAL) */}
+                {/* FORMULÁRIO DE NOTÍCIAS */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
@@ -556,7 +545,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </div>
                 )}
 
-                {/* BOTÕES GLOBAIS DE SALVAR/CANCELAR PARA AS OUTRAS ABAS */}
                 <div className="flex gap-3 pt-6 border-t border-slate-100 mt-4">
                   <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-md">
                     {editingItem?.id ? 'Guardar Alterações' : 'Publicar Agora'}
