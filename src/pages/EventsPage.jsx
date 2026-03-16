@@ -1,45 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import EventCarousel from '../components/EventCarousel';
 import EventCalendar from '../components/EventCalendar';
+import SectionHeader from '../components/SectionHeader';
+import { Calendar } from 'lucide-react';
 
-export default function EventsPage({ onEventClick, eventsData }) {
-  return (
-    <div className="px-4 md:px-0 pb-12 space-y-12 animate-in fade-in">
-      {/* Cabeçalho */}
-      <div className="py-8 border-b">
-        <h2 className="text-3xl font-bold text-slate-800">Agenda Cultural</h2>
-        <p className="text-slate-500 mt-2">Shows, festivais, teatro e tudo o que acontece em Ouro Branco.</p>
+const EventsPage = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, "events"), orderBy("date", "asc"));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eventsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // LIMPEZA DA DATA: Remove o espaço extra do n8n
+          date: typeof data.date === 'string' ? data.date.trim() : data.date
+        };
+      });
+      setEvents(eventsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
+    );
+  }
 
-      {/* Seção 1: Destaques (Carrossel) */}
-      <section>
-        <div className="flex justify-between items-end mb-6">
-          <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-2 h-8 bg-blue-600 rounded-full inline-block"></span>
-            Em Destaque
-          </h3>
+  return (
+    <div className="min-h-screen pt-20 pb-12 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeader 
+          title="Eventos em Ouro Branco" 
+          subtitle="Fique por dentro de tudo o que acontece na cidade"
+          icon={Calendar}
+        />
+        
+        <div className="space-y-12">
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Destaques</h2>
+            <EventCarousel events={events} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Calendário de Eventos</h2>
+            <EventCalendar events={events} />
+          </section>
         </div>
-        
-        {/* Passamos todos os eventos para o carrossel */}
-        {eventsData.length > 0 ? (
-          <EventCarousel events={eventsData} onEventClick={onEventClick} />
-        ) : (
-          <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed text-slate-400">
-            Nenhum evento em destaque no momento.
-          </div>
-        )}
-      </section>
-
-      {/* Seção 2: Calendário Completo */}
-      <section>
-        <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <span className="w-2 h-8 bg-purple-600 rounded-full inline-block"></span>
-          Calendário de Eventos
-        </h3>
-        <p className="text-slate-500 mb-6">Confira a programação completa por data. Clique nos dias coloridos para ver os detalhes.</p>
-        
-        <EventCalendar events={eventsData} onEventClick={onEventClick} />
-      </section>
+      </div>
     </div>
   );
-}
+};
+
+export default EventsPage;

@@ -1,67 +1,117 @@
-import React from 'react';
-import { ArrowLeft, Calendar, Clock, MapPin, Ticket } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Calendar, MapPin, ArrowLeft, Share2, Ticket } from 'lucide-react';
 
-export default function EventDetailPage({ event, onBack }) {
-  if (!event) return null;
+const EventDetailPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const docRef = doc(db, "events", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setEvent({
+            id: docSnap.id,
+            ...data,
+            // Limpa o espaço da data por segurança
+            date: typeof data.date === 'string' ? data.date.trim() : data.date
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <p className="text-gray-500">Evento não encontrado.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="animate-in fade-in pb-12">
-      {/* Botão Voltar */}
-      <div className="px-4 py-4 max-w-4xl mx-auto">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium">
-          <ArrowLeft size={20}/> Voltar para agenda
+    <div className="min-h-screen pt-20 pb-12 bg-white">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-blue-600 mb-8 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Voltar para Eventos
         </button>
-      </div>
 
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* Imagem de Capa */}
-        <div className="h-64 md:h-96 relative">
-          <img src={event.image} className="w-full h-full object-cover" alt={event.title} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-          <div className="absolute bottom-0 left-0 p-6 md:p-10 text-white">
-            <span className="bg-blue-600 text-xs font-bold px-3 py-1 rounded uppercase mb-3 inline-block shadow">{event.category}</span>
-            <h1 className="text-3xl md:text-5xl font-bold mb-2 leading-tight">{event.title}</h1>
-            <p className="flex items-center gap-2 text-slate-300 font-medium"><MapPin size={18}/> {event.location}</p>
-          </div>
-        </div>
+        <img 
+          src={event.image} 
+          alt={event.title}
+          className="w-full h-64 md:h-96 object-cover rounded-2xl shadow-lg mb-8"
+        />
 
-        {/* Conteúdo */}
-        <div className="p-6 md:p-10 grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-6">
+        <div className="space-y-6">
+          <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-3">Sobre o Evento</h2>
-              <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-wrap">{event.description}</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
+              <div className="flex flex-wrap gap-4 text-gray-600">
+                <div className="flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                  <span>{new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR')} às {event.time}</span>
+                </div>
+                <div className="flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+                  <span>{event.location}</span>
+                </div>
+              </div>
             </div>
+            <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+              <Share2 className="w-6 h-6" />
+            </button>
           </div>
 
-          {/* Sidebar de Informações */}
-          <div className="md:col-span-1">
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="bg-white p-2 rounded-lg text-blue-600 shadow-sm border border-slate-100"><Calendar size={24}/></div>
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Data</p>
-                  <p className="font-bold text-slate-800">{new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-white p-2 rounded-lg text-blue-600 shadow-sm border border-slate-100"><Clock size={24}/></div>
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Horário</p>
-                  <p className="font-bold text-slate-800">{event.time}</p>
-                </div>
-              </div>
-              
-              <hr className="border-slate-200 my-2"/>
-              
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg transform active:scale-95">
-                <Ticket size={20}/> Comprar Ingresso
-              </button>
-              <p className="text-xs text-center text-slate-400 mt-2">Vendas externas</p>
-            </div>
+          <div className="prose max-w-none">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
+            <p className="text-gray-600 whitespace-pre-line leading-relaxed">
+              {event.description}
+            </p>
           </div>
+
+          {/* BOTÃO COMPRAR INGRESSOS - VINCULADO AO LINK DO SYMPLA */}
+          {event.link && (
+            <div className="pt-8 border-t border-gray-100">
+              <a
+                href={event.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full md:w-auto px-8 py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-lg"
+              >
+                <Ticket className="w-6 h-6 mr-2" />
+                Comprar Ingressos
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default EventDetailPage;
