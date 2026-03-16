@@ -6,52 +6,65 @@ import { Calendar, MapPin, ArrowLeft, Share2, Ticket } from 'lucide-react';
 const EventDetailPage = ({ eventId, onBack }) => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchEvent = async () => {
+      if (!eventId) {
+        setError("ID do evento não fornecido.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        setLoading(true);
+        console.log("Buscando evento com ID:", eventId);
         const docRef = doc(db, "events", eventId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          const data = docSnap.data(); // Corrigido aqui: removido o .snapshot
+          const data = docSnap.data();
           setEvent({
             id: docSnap.id,
             ...data,
-            // Garante que a data esteja limpa sem espaços
             date: typeof data.date === 'string' ? data.date.trim() : data.date
           });
         } else {
-          console.error("Evento não encontrado no banco de dados.");
+          console.error("Documento não existe no Firebase!");
+          setError("Evento não encontrado.");
         }
-      } catch (error) {
-        console.error("Erro ao buscar detalhes do evento:", error);
+      } catch (err) {
+        console.error("Erro ao buscar detalhes:", err);
+        setError("Erro ao carregar dados do servidor.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (eventId) {
-      fetchEvent();
-    }
+    fetchEvent();
   }, [eventId]);
 
+  // Se estiver carregando
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen pt-20 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p className="text-gray-500">Carregando detalhes...</p>
       </div>
     );
   }
 
-  if (!event) {
+  // Se houver erro ou evento não encontrado
+  if (error || !event) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">Evento não encontrado.</p>
-          <button onClick={onBack} className="text-blue-600 hover:underline">Voltar para a lista</button>
-        </div>
+      <div className="min-h-screen pt-20 flex flex-col items-center justify-center px-4">
+        <p className="text-red-500 mb-4 font-medium">{error || "Evento não disponível."}</p>
+        <button 
+          onClick={onBack}
+          className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Voltar para a agenda
+        </button>
       </div>
     );
   }
@@ -64,7 +77,7 @@ const EventDetailPage = ({ eventId, onBack }) => {
         url: window.location.href,
       });
     } catch (err) {
-      console.error('Erro ao compartilhar:', err);
+      console.log('Botão compartilhar clicado');
     }
   };
 
@@ -79,56 +92,57 @@ const EventDetailPage = ({ eventId, onBack }) => {
           Voltar para Eventos
         </button>
 
-        <img 
-          src={event.image} 
-          alt={event.title}
-          className="w-full h-64 md:h-96 object-cover rounded-2xl shadow-lg mb-8"
-        />
+        <div className="rounded-2xl overflow-hidden shadow-lg mb-8">
+            <img 
+            src={event.image || 'https://via.placeholder.com/800x400?text=Sem+Imagem'} 
+            alt={event.title}
+            className="w-full h-64 md:h-96 object-cover"
+            />
+        </div>
 
         <div className="space-y-6">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
               <div className="flex flex-wrap gap-4 text-gray-600">
-                <div className="flex items-center">
-                  <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
+                  <Calendar className="w-4 h-4 mr-2 text-blue-600" />
                   <span>
-                    {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data não definida'} 
+                    {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data a definir'}
                     {event.time ? ` às ${event.time}` : ''}
                   </span>
                 </div>
-                <div className="flex items-center">
-                  <MapPin className="w-5 h-5 mr-2 text-blue-600" />
-                  <span>{event.location}</span>
+                <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
+                  <MapPin className="w-4 h-4 mr-2 text-blue-600" />
+                  <span>{event.location || 'Local não informado'}</span>
                 </div>
               </div>
             </div>
             <button 
               onClick={handleShare}
-              className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+              className="p-3 bg-gray-50 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
             >
               <Share2 className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="prose max-w-none">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
-            <p className="text-gray-600 whitespace-pre-line leading-relaxed">
+          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
+            <p className="text-gray-700 whitespace-pre-line leading-relaxed text-lg">
               {event.description}
             </p>
           </div>
 
-          {/* BOTÃO COMPRAR INGRESSOS (VERDE) */}
           {event.link && (
-            <div className="pt-8 border-t border-gray-100">
+            <div className="pt-6">
               <a
                 href={event.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center w-full md:w-auto px-8 py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-lg"
+                className="flex items-center justify-center w-full md:w-max px-10 py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-md hover:shadow-xl transform hover:-translate-y-1"
               >
-                <Ticket className="w-6 h-6 mr-2" />
-                Comprar Ingressos
+                <Ticket className="w-6 h-6 mr-3" />
+                ADQUIRIR INGRESSOS (SYMPLA)
               </a>
             </div>
           )}
