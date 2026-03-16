@@ -20,13 +20,15 @@ import GuidePage from './pages/GuidePage';
 import GuideDetailPage from './pages/GuideDetailPage';
 import WeatherWidget from './components/WeatherWidget';
 import OffersPage from './pages/OffersPage'; 
-import OfferDetailPage from './pages/OfferDetailPage'; // <--- Nova Página
+import OfferDetailPage from './pages/OfferDetailPage';
 import ProfilePage from './pages/ProfilePage';
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
-// Função para transformar "Título da Notícia" em "titulo-da-noticia"
+// =========================================================================
+// FUNÇÃO PARA CRIAR URLS AMIGÁVEIS (SEO)
+// =========================================================================
 const createSlug = (text) => {
   if (!text) return '';
   return text.toString().toLowerCase()
@@ -37,6 +39,9 @@ const createSlug = (text) => {
     .replace(/-+/g, "-"); // Remove múltiplos hífens
 };
 
+// =========================================================================
+// CARROSSEL GLOBAL DE PUBLICIDADE
+// =========================================================================
 const GlobalAdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -49,6 +54,7 @@ const GlobalAdsCarousel = ({ ads }) => {
   }, [ads]);
 
   if (!ads || ads.length === 0) return null;
+
   const ad = ads[currentIndex];
 
   return (
@@ -65,6 +71,17 @@ const GlobalAdsCarousel = ({ ads }) => {
       <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
         Publicidade
       </div>
+      {ads.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
+          {ads.map((_, idx) => (
+            <button 
+              key={idx} 
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} 
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -83,7 +100,7 @@ export default function App() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedGuideItem, setSelectedGuideItem] = useState(null);
-  const [selectedOffer, setSelectedOffer] = useState(null); // <--- Novo
+  const [selectedOffer, setSelectedOffer] = useState(null); 
   
   const [newsData, setNewsData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
@@ -102,7 +119,7 @@ export default function App() {
     if (parts.length === 0) { setCurrentPage('home'); return; }
 
     const route = parts[0];
-    const id = parts[1]; // Aqui pode ser o ID ou o Slug (Título)
+    const id = parts[1]; // Pode ser o ID ou o Slug (Título da notícia)
 
     switch(route) {
       case 'admin': setCurrentPage('admin'); break;
@@ -117,7 +134,6 @@ export default function App() {
 
       case 'noticias':
         if (id && dataSets.news) {
-          // PROCURA PELO TÍTULO (SLUG) EM VEZ DO ID!
           const item = dataSets.news.find(i => createSlug(i.title) === id);
           if (item) { setSelectedNews(item); setCurrentPage('news_detail'); return; }
         }
@@ -187,33 +203,63 @@ export default function App() {
     loadAllData(); 
   }, []);
 
-  // GERADOR DE LINKS QUANDO MUDA DE PÁGINA
+  // =========================================================================
+  // GERADOR DE LINKS E TÍTULOS (SEO BÁSICO) QUANDO MUDA DE PÁGINA
+  // =========================================================================
   useEffect(() => {
     if (loading) return; 
 
     let newUrl = '/';
-    if (currentPage === 'offers') newUrl = '/ofertas';
-    else if (currentPage === 'admin') newUrl = '/admin';
-    else if (currentPage === 'profile') newUrl = '/perfil';
-    else if (currentPage === 'news') newUrl = '/noticias';
-    else if (currentPage === 'events') newUrl = '/agenda';
-    else if (currentPage === 'real_estate') newUrl = '/imoveis';
-    else if (currentPage === 'jobs') newUrl = '/vagas';
-    else if (currentPage === 'vehicles') newUrl = '/veiculos';
-    else if (currentPage === 'guide') newUrl = '/guia';
-    
-    // LINKS INDIVIDUAIS:
-    else if (currentPage === 'news_detail' && selectedNews) newUrl = `/noticias/${createSlug(selectedNews.title)}`; // <-- USA O TÍTULO AQUI
-    else if (currentPage === 'offer_detail' && selectedOffer) newUrl = `/ofertas/${selectedOffer.id}`;
-    else if (currentPage === 'event_detail' && selectedEvent) newUrl = `/agenda/${selectedEvent.id}`;
-    else if (currentPage === 'property_detail' && selectedProperty) newUrl = `/imoveis/${selectedProperty.id}`;
-    else if (currentPage === 'job_detail' && selectedJob) newUrl = `/vagas/${selectedJob.id}`;
-    else if (currentPage === 'vehicle_detail' && selectedVehicle) newUrl = `/veiculos/${selectedVehicle.id}`;
-    else if (currentPage === 'guide_detail' && selectedGuideItem) newUrl = `/guia/${selectedGuideItem.id}`;
+    let pageTitle = `${APP_BRAND} da Cidade | ${CITY_NAME}`; // Título padrão da Home
 
+    if (currentPage === 'offers') { newUrl = '/ofertas'; pageTitle = `Shopping e Ofertas | ${APP_BRAND} da Cidade`; }
+    else if (currentPage === 'admin') { newUrl = '/admin'; pageTitle = 'Painel Administrativo'; }
+    else if (currentPage === 'profile') { newUrl = '/perfil'; pageTitle = 'Meu Perfil'; }
+    else if (currentPage === 'news') { newUrl = '/noticias'; pageTitle = `Notícias de ${CITY_NAME}`; }
+    else if (currentPage === 'events') { newUrl = '/agenda'; pageTitle = `Agenda de Eventos | ${CITY_NAME}`; }
+    else if (currentPage === 'real_estate') { newUrl = '/imoveis'; pageTitle = `Imóveis em ${CITY_NAME}`; }
+    else if (currentPage === 'jobs') { newUrl = '/vagas'; pageTitle = `Vagas de Emprego em ${CITY_NAME}`; }
+    else if (currentPage === 'vehicles') { newUrl = '/veiculos'; pageTitle = `Veículos em ${CITY_NAME}`; }
+    else if (currentPage === 'guide') { newUrl = '/guia'; pageTitle = `Guia Comercial de ${CITY_NAME}`; }
+    
+    // LINKS E TÍTULOS INDIVIDUAIS (A MÁGICA DO SEO):
+    else if (currentPage === 'news_detail' && selectedNews) { 
+        newUrl = `/noticias/${createSlug(selectedNews.title)}`;
+        pageTitle = `${selectedNews.title} | Notícias`;
+    }
+    else if (currentPage === 'offer_detail' && selectedOffer) { 
+        newUrl = `/ofertas/${selectedOffer.id}`;
+        pageTitle = `Oferta: ${selectedOffer.title}`;
+    }
+    else if (currentPage === 'event_detail' && selectedEvent) { 
+        newUrl = `/agenda/${selectedEvent.id}`;
+        pageTitle = `Evento: ${selectedEvent.title}`;
+    }
+    else if (currentPage === 'property_detail' && selectedProperty) { 
+        newUrl = `/imoveis/${selectedProperty.id}`;
+        pageTitle = `${selectedProperty.title} | Imóveis`;
+    }
+    else if (currentPage === 'job_detail' && selectedJob) { 
+        newUrl = `/vagas/${selectedJob.id}`;
+        pageTitle = `Vaga: ${selectedJob.title}`;
+    }
+    else if (currentPage === 'vehicle_detail' && selectedVehicle) { 
+        newUrl = `/veiculos/${selectedVehicle.id}`;
+        pageTitle = `${selectedVehicle.title} | Veículos`;
+    }
+    else if (currentPage === 'guide_detail' && selectedGuideItem) { 
+        newUrl = `/guia/${selectedGuideItem.id}`;
+        pageTitle = `${selectedGuideItem.name} | Guia Comercial`;
+    }
+
+    // Muda a URL no navegador
     if (window.location.pathname !== newUrl) {
       window.history.pushState(null, '', newUrl);
     }
+    
+    // MUDA O TÍTULO DA ABA DO NAVEGADOR (Para o Google ler!)
+    document.title = pageTitle;
+
   }, [currentPage, selectedNews, selectedOffer, selectedEvent, selectedProperty, selectedJob, selectedVehicle, selectedGuideItem, loading]);
 
   useEffect(() => {
@@ -391,7 +437,7 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           <div className="px-4 md:px-0">
-             <AdsCarousel ads={adsData} />
+             <GlobalAdsCarousel ads={adsData} />
           </div>
 
           {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
@@ -438,7 +484,33 @@ export default function App() {
       </nav>
 
       <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title={authMode === 'login' ? "Bem-vindo de volta" : "Criar nova conta"}>
-        {/* ... Modal Login Mantido do original */}
+        {authMode === 'login' ? (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input name="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <button className="btn-primary w-full bg-indigo-600 hover:bg-indigo-700">Entrar na conta</button>
+            <div className="relative flex items-center py-4"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
+            <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
+              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>
+              Continuar com Google
+            </button>
+            <div className="text-center text-xs mt-4">Não tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('register')}>Cadastre-se</span></div>
+          </form>
+        ) : (
+          <form onSubmit={handleRegister} className="space-y-3">
+            <input name="name" placeholder="Nome Completo" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <div className="grid grid-cols-2 gap-3"><input name="birthDate" type="date" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="cpf" placeholder="CPF" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" maxLength={14} required onChange={(e) => e.target.value = formatCPF(e.target.value)}/></div>
+            <div className="grid grid-cols-2 gap-3"><input name="phone" placeholder="Celular" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="email" type="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/></div>
+            <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <button className="btn-primary w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Criar Conta</button>
+            <div className="relative flex items-center py-2 mt-2"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
+            <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
+               <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>
+               Inscrever com Google
+            </button>
+            <div className="text-center text-xs mt-2">Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span></div>
+          </form>
+        )}
       </Modal>
     </div>
   );
