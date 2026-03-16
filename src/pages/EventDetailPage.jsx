@@ -10,25 +10,31 @@ const EventDetailPage = ({ eventId, onBack }) => {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
+        setLoading(true);
         const docRef = doc(db, "events", eventId);
         const docSnap = await getDoc(docRef);
+        
         if (docSnap.exists()) {
-          const data = docSnap.data();
+          const data = docSnap.data(); // Corrigido aqui: removido o .snapshot
           setEvent({
             id: docSnap.id,
             ...data,
-            // Limpa o espaço extra da data
+            // Garante que a data esteja limpa sem espaços
             date: typeof data.date === 'string' ? data.date.trim() : data.date
           });
+        } else {
+          console.error("Evento não encontrado no banco de dados.");
         }
       } catch (error) {
-        console.error("Error fetching event:", error);
+        console.error("Erro ao buscar detalhes do evento:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (eventId) fetchEvent();
+    if (eventId) {
+      fetchEvent();
+    }
   }, [eventId]);
 
   if (loading) {
@@ -42,7 +48,10 @@ const EventDetailPage = ({ eventId, onBack }) => {
   if (!event) {
     return (
       <div className="min-h-screen pt-20 flex items-center justify-center">
-        <p className="text-gray-500">Evento não encontrado.</p>
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Evento não encontrado.</p>
+          <button onClick={onBack} className="text-blue-600 hover:underline">Voltar para a lista</button>
+        </div>
       </div>
     );
   }
@@ -55,7 +64,7 @@ const EventDetailPage = ({ eventId, onBack }) => {
         url: window.location.href,
       });
     } catch (err) {
-      console.error('Error sharing:', err);
+      console.error('Erro ao compartilhar:', err);
     }
   };
 
@@ -83,7 +92,10 @@ const EventDetailPage = ({ eventId, onBack }) => {
               <div className="flex flex-wrap gap-4 text-gray-600">
                 <div className="flex items-center">
                   <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                  <span>{new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR')} às {event.time}</span>
+                  <span>
+                    {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data não definida'} 
+                    {event.time ? ` às ${event.time}` : ''}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="w-5 h-5 mr-2 text-blue-600" />
@@ -101,7 +113,7 @@ const EventDetailPage = ({ eventId, onBack }) => {
 
           <div className="prose max-w-none">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
-            <p className="text-gray-600 whitespace-pre-line leading-relaxed italic">
+            <p className="text-gray-600 whitespace-pre-line leading-relaxed">
               {event.description}
             </p>
           </div>
