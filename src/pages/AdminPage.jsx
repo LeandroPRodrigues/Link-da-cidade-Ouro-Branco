@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
-import PropertyForm from '../components/PropertyForm'; // Importação do novo formulário com mapa
+import PropertyForm from '../components/PropertyForm'; 
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -106,7 +106,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setModalOpen(true);
   };
 
-  // Esta função agora lida com todos os itens GENÉRICOS (Veículos e Imóveis usam os seus próprios formulários)
+  // Lida com todos os itens GENÉRICOS (Veículos e Imóveis usam os seus próprios formulários)
   const handleFormSubmit = (e) => {
     e.preventDefault();
     let payload = { ...editingItem };
@@ -381,14 +381,13 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       {/* MODAL DE CADASTRO E EDIÇÃO */}
       {/* ======================================================== */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             
             <h2 className="text-2xl font-black text-slate-800 mb-6 border-b border-slate-100 pb-4">
               {editingItem?.id ? 'Editar Informações' : 'Novo Cadastro'}
             </h2>
             
-            {/* SE A ABA FOR IMÓVEIS, USA O FORMULÁRIO COM MAPA AVANÇADO */}
             {activeTab === 'real_estate' ? (
               <div className="mt-4">
                 <PropertyForm 
@@ -425,10 +424,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </button>
               </div>
             ) : (
-              /* PARA AS OUTRAS ABAS (Notícias, Vagas, Ofertas...), USA O FORMULÁRIO GENÉRICO */
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
-                {/* FORMULÁRIO DE PUBLICIDADE (NOVO E AJUSTADO) */}
                 {activeTab === 'ads' && (
                   <>
                     <FormField label="Título da Campanha (Empresa/Anunciante)" field="title" placeholder="Ex: Ótica Visual" required/>
@@ -437,7 +434,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DE OFERTAS */}
                 {activeTab === 'offers' && (
                   <>
                     <FormField label="Categoria (Subgrupo)" field="category" type="select" options={[
@@ -453,7 +449,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DE EVENTOS */}
                 {activeTab === 'events' && (
                   <>
                     <FormField label="Título do Evento" field="title" required/>
@@ -469,7 +464,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DE VAGAS */}
                 {activeTab === 'jobs' && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
@@ -490,7 +484,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DO GUIA COMERCIAL */}
                 {activeTab === 'guide' && (
                   <>
                     <FormField label="Nome do Estabelecimento" field="name" required/>
@@ -504,7 +497,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* FORMULÁRIO DE NOTÍCIAS */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
@@ -513,7 +505,17 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                       <FormField label="Linha Fina (Resumo itálico)" field="summary" type="textarea" required/>
                       <ImageField label="Imagem de Capa"/>
                       <div className="grid grid-cols-2 gap-4">
-                        <FormField label="Categoria" field="category" required/>
+                        {/* AQUI ESTÁ A ATUALIZAÇÃO DO CAMPO "CATEGORIA" PARA DROPDOWN */}
+                        <FormField 
+                          label="Categoria" 
+                          field="category" 
+                          type="select" 
+                          options={[
+                            'Cidade', 'Política', 'Polícia', 'Esportes', 'Saúde', 
+                            'Educação', 'Cultura & Lazer', 'Economia', 'Tecnologia', 'Outros'
+                          ]} 
+                          required
+                        />
                         <FormField label="Autor / Fonte" field="author" required/>
                       </div>
                     </div>
