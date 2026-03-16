@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../utils/database';
 
-// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
+// --- COMPONENTE CARROSSEL DE ANÚNCIOS (Exportado para o App.jsx) ---
 const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -72,10 +72,17 @@ const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
   const nextSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev + 1) % safeOffers.length); };
   const prevSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev - 1 + safeOffers.length) % safeOffers.length); };
 
-  if (safeOffers.length === 0) return null;
+  if (safeOffers.length === 0) return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center">
+      <h3 className="font-bold text-slate-700 mb-2 text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+        <ShoppingBag size={16} className="text-pink-500"/> Ofertas do Dia
+      </h3>
+      <p className="text-xs text-slate-400">Nenhuma oferta no momento.</p>
+    </div>
+  );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-8 relative">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
           <ShoppingBag size={16} className="text-pink-500"/> Ofertas do Dia
@@ -115,6 +122,14 @@ const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
             <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"><ChevronRight size={18} /></button>
           </>
         )}
+
+        {safeOffers.length > 1 && (
+          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
+            {safeOffers.map((_, idx) => (
+              <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -124,6 +139,7 @@ const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
 const HeroItem = ({ item, user, onNewsClick, isMain }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments] = useState(item.comments || []);
+
   const isLiked = user && likes.includes(user.id);
 
   const handleLike = async (e) => {
@@ -212,7 +228,7 @@ const EventCard = ({ event, onClick }) => (
       </div>
       {event.link && (
         <a href={event.link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition" onClick={(e) => e.stopPropagation()}>
-          <ExternalLink size={12}/> Mais Info
+          <ExternalLink size={12}/> Ingressos / Mais Info
         </a>
       )}
     </div>
@@ -304,7 +320,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, eventsData, offersData, adsData, user }) {
+export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, eventsData, offersData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -333,15 +349,12 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         </div>
       </div>
 
-      {/* 2. CARROSSEL DE PROPAGANDAS (ADICIONADO) */}
-      <AdsCarousel ads={adsData} />
-
-      {/* 3. DESTAQUES NOTÍCIAS */}
+      {/* 2. DESTAQUES NOTÍCIAS */}
       {topNews.length > 0 && (
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
 
-      {/* 4. CARROSSEL DE EVENTOS */}
+      {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -358,18 +371,15 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         </div>
       </div>
 
-      {/* 5. MINI CARROSSEL DE OFERTAS (ADICIONADO) */}
-      <MiniOffersCarousel offers={offersData} navigate={navigate} onOfferClick={onOfferClick} />
-
-      {/* 6. BARRA DE BUSCA "O QUE PROCURA" */}
+      {/* 4. BARRA DE BUSCA "O QUE PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>
         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user ? user.name[0] : 'VC'}</div>
         </div>
-        <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que procura em Ouro Branco?</div>
+        <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 7. FEED RESTANTE DAS NOTÍCIAS */}
+      {/* 5. FEED RESTANTE DAS NOTÍCIAS */}
       <div className="space-y-6">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Mais Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
@@ -384,4 +394,5 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
   );
 }
 
+// Exportamos também para uso global
 export { MiniOffersCarousel, AdsCarousel };
