@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../utils/database';
 
-// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
+// --- COMPONENTE CARROSSEL DE ANÚNCIOS (Exportado para o App.jsx) ---
 const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -57,9 +57,8 @@ const AdsCarousel = ({ ads }) => {
 };
 
 // --- COMPONENTE MINI CARROSSEL DE OFERTAS ---
-const MiniOffersCarousel = ({ offers, navigate }) => {
+const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  
   const safeOffers = (offers || []).filter(o => o.status !== 'inactive').slice(0, 5);
 
   useEffect(() => {
@@ -70,15 +69,8 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
     return () => clearInterval(interval);
   }, [safeOffers.length]);
 
-  const nextSlide = (e) => {
-    e.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % safeOffers.length);
-  };
-
-  const prevSlide = (e) => {
-    e.stopPropagation();
-    setCurrentIndex((prev) => (prev - 1 + safeOffers.length) % safeOffers.length);
-  };
+  const nextSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev + 1) % safeOffers.length); };
+  const prevSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev - 1 + safeOffers.length) % safeOffers.length); };
 
   if (safeOffers.length === 0) return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center">
@@ -99,41 +91,24 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
       </div>
       
       <div className="relative w-full h-56 rounded-xl overflow-hidden group">
-        <div 
-          className="flex transition-transform duration-700 ease-in-out h-full" 
-          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-        >
+        <div className="flex transition-transform duration-700 ease-in-out h-full" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
           {safeOffers.map((offer, idx) => {
             const hasDiscount = offer.originalPrice && Number(offer.originalPrice) > Number(offer.price);
             
             return (
-              <div 
-                key={offer.id || idx} 
-                className="w-full h-full shrink-0 relative cursor-pointer bg-white" 
-                onClick={() => navigate('offers')}
-              >
+              <div key={offer.id || idx} className="w-full h-full shrink-0 relative cursor-pointer bg-white" onClick={() => onOfferClick ? onOfferClick(offer) : navigate('offers')}>
                 <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="w-full h-full object-contain p-2 pb-16" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
-                
                 {hasDiscount && (
                   <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider shadow-sm z-10">
                     -{Math.round(((offer.originalPrice - offer.price) / offer.originalPrice) * 100)}%
                   </span>
                 )}
-
                 <div className="absolute bottom-4 left-3 right-3 z-10">
                   <p className="text-white font-bold text-sm leading-tight line-clamp-2 mb-1">{offer.title}</p>
                   <div className="flex flex-col">
-                    {hasDiscount && (
-                      <span className="text-[10px] text-slate-300 line-through leading-none mb-0.5">
-                        {Number(offer.originalPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    )}
-                    {offer.price && (
-                      <span className="text-emerald-400 font-black text-lg leading-none">
-                        {Number(offer.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    )}
+                    {hasDiscount && <span className="text-[10px] text-slate-300 line-through leading-none mb-0.5">{Number(offer.originalPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+                    {offer.price && <span className="text-emerald-400 font-black text-lg leading-none">{Number(offer.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
                   </div>
                 </div>
               </div>
@@ -143,28 +118,15 @@ const MiniOffersCarousel = ({ offers, navigate }) => {
         
         {safeOffers.length > 1 && (
           <>
-            <button 
-              onClick={prevSlide}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button 
-              onClick={nextSlide}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
-            >
-              <ChevronRight size={18} />
-            </button>
+            <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"><ChevronLeft size={18} /></button>
+            <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"><ChevronRight size={18} /></button>
           </>
         )}
 
         {safeOffers.length > 1 && (
           <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
             {safeOffers.map((_, idx) => (
-              <div 
-                key={idx} 
-                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} 
-              />
+              <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} />
             ))}
           </div>
         )}
@@ -249,8 +211,8 @@ const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
 );
 
 // --- COMPONENTE DE CARTÃO DE EVENTO ---
-const EventCard = ({ event }) => (
-  <div className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
+const EventCard = ({ event, onClick }) => (
+  <div onClick={() => onClick && onClick(event)} className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
     <div className="relative h-40 overflow-hidden">
       <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-center shadow-sm z-10">
@@ -358,7 +320,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, eventsData, offersData, user }) {
+export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, eventsData, offersData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -387,12 +349,12 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 3. DESTAQUES */}
+      {/* 2. DESTAQUES NOTÍCIAS */}
       {topNews.length > 0 && (
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
 
-      {/* 4. CARROSSEL DE EVENTOS */}
+      {/* 3. CARROSSEL DE EVENTOS */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -409,7 +371,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 5. BARRA "O QUE VOCÊ PROCURA" */}
+      {/* 4. BARRA DE BUSCA "O QUE PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>
         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user ? user.name[0] : 'VC'}</div>
@@ -417,7 +379,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 6. FEED DE NOTÍCIAS */}
+      {/* 5. FEED RESTANTE DAS NOTÍCIAS */}
       <div className="space-y-6">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Mais Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
@@ -432,5 +394,5 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   );
 }
 
-// Exportamos também o AdsCarousel para ser usado de forma global no App.jsx
+// Exportamos também para uso global
 export { MiniOffersCarousel, AdsCarousel };
