@@ -11,7 +11,8 @@ const EventsPage = ({ onEventClick }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, "events"), orderBy("date", "asc"));
+    // ALTERAÇÃO AQUI: Mudamos de "asc" para "desc" para mostrar os eventos mais novos/futuros primeiro
+    const q = query(collection(db, "events"), orderBy("date", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const eventsData = snapshot.docs.map(doc => {
@@ -19,7 +20,7 @@ const EventsPage = ({ onEventClick }) => {
         return {
           id: doc.id,
           ...data,
-          // Limpa o espaço extra enviado pelo n8n
+          // Mantemos o trim() para garantir que o espaço extra do n8n não quebre nada
           date: typeof data.date === 'string' ? data.date.trim() : data.date
         };
       });
