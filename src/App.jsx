@@ -58,14 +58,14 @@ const GlobalAdsCarousel = ({ ads }) => {
   const ad = ads[currentIndex];
 
   return (
-    <div className="mb-6 mx-auto w-full max-w-2xl rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group animate-in fade-in">
+    <div className="mb-6 w-full max-w-2xl rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative h-36 md:h-48 group animate-in fade-in">
       {ad.link ? (
-        <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block w-full">
-           <img key={ad.id} src={ad.image} alt={ad.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-contain mx-auto animate-in fade-in duration-500" />
+        <a href={ad.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 w-full h-full block">
+           <img key={ad.id} src={ad.image} alt={ad.title || 'Publicidade'} className="w-full h-full object-cover animate-in fade-in duration-500" />
         </a>
       ) : (
-        <div className="block w-full">
-           <img key={ad.id} src={ad.image} alt={ad.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-contain mx-auto animate-in fade-in duration-500" />
+        <div className="absolute inset-0 w-full h-full block">
+           <img key={ad.id} src={ad.image} alt={ad.title || 'Publicidade'} className="w-full h-full object-cover animate-in fade-in duration-500" />
         </div>
       )}
       <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
