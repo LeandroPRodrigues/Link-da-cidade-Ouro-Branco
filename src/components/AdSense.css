@@ -1,0 +1,44 @@
+/* src/components/AdSense.css */
+
+.adsense-container {
+    display: block;
+    width: 100%; /* Ocupa toda a largura do elemento pai */
+    height: 100%; /* Ocupa toda a altura do elemento pai */
+    overflow: hidden; /* Garante que nada saia das bordas arredondadas */
+    position: relative;
+    background-color: #f3f4f6; /* Cor de fundo leve enquanto carrega (gray-100) */
+    border-radius: 0.75rem; /* rounded-xl para combinar com o design */
+  }
+  
+  /* ESTA É A PARTE MAIS IMPORTANTE: Força a imagem a preencher */
+  .adsense-image {
+    width: 100%; /* Força a imagem a ter a largura do contêiner */
+    height: 100%; /* Força a imagem a ter a altura do contêiner */
+    
+    /* Mantém a proporção da imagem sem distorcer e cobre a área */
+    object-fit: cover; 
+    
+    /* Centraliza a imagem caso ela precise ser cortada levemente em telas menores */
+    object-position: center; 
+    
+    display: block;
+    transition: transform 0.3s ease; /* Efeito suave no hover */
+  }
+  
+  .adsense-container:hover .adsense-image {
+    transform: scale(1.02); /* Leve zoom no hover */
+  }
+  
+  /* Tag "Patrocinado" */
+  .ad-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    z-index: 10;
+  }
