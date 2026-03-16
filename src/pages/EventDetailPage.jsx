@@ -1,70 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { Calendar, MapPin, ArrowLeft, Share2, Ticket } from 'lucide-react';
+import React from 'react';
+import { Calendar, MapPin, Clock, ArrowLeft, Share2, Ticket, Users, Info } from 'lucide-react';
 
-const EventDetailPage = ({ eventId, onBack }) => {
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchEvent = async () => {
-      if (!eventId) {
-        setError("ID do evento não fornecido.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        console.log("Buscando evento com ID:", eventId);
-        const docRef = doc(db, "events", eventId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setEvent({
-            id: docSnap.id,
-            ...data,
-            date: typeof data.date === 'string' ? data.date.trim() : data.date
-          });
-        } else {
-          console.error("Documento não existe no Firebase!");
-          setError("Evento não encontrado.");
-        }
-      } catch (err) {
-        console.error("Erro ao buscar detalhes:", err);
-        setError("Erro ao carregar dados do servidor.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvent();
-  }, [eventId]);
-
-  // Se estiver carregando
-  if (loading) {
+const EventDetailPage = ({ event, onBack }) => {
+  // Se por algum motivo o evento não chegar, mostra carregando ou erro
+  if (!event) {
     return (
-      <div className="min-h-screen pt-20 flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-500">Carregando detalhes...</p>
-      </div>
-    );
-  }
-
-  // Se houver erro ou evento não encontrado
-  if (error || !event) {
-    return (
-      <div className="min-h-screen pt-20 flex flex-col items-center justify-center px-4">
-        <p className="text-red-500 mb-4 font-medium">{error || "Evento não disponível."}</p>
-        <button 
-          onClick={onBack}
-          className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Voltar para a agenda
-        </button>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+        <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Evento não encontrado</h2>
+          <button onClick={onBack} className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all w-full">
+            <ArrowLeft size={20} className="mr-2" /> Voltar para Agenda
+          </button>
+        </div>
       </div>
     );
   }
@@ -77,75 +24,133 @@ const EventDetailPage = ({ eventId, onBack }) => {
         url: window.location.href,
       });
     } catch (err) {
-      console.log('Botão compartilhar clicado');
+      console.log('Erro ao compartilhar:', err);
     }
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <button 
-          onClick={onBack}
-          className="flex items-center text-gray-600 hover:text-blue-600 mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Voltar para Eventos
-        </button>
-
-        <div className="rounded-2xl overflow-hidden shadow-lg mb-8">
-            <img 
-            src={event.image || 'https://via.placeholder.com/800x400?text=Sem+Imagem'} 
-            alt={event.title}
-            className="w-full h-64 md:h-96 object-cover"
-            />
+    <div className="min-h-screen bg-gray-50 pb-12 animate-in fade-in duration-500">
+      {/* Banner Superior */}
+      <div className="relative h-[250px] md:h-[400px] w-full overflow-hidden">
+        <img
+          src={event.image}
+          alt={event.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        
+        <div className="absolute top-4 left-4 flex gap-4">
+          <button 
+            onClick={onBack}
+            className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-white transition-all"
+          >
+            <ArrowLeft size={20} className="text-gray-900" />
+          </button>
         </div>
 
-        <div className="space-y-6">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
-              <div className="flex flex-wrap gap-4 text-gray-600">
-                <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
-                  <Calendar className="w-4 h-4 mr-2 text-blue-600" />
-                  <span>
-                    {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data a definir'}
-                    {event.time ? ` às ${event.time}` : ''}
-                  </span>
-                </div>
-                <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
-                  <MapPin className="w-4 h-4 mr-2 text-blue-600" />
-                  <span>{event.location || 'Local não informado'}</span>
+        <button 
+          onClick={handleShare}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-white transition-all"
+        >
+          <Share2 size={20} className="text-gray-900" />
+        </button>
+
+        <div className="absolute bottom-6 left-4 right-4">
+          <div className="max-w-5xl mx-auto">
+            <span className="inline-block px-3 py-1 bg-indigo-600 text-white rounded-full text-xs font-bold mb-2">
+              {event.category || 'Evento'}
+            </span>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-1 drop-shadow-md">
+              {event.title}
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Coluna Principal */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Info className="text-indigo-600" size={20} />
+                Sobre o Evento
+              </h3>
+              <p className="text-slate-600 leading-relaxed whitespace-pre-line">
+                {event.description}
+              </p>
+            </div>
+
+            {event.organizer && (
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <Users className="text-indigo-600" size={20} />
+                  Organização
+                </h3>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold uppercase">
+                    {event.organizer.charAt(0)}
+                  </div>
+                  <span className="text-slate-700 font-medium">{event.organizer}</span>
                 </div>
               </div>
-            </div>
-            <button 
-              onClick={handleShare}
-              className="p-3 bg-gray-50 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-            >
-              <Share2 className="w-6 h-6" />
-            </button>
+            )}
           </div>
 
-          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
-            <p className="text-gray-700 whitespace-pre-line leading-relaxed text-lg">
-              {event.description}
-            </p>
+          {/* Coluna Lateral */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+              <h3 className="text-md font-bold text-slate-800 mb-5">Detalhes Importantes</h3>
+              
+              <div className="space-y-5">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-slate-50 rounded-lg text-indigo-600">
+                    <Calendar size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Data</p>
+                    <p className="text-sm text-slate-700 font-medium">{event.date}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-slate-50 rounded-lg text-indigo-600">
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Horário</p>
+                    <p className="text-sm text-slate-700 font-medium">{event.time || 'A definir'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-slate-50 rounded-lg text-indigo-600">
+                    <MapPin size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Local</p>
+                    <p className="text-sm text-slate-700 font-medium">{event.location}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-slate-500 text-sm">Entrada</span>
+                  <span className="text-xl font-bold text-green-600">
+                    {event.price === '0' || !event.price ? 'Gratuito' : `R$ ${event.price}`}
+                  </span>
+                </div>
+                
+                <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-100">
+                  <Ticket size={20} />
+                  Ver Ingressos / Informações
+                </button>
+              </div>
+            </div>
           </div>
 
-          {event.link && (
-            <div className="pt-6">
-              <a
-                href={event.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-full md:w-max px-10 py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-md hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <Ticket className="w-6 h-6 mr-3" />
-                ADQUIRIR INGRESSOS (SYMPLA)
-              </a>
-            </div>
-          )}
         </div>
       </div>
     </div>
