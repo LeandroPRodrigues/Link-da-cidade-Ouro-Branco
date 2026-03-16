@@ -6,7 +6,7 @@ import EventCalendar from '../components/EventCalendar';
 import SectionHeader from '../components/SectionHeader';
 import { Calendar } from 'lucide-react';
 
-const EventsPage = () => {
+const EventsPage = ({ onEventClick }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +19,7 @@ const EventsPage = () => {
         return {
           id: doc.id,
           ...data,
-          // LIMPEZA DA DATA: Remove o espaço extra do n8n
+          // Limpa o espaço extra enviado pelo n8n
           date: typeof data.date === 'string' ? data.date.trim() : data.date
         };
       });
@@ -50,12 +50,12 @@ const EventsPage = () => {
         <div className="space-y-12">
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Destaques</h2>
-            <EventCarousel events={events} />
+            <EventCarousel events={events} onEventClick={onEventClick} />
           </section>
 
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Calendário de Eventos</h2>
-            <EventCalendar events={events} />
+            <EventCalendar events={events} onEventClick={onEventClick} />
           </section>
         </div>
       </div>

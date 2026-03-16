@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Calendar, MapPin, ArrowLeft, Share2, Ticket } from 'lucide-react';
 
-const EventDetailPage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+const EventDetailPage = ({ eventId, onBack }) => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const docRef = doc(db, "events", id);
+        const docRef = doc(db, "events", eventId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
           setEvent({
             id: docSnap.id,
             ...data,
-            // Limpa o espaço da data por segurança
+            // Limpa o espaço extra da data
             date: typeof data.date === 'string' ? data.date.trim() : data.date
           });
         }
@@ -31,8 +28,8 @@ const EventDetailPage = () => {
       }
     };
 
-    fetchEvent();
-  }, [id]);
+    if (eventId) fetchEvent();
+  }, [eventId]);
 
   if (loading) {
     return (
@@ -50,11 +47,23 @@ const EventDetailPage = () => {
     );
   }
 
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: event.title,
+        text: event.description,
+        url: window.location.href,
+      });
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-20 pb-12 bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <button 
-          onClick={() => navigate(-1)}
+          onClick={onBack}
           className="flex items-center text-gray-600 hover:text-blue-600 mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
@@ -82,19 +91,22 @@ const EventDetailPage = () => {
                 </div>
               </div>
             </div>
-            <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+            <button 
+              onClick={handleShare}
+              className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+            >
               <Share2 className="w-6 h-6" />
             </button>
           </div>
 
           <div className="prose max-w-none">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sobre o Evento</h2>
-            <p className="text-gray-600 whitespace-pre-line leading-relaxed">
+            <p className="text-gray-600 whitespace-pre-line leading-relaxed italic">
               {event.description}
             </p>
           </div>
 
-          {/* BOTÃO COMPRAR INGRESSOS - VINCULADO AO LINK DO SYMPLA */}
+          {/* BOTÃO COMPRAR INGRESSOS (VERDE) */}
           {event.link && (
             <div className="pt-8 border-t border-gray-100">
               <a
