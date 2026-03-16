@@ -86,9 +86,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // ==========================================
-  // FUNÇÕES AUXILIARES DE FORMULÁRIO E MODAL
-  // ==========================================
   const handleLocalImageUpload = (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -106,7 +103,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setModalOpen(true);
   };
 
-  // Lida com todos os itens GENÉRICOS (Veículos e Imóveis usam os seus próprios formulários)
   const handleFormSubmit = (e) => {
     e.preventDefault();
     let payload = { ...editingItem };
@@ -135,16 +131,23 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setNewsBlocks([]);
   };
 
-  const FormField = ({ label, field, type="text", required=false, options, placeholder }) => {
+  // =========================================================================
+  // FIX: CAMPOS DE FORMULÁRIO COMO FUNÇÕES RETORNANDO JSX DIRETAMENTE
+  // (Isto impede o React de perder o foco ao recarregar a tela em cada letra)
+  // =========================================================================
+  const renderField = (label, field, type="text", required=false, options=null, placeholder="") => {
     const val = editingItem?.[field] || '';
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
+    
     return (
-      <div>
+      <div key={field}>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
         {type === 'select' ? (
           <select value={val} onChange={onChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" required={required}>
             <option value="">Selecione...</option>
-            {options?.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
+            {options?.map(opt => (
+              <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>
+            ))}
           </select>
         ) : type === 'textarea' ? (
           <textarea value={val} onChange={onChange} placeholder={placeholder} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" rows="3" required={required}/>
@@ -155,11 +158,12 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     );
   };
 
-  const ImageField = ({ label="Imagem (URL ou Upload)", field="image", required=false }) => {
+  const renderImagePicker = (label="Imagem (URL ou Upload)", field="image", required=false) => {
     const val = editingItem?.[field] || '';
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
+    
     return (
-      <div>
+      <div key={field}>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
         <div className="flex gap-2">
           <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Link da imagem..." required={required}/>
@@ -172,6 +176,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
     );
   };
+  // =========================================================================
 
   const renderList = (data, titleField, deleteFunc) => (
     <div className="space-y-3 mt-4">
@@ -235,7 +240,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
-        {/* === ABA DO GUIA COMERCIAL === */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -281,7 +285,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* === ABA DE OFERTAS === */}
         {activeTab === 'offers' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -309,7 +312,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* === ABA DE PUBLICIDADE === */}
         {activeTab === 'ads' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -322,7 +324,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* === ABA DE NOTÍCIAS === */}
         {activeTab === 'news' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -350,7 +351,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* OUTRAS ABAS COM BOTÃO ADICIONAR */}
         {activeTab === 'events' && (
           <div>
             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Eventos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
@@ -377,9 +377,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         )}
       </div>
 
-      {/* ======================================================== */}
       {/* MODAL DE CADASTRO E EDIÇÃO */}
-      {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -393,13 +391,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 <PropertyForm 
                   initialData={editingItem} 
                   onSuccess={(formData) => {
-                    if (editingItem && editingItem.id) {
-                      crud.updateProperty(formData);
-                    } else {
-                      crud.addProperty(formData);
-                    }
-                    setModalOpen(false);
-                    setEditingItem(null);
+                    if (editingItem && editingItem.id) crud.updateProperty(formData);
+                    else crud.addProperty(formData);
+                    setModalOpen(false); setEditingItem(null);
                   }}
                   onCancel={() => setModalOpen(false)}
                 />
@@ -410,13 +404,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   user={{ id: 'admin', name: 'Administrador', email: 'admin@linkdacidade.com', phone: '', role: 'admin' }} 
                   initialData={editingItem} 
                   onSuccess={(formData) => {
-                    if (editingItem && editingItem.id) {
-                      crud.updateVehicle(formData);
-                    } else {
-                      crud.addVehicle(formData);
-                    }
-                    setModalOpen(false);
-                    setEditingItem(null);
+                    if (editingItem && editingItem.id) crud.updateVehicle(formData);
+                    else crud.addVehicle(formData);
+                    setModalOpen(false); setEditingItem(null);
                   }} 
                 />
                 <button onClick={() => setModalOpen(false)} className="w-full mt-3 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
@@ -428,72 +418,70 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 
                 {activeTab === 'ads' && (
                   <>
-                    <FormField label="Título da Campanha (Empresa/Anunciante)" field="title" placeholder="Ex: Ótica Visual" required/>
-                    <FormField label="Link de Destino (Opcional)" field="link" placeholder="Deixe em branco se for apenas uma imagem estática" />
-                    <ImageField label="Banner (Qualquer formato de imagem serve)" required/>
+                    {renderField("Título da Campanha (Empresa/Anunciante)", "title", "text", true, null, "Ex: Ótica Visual")}
+                    {renderField("Link de Destino (Opcional)", "link", "text", false, null, "Deixe em branco se for apenas uma imagem estática")}
+                    {renderImagePicker("Banner (Qualquer formato de imagem serve)", "image", true)}
                   </>
                 )}
 
                 {activeTab === 'offers' && (
                   <>
-                    <FormField label="Categoria (Subgrupo)" field="category" type="select" options={[
-                      {value: 'bestsellers', label: 'Ofertas do dia'}, {value: 'celulares', label: 'Celulares'}, {value: 'tvs', label: 'TVs'}, {value: 'informatica', label: 'Informática'}
-                    ]} required/>
-                    <FormField label="Título" field="title" required/>
+                    {renderField("Categoria (Subgrupo)", "category", "select", true, [{value: 'bestsellers', label: 'Ofertas do dia'}, {value: 'celulares', label: 'Celulares'}, {value: 'tvs', label: 'TVs'}, {value: 'informatica', label: 'Informática'}])}
+                    {renderField("Título", "title", "text", true)}
                     <div className="grid grid-cols-2 gap-4">
-                       <FormField label="Preço Atual" field="price" type="number" required/>
-                       <FormField label="Preço Antigo" field="originalPrice" type="number"/>
+                       {renderField("Preço Atual", "price", "number", true)}
+                       {renderField("Preço Antigo", "originalPrice", "number", false)}
                     </div>
-                    <ImageField />
-                    <FormField label="Link de Afiliado" field="link" required/>
+                    {renderImagePicker()}
+                    {renderField("Link de Afiliado", "link", "text", true)}
                   </>
                 )}
 
                 {activeTab === 'events' && (
                   <>
-                    <FormField label="Título do Evento" field="title" required/>
+                    {renderField("Título do Evento", "title", "text", true)}
                     <div className="grid grid-cols-3 gap-4">
-                      <FormField label="Data" field="date" type="date" required/>
-                      <FormField label="Hora" field="time" type="time" required/>
-                      <FormField label="Categoria" field="category" required/>
+                      {renderField("Data", "date", "date", true)}
+                      {renderField("Hora", "time", "time", true)}
+                      {renderField("Categoria", "category", "text", true)}
                     </div>
-                    <FormField label="Local do Evento" field="location" required/>
-                    <ImageField />
-                    <FormField label="Descrição" field="description" type="textarea"/>
-                    <FormField label="Link para Ingressos (Opcional)" field="link" />
+                    {renderField("Local do Evento", "location", "text", true)}
+                    {renderImagePicker()}
+                    {renderField("Descrição", "description", "textarea")}
+                    {renderField("Link para Ingressos (Opcional)", "link")}
                   </>
                 )}
 
                 {activeTab === 'jobs' && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Cargo / Título" field="title" required/>
-                      <FormField label="Empresa" field="company" required/>
+                      {renderField("Cargo / Título", "title", "text", true)}
+                      {renderField("Empresa", "company", "text", true)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Categoria" field="category" type="select" options={["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"]} required/>
-                      <FormField label="Tipo de Vaga" field="type" type="select" options={['CLT', 'Estágio', 'PJ', 'Temporário']} required/>
+                      {renderField("Categoria", "category", "select", true, ["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"])}
+                      {renderField("Tipo de Vaga", "type", "select", true, ['CLT', 'Estágio', 'PJ', 'Temporário'])}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Salário" field="salary" placeholder="Ex: R$ 1.500,00 ou A combinar"/>
-                      <FormField label="Localização / Bairro" field="location" required/>
+                      {renderField("Salário", "salary", "text", false, null, "Ex: R$ 1.500,00 ou A combinar")}
+                      {renderField("Localização / Bairro", "location", "text", true)}
                     </div>
-                    <FormField label="Descrição da Vaga" field="description" type="textarea" required/>
-                    <FormField label="Requisitos" field="requirements" type="textarea"/>
-                    <FormField label="Contato para Envio de Currículo" field="contact" required placeholder="E-mail ou WhatsApp"/>
+                    {renderField("Descrição da Vaga", "description", "textarea", true)}
+                    {renderField("Requisitos", "requirements", "textarea")}
+                    {renderField("Contato para Envio de Currículo", "contact", "text", true, null, "E-mail ou WhatsApp")}
                   </>
                 )}
 
                 {activeTab === 'guide' && (
                   <>
-                    <FormField label="Nome do Estabelecimento" field="name" required/>
+                    {renderField("Nome do Estabelecimento", "name", "text", true)}
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Categoria" field="category" type="select" options={["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"]} required/>
-                      <FormField label="Telefone / Celular" field="phone"/>
+                      {renderField("Categoria", "category", "select", true, ["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"])}
+                      {renderField("Telefone / Celular", "phone")}
                     </div>
-                    <FormField label="Endereço Completo" field="address"/>
-                    <FormField label="Breve Descrição (Opcional)" field="description" type="textarea"/>
-                    <ImageField label="Logotipo ou Foto da Fachada"/>
+                    {renderField("Endereço Completo", "address")}
+                    {renderField("Breve Descrição (Opcional)", "description", "textarea")}
+                    {renderImagePicker("Logotipo ou Foto da Fachada")}
                   </>
                 )}
 
@@ -501,22 +489,12 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
                       <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Cabeçalho da Matéria</h3>
-                      <FormField label="Título Principal" field="title" required/>
-                      <FormField label="Linha Fina (Resumo itálico)" field="summary" type="textarea" required/>
-                      <ImageField label="Imagem de Capa"/>
+                      {renderField("Título Principal", "title", "text", true)}
+                      {renderField("Linha Fina (Resumo itálico)", "summary", "textarea", true)}
+                      {renderImagePicker("Imagem de Capa")}
                       <div className="grid grid-cols-2 gap-4">
-                        {/* AQUI ESTÁ A ATUALIZAÇÃO DO CAMPO "CATEGORIA" PARA DROPDOWN */}
-                        <FormField 
-                          label="Categoria" 
-                          field="category" 
-                          type="select" 
-                          options={[
-                            'Cidade', 'Política', 'Polícia', 'Esportes', 'Saúde', 
-                            'Educação', 'Cultura & Lazer', 'Economia', 'Tecnologia', 'Outros'
-                          ]} 
-                          required
-                        />
-                        <FormField label="Autor / Fonte" field="author" required/>
+                        {renderField("Categoria", "category", "select", true, ['Cidade', 'Política', 'Polícia', 'Esportes', 'Saúde', 'Educação', 'Cultura & Lazer', 'Economia', 'Tecnologia', 'Outros'])}
+                        {renderField("Autor / Fonte", "author", "text", true)}
                       </div>
                     </div>
 
