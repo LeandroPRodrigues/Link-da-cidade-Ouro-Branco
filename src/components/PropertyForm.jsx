@@ -40,7 +40,9 @@ export default function PropertyForm({ initialData, onSuccess, onCancel }) {
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
             <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600">
-              <option>Venda</option><option>Aluguel</option>
+              <option value="Venda">Venda</option>
+              <option value="Aluguel">Aluguel</option>
+              <option value="Temporada">Temporada</option>
             </select>
           </div>
           <div>
@@ -75,7 +77,6 @@ export default function PropertyForm({ initialData, onSuccess, onCancel }) {
       </div>
 
       <div className="pt-4 border-t border-slate-100">
-        {/* AQUI ENTRA O NOSSO MAPA INTELIGENTE */}
         <LocationPicker 
           locationData={{ address: formData.address, lat: formData.lat, lng: formData.lng }}
           setLocationData={(data) => setFormData({ ...formData, address: data.address, lat: data.lat, lng: data.lng })}

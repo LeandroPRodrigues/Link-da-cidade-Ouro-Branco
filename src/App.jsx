@@ -97,8 +97,41 @@ export default function App() {
     deleteOffer: async (id) => { await db.deleteOffer(id); setOffersData(await db.getOffers()); }
   };
 
-  const handleAddPropertyClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
-  const handleAddVehicleClick = (openModalCallback) => { if (!user) { alert("Faça login para anunciar."); setIsLoginOpen(true); return; } openModalCallback(); };
+  // =========================================================================
+  // SISTEMA DE LIMITES DE CADASTRO (1 PARA UTILIADOR COMUM, ILIMITADO P/ ADMIN)
+  // =========================================================================
+  const handleAddPropertyClick = (openModalCallback) => { 
+    if (!user) { 
+      alert("Faça login ou crie uma conta gratuita para anunciar o seu imóvel."); 
+      setIsLoginOpen(true); 
+      return; 
+    } 
+    if (user.role !== 'admin') {
+      const userProperties = propertiesData.filter(p => p.ownerId === user.id);
+      if (userProperties.length >= 1) {
+        alert("Atenção: Você já atingiu o limite de 1 imóvel cadastrado no plano gratuito. Para anunciar mais imóveis, entre em contato com o administrador do site.");
+        return;
+      }
+    }
+    openModalCallback(); 
+  };
+
+  const handleAddVehicleClick = (openModalCallback) => { 
+    if (!user) { 
+      alert("Faça login ou crie uma conta gratuita para anunciar o seu veículo."); 
+      setIsLoginOpen(true); 
+      return; 
+    } 
+    if (user.role !== 'admin') {
+      const userVehicles = vehiclesData.filter(v => v.ownerId === user.id);
+      if (userVehicles.length >= 1) {
+        alert("Atenção: Você já atingiu o limite de 1 veículo cadastrado no plano gratuito. Para anunciar mais veículos, entre em contato com o administrador do site.");
+        return;
+      }
+    }
+    openModalCallback(); 
+  };
+  // =========================================================================
   
   const handleLogin = async (e) => {
     e.preventDefault(); setLoading(true);
@@ -232,7 +265,6 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           
-          {/* CARROSSEL GLOBAL DE PUBLICIDADE EXATAMENTE COMO NA HOME */}
           <div className="px-4 md:px-0">
              <AdsCarousel ads={adsData} />
           </div>
