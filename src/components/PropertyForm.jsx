@@ -1,109 +1,97 @@
 import React, { useState } from 'react';
-import { uploadFile } from '../utils/uploadHelper';
-import { Loader, UploadCloud, X } from 'lucide-react';
+import LocationPicker from './LocationPicker';
+import { Upload } from 'lucide-react';
 
-export default function PropertyForm({ user, onSuccess }) {
-  const [loading, setLoading] = useState(false);
-  const [files, setFiles] = useState([]); // Guarda os arquivos selecionados
+export default function PropertyForm({ initialData, onSuccess, onCancel }) {
+  const [formData, setFormData] = useState(initialData || {
+    title: '', type: 'Venda', price: '', bedrooms: '', bathrooms: '', 
+    garage: '', area: '', description: '', image: '', 
+    address: '', lat: null, lng: null
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // 1. Faz upload das imagens primeiro
-      const photoUrls = [];
-      if (files.length > 0) {
-        for (const file of files) {
-          const url = await uploadFile(file, 'properties');
-          photoUrls.push(url);
-        }
-      } else {
-        // Usa uma imagem padrão se não tiver fotos (opcional)
-        photoUrls.push('https://placehold.co/600x400?text=Sem+Foto');
-      }
-
-      // 2. Cria o objeto final
-      const formData = {
-        title: e.target.title.value,
-        type: e.target.type.value,
-        price: e.target.price.value,
-        location: e.target.location.value,
-        bedrooms: e.target.bedrooms.value,
-        bathrooms: e.target.bathrooms.value,
-        area: e.target.area.value,
-        photos: photoUrls, // Salva os links gerados pelo Google
-        ownerId: user.id,
-        ownerName: user.name,
-        createdAt: new Date().toISOString()
-      };
-
-      onSuccess(formData);
-    } catch (error) {
-      console.error("Erro no upload", error);
-      alert("Erro ao enviar imagens. Tente novamente.");
-    } finally {
-      setLoading(false);
+  const handleLocalImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setFormData({...formData, image: reader.result});
+      reader.readAsDataURL(file);
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.lat) {
+      alert("Por favor, selecione ou digite a localização no mapa antes de salvar.");
+      return;
+    }
+    // Formata o array de fotos para o padrão do site
+    const finalData = { ...formData, photos: formData.image ? [formData.image] : [] };
+    onSuccess(finalData);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <input name="title" placeholder="Título do Anúncio (ex: Casa no Centro)" className="input w-full" required/>
-      
-      <div className="grid grid-cols-2 gap-3">
-        <select name="type" className="input w-full" required>
-          <option value="Venda">Venda</option>
-          <option value="Aluguel">Aluguel</option>
-        </select>
-        <input name="price" type="number" placeholder="Preço (R$)" className="input w-full" required/>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título do Anúncio</label>
+          <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
+            <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600">
+              <option>Venda</option><option>Aluguel</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Preço (R$)</label>
+            <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+          </div>
+        </div>
       </div>
 
-      <input name="location" placeholder="Bairro / Localização" className="input w-full" required/>
-
-      <div className="grid grid-cols-3 gap-3">
-        <input name="bedrooms" type="number" placeholder="Quartos" className="input w-full" required/>
-        <input name="bathrooms" type="number" placeholder="Banheiros" className="input w-full" required/>
-        <input name="area" type="number" placeholder="Área (m²)" className="input w-full" required/>
+      <div className="grid grid-cols-4 gap-4">
+        <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Quartos</label><input type="number" value={formData.bedrooms} onChange={e => setFormData({...formData, bedrooms: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" /></div>
+        <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Banh.</label><input type="number" value={formData.bathrooms} onChange={e => setFormData({...formData, bathrooms: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" /></div>
+        <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vagas</label><input type="number" value={formData.garage} onChange={e => setFormData({...formData, garage: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" /></div>
+        <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Área m²</label><input type="number" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" /></div>
       </div>
 
-      {/* ÁREA DE UPLOAD */}
-      <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative">
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*"
-          className="absolute inset-0 opacity-0 cursor-pointer"
-          onChange={(e) => setFiles([...files, ...Array.from(e.target.files)])}
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição do Imóvel</label>
+        <textarea required rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Principal (URL ou Upload)</label>
+        <div className="flex gap-2">
+          <input value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} placeholder="Link da foto..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+          <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-xl cursor-pointer flex items-center justify-center transition">
+            <Upload size={20} />
+            <input type="file" accept="image/*" className="hidden" onChange={handleLocalImageUpload} />
+          </label>
+        </div>
+        {formData.image && <img src={formData.image} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-xl"/>}
+      </div>
+
+      <div className="pt-4 border-t border-slate-100">
+        {/* AQUI ENTRA O NOSSO MAPA INTELIGENTE */}
+        <LocationPicker 
+          locationData={{ address: formData.address, lat: formData.lat, lng: formData.lng }}
+          setLocationData={(data) => setFormData({ ...formData, address: data.address, lat: data.lat, lng: data.lng })}
         />
-        <div className="flex flex-col items-center text-slate-500">
-          <UploadCloud size={32} className="mb-2 text-indigo-500"/>
-          <span className="font-bold text-sm">Clique para enviar fotos</span>
-          <span className="text-xs">JPG ou PNG (Do seu dispositivo)</span>
-        </div>
       </div>
 
-      {/* PREVIEW DAS FOTOS */}
-      {files.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto py-2">
-          {files.map((file, idx) => (
-            <div key={idx} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border">
-              <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="preview" />
-              <button 
-                type="button" 
-                onClick={() => setFiles(files.filter((_, i) => i !== idx))}
-                className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl"
-              >
-                <X size={12}/>
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button disabled={loading} className="btn-primary w-full bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2">
-        {loading ? <Loader className="animate-spin" /> : "Publicar Anúncio"}
-      </button>
+      <div className="flex gap-3 pt-6">
+        <button type="submit" className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-700 transition shadow-md">
+          {initialData?.id ? 'Atualizar Imóvel' : 'Publicar Imóvel'}
+        </button>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   );
 }

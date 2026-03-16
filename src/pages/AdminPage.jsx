@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
+import PropertyForm from '../components/PropertyForm'; // Importação do novo formulário com mapa
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -9,6 +10,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [editingItem, setEditingItem] = useState(null);
   const [newsBlocks, setNewsBlocks] = useState([]);
 
+  // ==========================================
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
+  // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -82,6 +86,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
+  // ==========================================
+  // FUNÇÕES AUXILIARES DE FORMULÁRIO E MODAL
+  // ==========================================
   const handleLocalImageUpload = (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -99,32 +106,26 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setModalOpen(true);
   };
 
+  // Esta função agora lida com todos os itens GENÉRICOS (Veículos e Imóveis usam os seus próprios formulários)
   const handleFormSubmit = (e) => {
     e.preventDefault();
     let payload = { ...editingItem };
     
     if (activeTab === 'news') payload.content = newsBlocks;
-    if (activeTab === 'real_estate') {
-      payload.photos = payload.image ? [payload.image] : [];
-    }
 
     if (payload.id) {
-      // ATUALIZAR (EDITAR)
       if (activeTab === 'offers') crud.updateOffer(payload);
       if (activeTab === 'ads') crud.updateAd(payload);
       if (activeTab === 'news') crud.updateNews(payload);
       if (activeTab === 'events') crud.updateEvent(payload);
-      if (activeTab === 'real_estate') crud.updateProperty(payload);
       if (activeTab === 'jobs') crud.updateJob(payload);
       if (activeTab === 'guide') crud.updateGuideItem(payload);
     } else {
-      // ADICIONAR NOVO
       payload.date = payload.date || new Date().toISOString();
       if (activeTab === 'offers') crud.addOffer(payload);
       if (activeTab === 'ads') crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()});
       if (activeTab === 'news') crud.addNews(payload);
       if (activeTab === 'events') crud.addEvent(payload);
-      if (activeTab === 'real_estate') crud.addProperty({...payload, status: 'active', createdAt: new Date().toISOString()});
       if (activeTab === 'jobs') crud.addJob({...payload, createdAt: new Date().toISOString()});
       if (activeTab === 'guide') crud.addGuideItem({...payload, status: 'active'});
     }
@@ -387,7 +388,24 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               {editingItem?.id ? 'Editar Informações' : 'Novo Cadastro'}
             </h2>
             
-            {activeTab === 'vehicles' ? (
+            {/* SE A ABA FOR IMÓVEIS, USA O FORMULÁRIO COM MAPA AVANÇADO */}
+            {activeTab === 'real_estate' ? (
+              <div className="mt-4">
+                <PropertyForm 
+                  initialData={editingItem} 
+                  onSuccess={(formData) => {
+                    if (editingItem && editingItem.id) {
+                      crud.updateProperty(formData);
+                    } else {
+                      crud.addProperty(formData);
+                    }
+                    setModalOpen(false);
+                    setEditingItem(null);
+                  }}
+                  onCancel={() => setModalOpen(false)}
+                />
+              </div>
+            ) : activeTab === 'vehicles' ? (
               <div className="mt-4">
                 <VehicleForm 
                   user={{ id: 'admin', name: 'Administrador', email: 'admin@linkdacidade.com', phone: '', role: 'admin' }} 
@@ -407,6 +425,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 </button>
               </div>
             ) : (
+              /* PARA AS OUTRAS ABAS (Notícias, Vagas, Ofertas...), USA O FORMULÁRIO GENÉRICO */
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
                 {/* FORMULÁRIO DE PUBLICIDADE (NOVO E AJUSTADO) */}
@@ -447,25 +466,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     <ImageField />
                     <FormField label="Descrição" field="description" type="textarea"/>
                     <FormField label="Link para Ingressos (Opcional)" field="link" />
-                  </>
-                )}
-
-                {/* FORMULÁRIO DE IMÓVEIS */}
-                {activeTab === 'real_estate' && (
-                  <>
-                    <FormField label="Título do Anúncio" field="title" required/>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Tipo de Negócio" field="type" type="select" options={['Venda', 'Aluguel']} required/>
-                      <FormField label="Preço (R$)" field="price" type="number" required/>
-                    </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      <FormField label="Quartos" field="bedrooms" type="number"/>
-                      <FormField label="Banheiros" field="bathrooms" type="number"/>
-                      <FormField label="Vagas" field="garage" type="number"/>
-                      <FormField label="Área (m²)" field="area" type="number"/>
-                    </div>
-                    <FormField label="Endereço (Bairro / Rua)" field="address" required/>
-                    <ImageField label="Foto Principal (Capa)"/>
                   </>
                 )}
 
