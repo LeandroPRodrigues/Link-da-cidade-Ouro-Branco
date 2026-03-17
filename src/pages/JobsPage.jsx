@@ -1,99 +1,93 @@
 import React, { useState } from 'react';
-import { Briefcase, Filter } from 'lucide-react';
-import { JOB_CATEGORIES } from '../data/mockData';
-import JobCard from '../components/JobCard';
+import { Briefcase, Search, MapPin, PlusCircle, X, Clock } from 'lucide-react';
+import JobForm from '../components/JobForm';
 
-export default function JobsPage({ jobsData, onJobClick }) {
-  const [activeCategory, setActiveCategory] = useState('Todas');
-  const [activeSubcategory, setActiveSubcategory] = useState('Todas');
+export default function JobsPage({ jobsData, onJobClick, checkLimit, onCrud, user }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // --- LÓGICA DE FILTROS ---
-  const categories = ['Todas', ...Object.keys(JOB_CATEGORIES)];
-  
-  const subcategories = activeCategory !== 'Todas' && JOB_CATEGORIES[activeCategory]
-    ? ['Todas', ...JOB_CATEGORIES[activeCategory]]
-    : [];
+  const filteredJobs = jobsData?.filter(job =>
+    job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
-  const filteredJobs = jobsData.filter(job => {
-    const matchCategory = activeCategory === 'Todas' ? true : job.category === activeCategory;
-    const matchSubcategory = activeSubcategory === 'Todas' ? true : job.subcategory === activeSubcategory;
-    return matchCategory && matchSubcategory;
-  });
-
-  // Ordenar: Vagas ativas primeiro, depois por data mais recente
-  const sortedJobs = filteredJobs.sort((a, b) => {
-    const aExpired = new Date(a.expiresAt) < new Date();
-    const bExpired = new Date(b.expiresAt) < new Date();
-    if (aExpired === bExpired) return new Date(b.createdAt) - new Date(a.createdAt);
-    return aExpired ? 1 : -1;
-  });
+  const handleAddClick = () => {
+    if (checkLimit) {
+      checkLimit(() => setIsFormOpen(true));
+    } else {
+      setIsFormOpen(true);
+    }
+  };
 
   return (
-    <div className="px-4 md:px-0 pb-12 animate-in fade-in">
-      <div className="py-8 border-b mb-6">
-        <h2 className="text-3xl font-bold text-slate-800">Mural de Empregos</h2>
-        <p className="text-slate-500 mt-2">Encontre sua próxima oportunidade profissional em Ouro Branco.</p>
-      </div>
-
-      {/* --- FILTROS --- */}
-      <div className="space-y-4 mb-8">
-        {/* Nível 1: Categorias */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => { setActiveCategory(cat); setActiveSubcategory('Todas'); }}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition ${
-                activeCategory === cat
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white border text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Nível 2: Subcategorias (Cargos) */}
-        {activeCategory !== 'Todas' && (
-          <div className="flex gap-2 overflow-x-auto pb-2 animate-in slide-in-from-top-1">
-            <div className="flex items-center text-slate-400 mr-2"><Filter size={14}/></div>
-            {subcategories.map(sub => (
-              <button
-                key={sub}
-                onClick={() => setActiveSubcategory(sub)}
-                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                  activeSubcategory === sub
-                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                    : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
-                }`}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* --- GRID DE VAGAS --- */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sortedJobs.map(job => (
-          <JobCard 
-            key={job.id} 
-            job={job} 
-            onClick={() => onJobClick(job)} 
-            isAdmin={false} // Nesta página pública, não mostra botões de admin
-          />
-        ))}
+    <div className="animate-in fade-in pb-10">
+      <div className="bg-blue-600 rounded-2xl p-6 md:p-10 text-white mb-8 shadow-sm">
+        <h1 className="text-3xl font-black mb-2 flex items-center gap-3">
+          <Briefcase size={32} /> Vagas de Emprego
+        </h1>
+        <p className="text-blue-100 mb-8 max-w-xl text-sm md:text-base">Encontre a sua próxima oportunidade em Ouro Branco e região, ou anuncie uma vaga para a sua empresa.</p>
         
-        {sortedJobs.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-            <Briefcase size={48} className="mx-auto text-slate-300 mb-4"/>
-            <h3 className="text-lg font-bold text-slate-500">Nenhuma vaga encontrada</h3>
-            <p className="text-slate-400">Tente mudar o filtro ou volte mais tarde.</p>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="text"
+              placeholder="Buscar por cargo, empresa ou localização..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl text-slate-800 outline-none focus:ring-2 focus:ring-blue-300 shadow-sm font-medium"
+            />
+          </div>
+          <button onClick={handleAddClick} className="bg-white text-blue-600 px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition shadow-sm whitespace-nowrap">
+            <PlusCircle size={20} /> Cadastrar Vaga
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filteredJobs.length > 0 ? filteredJobs.map(job => (
+          <div key={job.id} onClick={() => onJobClick && onJobClick(job)} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-300 transition-all hover:shadow-md group">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="font-bold text-lg text-slate-800 leading-tight mb-1 group-hover:text-blue-600 transition-colors">{job.title}</h3>
+                <p className="text-sm font-medium text-slate-600">{job.company}</p>
+              </div>
+              <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-1.5 rounded uppercase tracking-wider shrink-0">{job.type}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
+              <span className="flex items-center gap-1 font-medium"><MapPin size={14}/> {job.location}</span>
+              {job.salary && <span className="font-bold text-emerald-600 border border-emerald-100 bg-emerald-50 px-2 py-0.5 rounded">{job.salary}</span>}
+              <span className="flex items-center gap-1 font-medium ml-auto"><Clock size={14}/> {new Date(job.createdAt || job.date).toLocaleDateString('pt-BR')}</span>
+            </div>
+          </div>
+        )) : (
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-slate-300 text-slate-500">
+            Nenhuma vaga encontrada com estes termos.
           </div>
         )}
       </div>
+
+      {/* MODAL DO FORMULÁRIO DE VAGA */}
+      {isFormOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onClick={() => setIsFormOpen(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition">
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-black text-slate-800 mb-6 border-b border-slate-100 pb-4">Anunciar Vaga de Emprego</h2>
+            <JobForm 
+              onSuccess={(data) => {
+                onCrud.addJob(data);
+                setIsFormOpen(false);
+                alert("Vaga publicada com sucesso! Ela ficará visível por 30 dias.");
+              }}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

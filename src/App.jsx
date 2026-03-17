@@ -48,12 +48,7 @@ const GoogleIcon = () => (
 
 const createSlug = (text) => {
   if (!text) return '';
-  return text.toString().toLowerCase()
-    .trim()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9 -]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+  return text.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 -]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
 };
 
 const GlobalAdsCarousel = ({ ads }) => {
@@ -217,7 +212,7 @@ export default function App() {
       const diffDays = (now - updated) / (1000 * 60 * 60 * 24);
       const maxDelete = (type === 'property' && item.type === 'Temporada') ? 120 : 60;
       if (diffDays > maxDelete) {
-        try { await deleteFn(item.id); } catch(e){} 
+        try { await deleteFn(item.id); } catch(e){}
       }
     }
   };
@@ -226,14 +221,8 @@ export default function App() {
     try {
       await db.cleanOldEvents();
       
-      // BLINDAGEM CONTRA FALHA DE PERMISSÃO: Se alguma tabela falhar, carrega como array vazio e o site não quebra.
       const safeFetch = async (fetchPromise, fallback) => {
-        try {
-          return await fetchPromise;
-        } catch (err) {
-          console.warn("Aviso: Falha de permissão numa das coleções (verifique as regras do Firestore).", err);
-          return fallback;
-        }
+        try { return await fetchPromise; } catch (err) { return fallback; }
       };
 
       const [n, e, p, j, v, g, a, o, s] = await Promise.all([
@@ -401,14 +390,22 @@ export default function App() {
   };
   
   const handleLogin = async (e) => {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault(); 
+    setLoading(true);
     const u = await db.loginUser(e.target.email.value, e.target.password.value);
     setLoading(false);
-    if(u) { setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } else { alert("E-mail ou senha incorretos."); }
+    if(u) { 
+      setUser(u); 
+      localStorage.setItem('app_user', JSON.stringify(u)); 
+      setIsLoginOpen(false); 
+      if(u.role === 'admin') setCurrentPage('admin'); 
+    } else { 
+      alert("E-mail ou senha incorretos."); 
+    }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
+  const handleGoogleLogin = async (e) => {
+    e.preventDefault();
     try {
       const u = await db.loginWithGoogle();
       if(u) { 
@@ -416,13 +413,9 @@ export default function App() {
         localStorage.setItem('app_user', JSON.stringify(u)); 
         setIsLoginOpen(false); 
         if(u.role === 'admin') setCurrentPage('admin'); 
-      } else {
-        alert("Erro no login. O pop-up foi fechado ou o Google Login não está ativado no painel do Firebase.");
       }
     } catch (error) {
-      alert("Erro ao conectar com o Google.");
-    } finally {
-      setLoading(false);
+      console.error("Erro no login com Google:", error);
     }
   };
   
@@ -477,7 +470,7 @@ export default function App() {
   const activeVehicles = vehiclesData.filter(i => isItemActive(i, 'vehicle'));
   const activeJobs = jobsData.filter(i => isItemActive(i, 'job'));
 
-  if (loading) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
+  if (loading && !newsData.length && !user) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
@@ -563,7 +556,6 @@ export default function App() {
             
           </div>
         </header>
-
       </div>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
@@ -602,15 +594,27 @@ export default function App() {
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
           {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={activeProperties} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'property_detail' && <PropertyDetailPage property={selectedProperty} onBack={() => setCurrentPage('real_estate')} />}
-          {currentPage === 'jobs' && <JobsPage jobsData={activeJobs} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCrud={crud} checkLimit={handleAddJobClick} />}
+          {currentPage === 'jobs' && <JobsPage jobsData={activeJobs} user={user} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCrud={crud} checkLimit={handleAddJobClick} />}
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
           {currentPage === 'vehicles' && <VehiclesPage vehiclesData={activeVehicles} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
-          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
-          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} />}
+          {currentPage === 'admin' && user?.role === 'admin' && (
+             <AdminPage 
+                newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} 
+                vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} 
+                settingsData={settingsData} crud={crud} 
+             />
+          )}
+          
+          {currentPage === 'profile' && user && (
+             <ProfilePage 
+                user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} 
+                propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} 
+             />
+          )}
           
           {currentPage === 'about' && <AboutPage />}
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}

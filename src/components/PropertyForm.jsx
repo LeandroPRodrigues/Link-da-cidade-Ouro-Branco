@@ -1,30 +1,46 @@
 import React, { useState } from 'react';
 import LocationPicker from './LocationPicker';
-import { Upload } from 'lucide-react';
+import { Upload, Loader } from 'lucide-react';
+import { uploadFile } from '../utils/uploadHelper';
 
-export default function PropertyForm({ initialData, onSuccess, onCancel }) {
+export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin }) {
   const [formData, setFormData] = useState(initialData || {
     title: '', type: 'Venda', price: '', bedrooms: '', bathrooms: '', 
     garage: '', area: '', description: '', image: '', 
     address: '', lat: null, lng: null, featured: false
   });
+  
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleLocalImageUpload = (e) => {
+  const handleLocalImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData({...formData, image: reader.result});
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const url = await uploadFile(file, 'properties_images');
+        if (url) {
+          setFormData({...formData, image: url});
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Erro ao fazer upload da imagem. Verifique se o arquivo não é muito grande ou sua conexão.");
+      } finally {
+        setIsUploading(false);
+      }
     }
+    e.target.value = null; 
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isUploading) {
+       alert("Aguarde o envio da imagem terminar.");
+       return;
+    }
     if (!formData.lat) {
       alert("Por favor, selecione ou digite a localização no mapa antes de salvar.");
       return;
     }
-    // Formata o array de fotos para o padrão do site
     const finalData = { ...formData, photos: formData.image ? [formData.image] : [] };
     onSuccess(finalData);
   };
@@ -68,20 +84,23 @@ export default function PropertyForm({ initialData, onSuccess, onCancel }) {
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Principal (URL ou Upload)</label>
         <div className="flex gap-2">
           <input value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} placeholder="Link da foto..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-          <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-xl cursor-pointer flex items-center justify-center transition">
-            <Upload size={20} />
-            <input type="file" accept="image/*" className="hidden" onChange={handleLocalImageUpload} />
+          <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-xl cursor-pointer flex items-center justify-center transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {isUploading ? <Loader size={20} className="animate-spin" /> : <Upload size={20} />}
+            <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={handleLocalImageUpload} />
           </label>
         </div>
-        {formData.image && <img src={formData.image} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-xl"/>}
+        {isUploading && <p className="text-xs text-indigo-600 mt-1 font-bold">Enviando imagem, aguarde...</p>}
+        {formData.image && !isUploading && <img src={formData.image} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-xl"/>}
       </div>
 
-      <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-        <input type="checkbox" id="featured" checked={formData.featured || false} onChange={e => setFormData({...formData, featured: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-        <label htmlFor="featured" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Destacar este imóvel na Página Inicial</label>
-      </div>
+      {isAdmin && (
+        <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl mt-4">
+          <input type="checkbox" id="featured" checked={formData.featured || false} onChange={e => setFormData({...formData, featured: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <label htmlFor="featured" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Destacar este imóvel na Página Inicial (Apenas Admin)</label>
+        </div>
+      )}
 
-      <div className="pt-4 border-t border-slate-100">
+      <div className="pt-4 border-t border-slate-100 mt-4">
         <LocationPicker 
           locationData={{ address: formData.address, lat: formData.lat, lng: formData.lng }}
           setLocationData={(data) => setFormData({ ...formData, address: data.address, lat: data.lat, lng: data.lng })}
