@@ -374,68 +374,64 @@ export default function App() {
       {/* NOVO CABEÇALHO (2 FAIXAS) */}
       <div className="sticky top-0 z-50">
         
-        {/* FAIXA 1: TOPO ESCURO COM DATA/HORA E REDES SOCIAIS */}
-        <div className="bg-slate-900 text-slate-300 text-[11px] md:text-xs py-2 px-4 flex justify-between items-center">
-          <div className="max-w-[1600px] w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-0">
-            <div className="font-medium tracking-wide">
-              {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Facebook size={14} /></a>}
-              {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Instagram size={14} /></a>}
-              {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Youtube size={14} /></a>}
-              {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition"><MessageCircle size={14} /></a>}
-            </div>
-          </div>
-        </div>
+        {/* FAIXA 1: TOPO AZUL COM REDES SOCIAIS, LINKS, DATA/HORA E USUÁRIO */}
+        <div className="bg-blue-600 text-blue-50 text-sm py-3 px-4 flex justify-between items-center shadow-md">
+          <div className="max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
+            
+            {/* ESQUERDA: Redes Sociais, Quem Somos, Contato, Data/Hora */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 font-medium tracking-wide">
+              
+              {/* Redes Sociais */}
+              <div className="flex items-center gap-3">
+                {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Facebook size={20} /></a>}
+                {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Instagram size={20} /></a>}
+                {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Youtube size={20} /></a>}
+                {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-300 transition transform hover:scale-110"><MessageCircle size={20} /></a>}
+              </div>
 
-        {/* FAIXA 2: LOGO, MENU E LOGIN */}
-        <header className="bg-white shadow-sm border-b border-slate-200">
-          <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between">
-            {/* LOGO */}
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-              <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2.5 rounded-lg shadow-lg shadow-indigo-200"><Grid className="text-white" size={24} /></div>
-              <div>
-                <h1 className="font-extrabold text-2xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1>
-                <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
+              <span className="text-blue-400/50 hidden md:inline">|</span>
+
+              {/* Links Institucionais */}
+              <button onClick={() => setCurrentPage('about')} className={`hover:text-white transition ${currentPage === 'about' ? 'text-white font-bold' : ''}`}>Quem Somos</button>
+              
+              <span className="text-blue-400/50 hidden md:inline">|</span>
+              
+              <button onClick={() => setCurrentPage('contact')} className={`hover:text-white transition ${currentPage === 'contact' ? 'text-white font-bold' : ''}`}>Contato</button>
+              
+              <span className="text-blue-400/50 hidden md:inline">|</span>
+
+              {/* Data e Hora */}
+              <div className="hidden lg:block text-blue-100">
+                {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
             </div>
-            
-            {/* LINKS PRINCIPAIS (PC) */}
-            <div className="hidden lg:flex items-center gap-8 font-bold text-sm text-slate-600">
-               <button onClick={() => setCurrentPage('home')} className={`hover:text-indigo-600 transition ${currentPage === 'home' ? 'text-indigo-600' : ''}`}>Início</button>
-               <button onClick={() => setCurrentPage('news')} className={`hover:text-indigo-600 transition ${currentPage === 'news' ? 'text-indigo-600' : ''}`}>Notícias</button>
-               <button onClick={() => setCurrentPage('guide')} className={`hover:text-indigo-600 transition ${currentPage === 'guide' ? 'text-indigo-600' : ''}`}>Guia Comercial</button>
-               <button onClick={() => setCurrentPage('about')} className={`hover:text-indigo-600 transition ${currentPage === 'about' ? 'text-indigo-600' : ''}`}>Quem Somos</button>
-               <button onClick={() => setCurrentPage('contact')} className={`hover:text-indigo-600 transition ${currentPage === 'contact' ? 'text-indigo-600' : ''}`}>Contato</button>
-            </div>
-            
-            {/* CONTA/LOGIN */}
+
+            {/* DIREITA: Conta do Usuário / Login */}
             <div className="flex items-center gap-3">
               {user ? (
                  <div className="flex items-center gap-3">
-                   {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
+                   {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full font-bold transition shadow-sm"><Settings size={16}/> Admin</button>)}
                    
                    <div className="relative">
-                     <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
+                     <div className="flex items-center gap-2 cursor-pointer bg-blue-700/50 hover:bg-blue-700 p-1.5 pr-4 rounded-full transition border border-blue-400/30" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
                        {user.image ? (
-                          <img src={user.image} alt="Perfil" className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                          <img src={user.image} alt="Perfil" className="w-8 h-8 rounded-full object-cover border border-white/50 shadow-sm" />
                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
+                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white font-bold shadow-sm uppercase text-xs">{user.name[0]}</div>
                        )}
-                       <div className="hidden md:block text-left leading-tight"><p className="text-sm font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400 uppercase tracking-wider">Minha Conta</p></div>
+                       <div className="text-left leading-tight"><p className="text-sm font-bold text-white tracking-wide">{user.name.split(' ')[0]}</p></div>
                      </div>
                      
                      {isUserMenuOpen && (
                        <>
                          <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)}></div>
-                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2">
-                           <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
-                             <User size={16}/> Meu Perfil
+                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2 text-slate-800">
+                           <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
+                             <User size={18}/> Meu Perfil
                            </button>
                            <div className="h-px bg-slate-100 my-1"></div>
                            <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
-                             <LogOut size={16}/> Sair do Site
+                             <LogOut size={18}/> Sair do Site
                            </button>
                          </div>
                        </>
@@ -443,11 +439,32 @@ export default function App() {
                    </div>
                  </div>
               ) : (
-                <div className="flex gap-2">
-                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2.5 rounded-full transition">Entrar</button>
-                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="hidden md:flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 rounded-full shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">Cadastrar</button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="text-sm font-bold text-white hover:text-blue-200 transition">Entrar</button>
+                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="text-sm font-bold bg-white text-blue-700 hover:bg-blue-50 px-5 py-2 rounded-full shadow-md transition hover:-translate-y-0.5">Cadastrar</button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* FAIXA 2: LOGO E MENU PRINCIPAL */}
+        <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
+          <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between">
+            {/* LOGO */}
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setCurrentPage('home')}>
+              <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-3 rounded-xl shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform"><Grid className="text-white" size={28} /></div>
+              <div>
+                <h1 className="font-extrabold text-3xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1>
+                <p className="text-[11px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5">{CITY_NAME}</p>
+              </div>
+            </div>
+            
+            {/* LINKS PRINCIPAIS (PC) */}
+            <div className="hidden lg:flex items-center gap-10 font-bold text-base text-slate-600">
+               <button onClick={() => setCurrentPage('home')} className={`hover:text-indigo-600 transition pb-1 border-b-2 ${currentPage === 'home' ? 'text-indigo-600 border-indigo-600' : 'border-transparent'}`}>Início</button>
+               <button onClick={() => setCurrentPage('news')} className={`hover:text-indigo-600 transition pb-1 border-b-2 ${currentPage === 'news' ? 'text-indigo-600 border-indigo-600' : 'border-transparent'}`}>Notícias</button>
+               <button onClick={() => setCurrentPage('guide')} className={`hover:text-indigo-600 transition pb-1 border-b-2 ${currentPage === 'guide' ? 'text-indigo-600 border-indigo-600' : 'border-transparent'}`}>Guia Comercial</button>
             </div>
           </div>
         </header>
@@ -455,16 +472,16 @@ export default function App() {
       </div>
 
       {/* BARRA DE PESQUISA (Abaixo do Cabeçalho Principal) */}
-      <div className="bg-white border-b border-slate-200 py-3 hidden md:block">
+      <div className="bg-slate-50 border-b border-slate-200 py-4 hidden md:block">
          <div className="max-w-[1600px] mx-auto px-4">
-           <div className="flex bg-slate-100 items-center px-4 py-2.5 rounded-full w-full max-w-2xl mx-auto border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all shadow-inner">
-              <Search size={18} className="text-slate-400 mr-2"/><input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
+           <div className="flex bg-white items-center px-5 py-3 rounded-full w-full max-w-3xl mx-auto border border-slate-300 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-sm">
+              <Search size={20} className="text-slate-400 mr-3"/><input placeholder="Encontre notícias, empresas, vagas e muito mais..." className="bg-transparent outline-none text-base w-full placeholder:text-slate-400 font-medium text-slate-700"/>
             </div>
          </div>
       </div>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
-        <aside className="hidden lg:block w-64 shrink-0 sticky top-40 h-fit space-y-2">
+        <aside className="hidden lg:block w-64 shrink-0 sticky top-48 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
           <NavItem page="news" label="Notícias" icon={List} />
@@ -520,7 +537,7 @@ export default function App() {
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
         </main>
 
-        <aside className="hidden xl:block w-80 shrink-0 sticky top-40 h-fit space-y-6">
+        <aside className="hidden xl:block w-80 shrink-0 sticky top-48 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>
