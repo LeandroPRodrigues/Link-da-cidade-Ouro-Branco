@@ -31,7 +31,6 @@ import logoImg from './logo.jpg';
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
-// Ícones SVG
 const WhatsAppIcon = ({ size = 20, className = "" }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.004 2C6.48 2 2.004 6.476 2.004 12C2.004 13.824 2.49 15.54 3.328 17.034L2 22L7.098 20.686C8.56 21.524 10.236 22 12.004 22C17.528 22 22.004 17.524 22.004 12C22.004 6.476 17.528 2 12.004 2ZM17.18 16.538C16.99 17.076 16.038 17.514 15.534 17.576C15.06 17.632 14.45 17.682 12.392 16.83C9.314 15.556 7.324 12.438 7.17 12.238C7.02 12.038 5.898 10.554 5.898 9.014C5.898 7.474 6.678 6.726 7 6.406C7.272 6.136 7.726 6.002 8.164 6.002C8.304 6.002 8.432 6.008 8.542 6.014C8.868 6.028 9.032 6.046 9.25 6.568C9.52 7.218 10.176 8.818 10.254 8.98C10.334 9.14 10.412 9.356 10.306 9.566C10.206 9.778 10.12 9.872 9.96 10.058C9.8 10.244 9.654 10.38 9.498 10.584C9.354 10.768 9.192 10.966 9.37 11.274C9.544 11.576 10.15 12.564 11.05 13.364C12.21 14.398 13.16 14.726 13.496 14.866C13.75 14.972 14.052 14.954 14.234 14.756C14.464 14.506 14.752 14.12 15.042 13.726C15.248 13.446 15.5 13.404 15.766 13.504C16.038 13.6 17.49 14.318 17.79 14.468C18.09 14.618 18.29 14.692 18.364 14.82C18.438 14.948 18.438 15.548 18.18 16.538Z"/>
@@ -218,7 +217,7 @@ export default function App() {
       const diffDays = (now - updated) / (1000 * 60 * 60 * 24);
       const maxDelete = (type === 'property' && item.type === 'Temporada') ? 120 : 60;
       if (diffDays > maxDelete) {
-        try { await deleteFn(item.id); } catch(e){}
+        try { await deleteFn(item.id); } catch(e){} 
       }
     }
   };
@@ -226,9 +225,29 @@ export default function App() {
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
+      
+      // BLINDAGEM CONTRA FALHA DE PERMISSÃO: Se alguma tabela falhar, carrega como array vazio e o site não quebra.
+      const safeFetch = async (fetchPromise, fallback) => {
+        try {
+          return await fetchPromise;
+        } catch (err) {
+          console.warn("Aviso: Falha de permissão numa das coleções (verifique as regras do Firestore).", err);
+          return fallback;
+        }
+      };
+
       const [n, e, p, j, v, g, a, o, s] = await Promise.all([
-        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds(), db.getOffers(), db.getSettings()
+        safeFetch(db.getNews(), []),
+        safeFetch(db.getEvents(), []),
+        safeFetch(db.getProperties(), []),
+        safeFetch(db.getJobs(), []),
+        safeFetch(db.getVehicles(), []),
+        safeFetch(db.getGuide(), []),
+        safeFetch(db.getAds(), []),
+        safeFetch(db.getOffers(), []),
+        safeFetch(db.getSettings(), {})
       ]);
+
       setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o); setSettingsData(s);
       
       autoCleanupDeletions(p, 'property', db.deleteProperty);
@@ -382,22 +401,14 @@ export default function App() {
   };
   
   const handleLogin = async (e) => {
-    e.preventDefault(); 
-    setLoading(true);
+    e.preventDefault(); setLoading(true);
     const u = await db.loginUser(e.target.email.value, e.target.password.value);
     setLoading(false);
-    if(u) { 
-      setUser(u); 
-      localStorage.setItem('app_user', JSON.stringify(u)); 
-      setIsLoginOpen(false); 
-      if(u.role === 'admin') setCurrentPage('admin'); 
-    } else { 
-      alert("E-mail ou senha incorretos."); 
-    }
+    if(u) { setUser(u); localStorage.setItem('app_user', JSON.stringify(u)); setIsLoginOpen(false); if(u.role === 'admin') setCurrentPage('admin'); } else { alert("E-mail ou senha incorretos."); }
   };
 
-  const handleGoogleLogin = async (e) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
       const u = await db.loginWithGoogle();
       if(u) { 
@@ -405,9 +416,13 @@ export default function App() {
         localStorage.setItem('app_user', JSON.stringify(u)); 
         setIsLoginOpen(false); 
         if(u.role === 'admin') setCurrentPage('admin'); 
+      } else {
+        alert("Erro no login. O pop-up foi fechado ou o Google Login não está ativado no painel do Firebase.");
       }
     } catch (error) {
-      console.error("Erro no login com Google:", error);
+      alert("Erro ao conectar com o Google.");
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -462,7 +477,7 @@ export default function App() {
   const activeVehicles = vehiclesData.filter(i => isItemActive(i, 'vehicle'));
   const activeJobs = jobsData.filter(i => isItemActive(i, 'job'));
 
-  if (loading && !newsData.length && !user) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
+  if (loading) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
@@ -481,18 +496,14 @@ export default function App() {
                 {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Youtube size={20} /></a>}
                 {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-300 transition transform hover:scale-110"><WhatsAppIcon size={20} /></a>}
               </div>
-              
               <span className="text-blue-400/50 hidden md:inline">|</span>
               <button onClick={() => setCurrentPage('about')} className={`hover:text-white transition ${currentPage === 'about' ? 'text-white font-bold' : ''}`}>Quem Somos</button>
-              
               <span className="text-blue-400/50 hidden md:inline">|</span>
               <button onClick={() => setCurrentPage('contact')} className={`hover:text-white transition ${currentPage === 'contact' ? 'text-white font-bold' : ''}`}>Contato</button>
-              
               <span className="text-blue-400/50 hidden md:inline">|</span>
               <div className="hidden lg:block text-blue-100">
                 {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
-              
             </div>
 
             <div className="flex items-center gap-3">
@@ -533,7 +544,6 @@ export default function App() {
                 </div>
               )}
             </div>
-            
           </div>
         </div>
 
@@ -553,6 +563,7 @@ export default function App() {
             
           </div>
         </header>
+
       </div>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
