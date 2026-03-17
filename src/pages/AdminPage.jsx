@@ -181,6 +181,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
              {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
              {item.position === 'middle' && <span className="text-[10px] text-pink-600 font-bold uppercase mt-1">Banner Meio da Página</span>}
+             {item.position === 'sidebar' && <span className="text-[10px] text-purple-600 font-bold uppercase mt-1">Banner Lateral Direita</span>}
           </div>
           <div className="flex gap-2">
             <button onClick={() => openEditModal(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Editar">
@@ -417,7 +418,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     {renderField("Título da Campanha (Empresa/Anunciante)", "title", "text", true, null, "Ex: Ótica Visual")}
                     {renderField("Posição do Banner", "position", "select", true, [
                       {value: 'top', label: 'Carrossel Principal (Topo da Página)'},
-                      {value: 'middle', label: 'Banner Fixo (Meio da Página)'}
+                      {value: 'middle', label: 'Banner Fixo (Meio da Página)'},
+                      {value: 'sidebar', label: 'Banner Lateral Direita'}
                     ])}
                     {renderField("Link de Destino (Opcional)", "link", "text", false, null, "Deixe em branco se for apenas uma imagem estática")}
                     {renderImagePicker("Banner (Qualquer formato de imagem serve)", "image", true)}

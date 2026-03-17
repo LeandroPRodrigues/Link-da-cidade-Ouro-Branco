@@ -4,7 +4,7 @@ import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
 
-import HomePage, { MiniOffersCarousel, AdsCarousel } from './pages/HomePage';
+import HomePage, { MiniOffersCarousel, AdsCarousel, SidebarAd, MiniPropertiesCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import RealEstatePage from './pages/RealEstatePage';
@@ -45,8 +45,8 @@ const createSlug = (text) => {
 const GlobalAdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filtra apenas as propagandas que não foram marcadas para o "meio"
-  const topAds = ads?.filter(ad => ad.position !== 'middle') || [];
+  // Filtra apenas as propagandas marcadas para o topo
+  const topAds = ads?.filter(ad => ad.position !== 'middle' && ad.position !== 'sidebar') || [];
 
   useEffect(() => {
     if (topAds.length <= 1) return;
@@ -443,19 +443,15 @@ export default function App() {
              <GlobalAdsCarousel ads={adsData} />
           </div>
 
-          {/* NOVAS PROPRIEDADES INJETADAS NA HOMEPAGE */}
           {currentPage === 'home' && <HomePage 
               navigate={setCurrentPage} 
               newsData={newsData} 
               eventsData={eventsData} 
               offersData={offersData} 
-              propertiesData={propertiesData}
               jobsData={jobsData}
               adsData={adsData}
               user={user} 
               onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
-              onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} 
-              onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }}
               onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }}
           />}
           
@@ -485,6 +481,18 @@ export default function App() {
             <div className="relative z-10"><WeatherWidget /></div>
           </div>
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
+          
+          <SidebarAd ads={adsData} />
+          
+          <MiniPropertiesCarousel 
+            properties={propertiesData} 
+            navigate={setCurrentPage} 
+            onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} 
+            onCadastrarClick={() => {
+              if (!user) { alert("Faça login ou cadastre-se para anunciar um imóvel."); setIsLoginOpen(true); return; }
+              setCurrentPage('real_estate'); window.scrollTo(0,0);
+            }} 
+          />
         </aside>
       </div>
 

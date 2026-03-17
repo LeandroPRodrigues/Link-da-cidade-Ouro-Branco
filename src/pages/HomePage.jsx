@@ -7,7 +7,7 @@ import {
 import { db } from '../utils/database';
 
 // --- COMPONENTE CARROSSEL DE ANÚNCIOS (Exportado para o App.jsx) ---
-const AdsCarousel = ({ ads }) => {
+export const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
 
@@ -57,7 +57,7 @@ const AdsCarousel = ({ ads }) => {
 };
 
 // --- COMPONENTE MINI CARROSSEL DE OFERTAS ---
-const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
+export const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeOffers = (offers || []).filter(o => o.status !== 'inactive').slice(0, 5);
 
@@ -130,6 +130,97 @@ const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE BANNER LATERAL ---
+export const SidebarAd = ({ ads }) => {
+  const sidebarAd = ads?.find(ad => ad.position === 'sidebar');
+  if (!sidebarAd) return null;
+
+  return (
+    <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
+      {sidebarAd.link ? (
+        <a href={sidebarAd.link} target="_blank" rel="noopener noreferrer" className="block w-full">
+           <img src={sidebarAd.image} alt={sidebarAd.title || 'Publicidade'} className="w-full h-auto max-h-[250px] object-cover" />
+        </a>
+      ) : (
+        <div className="block w-full">
+           <img src={sidebarAd.image} alt={sidebarAd.title || 'Publicidade'} className="w-full h-auto max-h-[250px] object-cover" />
+        </div>
+      )}
+      <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
+        Publicidade
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE MINI CARROSSEL DE IMÓVEIS (LATERAL) ---
+export const MiniPropertiesCarousel = ({ properties, navigate, onPropertyClick, onCadastrarClick }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const featuredProps = (properties || []).filter(p => p.featured).slice(0, 6);
+
+  useEffect(() => {
+    if (featuredProps.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % featuredProps.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [featuredProps.length]);
+
+  const nextSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev + 1) % featuredProps.length); };
+  const prevSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev - 1 + featuredProps.length) % featuredProps.length); };
+
+  if (featuredProps.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
+          <Home size={16} className="text-emerald-500"/> Imóveis em Destaque
+        </h3>
+      </div>
+
+      <div className="relative w-full h-56 rounded-xl overflow-hidden group mb-4">
+        <div className="flex transition-transform duration-700 ease-in-out h-full" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+          {featuredProps.map((prop, idx) => (
+            <div key={prop.id || idx} className="w-full h-full shrink-0 relative cursor-pointer bg-slate-100" onClick={() => onPropertyClick ? onPropertyClick(prop) : navigate('real_estate')}>
+              <img src={prop.photos?.[0] || prop.image} alt={prop.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
+              <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider shadow-sm z-10">
+                {prop.type}
+              </span>
+              <div className="absolute bottom-4 left-3 right-3 z-10">
+                <p className="text-white font-bold text-sm leading-tight line-clamp-2 mb-1">{prop.title}</p>
+                <span className="text-emerald-400 font-black text-lg leading-none">{Number(prop.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {featuredProps.length > 1 && (
+          <>
+            <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"><ChevronLeft size={18} /></button>
+            <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/70 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"><ChevronRight size={18} /></button>
+            <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1.5 z-20">
+              {featuredProps.map((_, idx) => (
+                <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button onClick={() => navigate('real_estate')} className="text-xs font-bold text-indigo-600 hover:underline text-center mb-1">
+          Ver Mais Imóveis
+        </button>
+        <button onClick={onCadastrarClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-2">
+          Cadastrar Imóvel
+        </button>
       </div>
     </div>
   );
@@ -320,7 +411,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, onPropertyClick, onJobClick, eventsData, offersData, propertiesData, jobsData, adsData, user }) {
+export default function HomePage({ navigate, newsData, onNewsClick, eventsData, jobsData, adsData, user, onJobClick }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -335,9 +426,6 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
   const feedItems = newsData || [];
   const topNews = feedItems.slice(0, 3);
   const regularNews = feedItems.slice(3, 6);
-
-  // Imóveis em Destaque
-  const featuredProperties = propertiesData?.filter(p => p.featured).slice(0, 6) || [];
 
   // Últimas Vagas (Limitar a 10)
   const latestJobs = jobsData?.slice(0, 10) || [];
@@ -389,34 +477,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 5. IMÓVEIS EM DESTAQUE */}
-      {featuredProperties.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
-              <Home size={18} className="text-emerald-600"/> Imóveis em Destaque
-            </h2>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x px-1 -mx-4 md:mx-0 px-4 md:px-0">
-            {featuredProperties.map(prop => (
-              <div key={prop.id} onClick={() => onPropertyClick && onPropertyClick(prop)} className="shrink-0 w-64 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md transition-all">
-                 <img src={prop.photos?.[0] || prop.image} className="w-full h-36 object-cover" alt={prop.title} />
-                 <div className="p-3">
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">{prop.type}</span>
-                    <h3 className="font-bold text-slate-800 text-sm truncate mt-1">{prop.title}</h3>
-                    <p className="text-slate-900 font-black mt-1">{Number(prop.price).toLocaleString('pt-BR', {style: 'currency', currency:'BRL'})}</p>
-                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-3 mt-1 px-1">
-            <button onClick={() => navigate('real_estate')} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">Anunciar Imóvel</button>
-            <button onClick={() => navigate('real_estate')} className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-3 rounded-xl transition shadow-sm">Mais Imóveis</button>
-          </div>
-        </div>
-      )}
-
-      {/* 6. FEED RESTANTE DAS NOTÍCIAS (MÁX 3) */}
+      {/* 5. FEED RESTANTE DAS NOTÍCIAS (MÁX 3) */}
       <div className="space-y-6 mb-8">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
@@ -433,7 +494,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         </div>
       </div>
 
-      {/* 7. PUBLICIDADE FIXA DO MEIO DA PÁGINA */}
+      {/* 6. PUBLICIDADE FIXA DO MEIO DA PÁGINA */}
       {middleAd && (
         <div className="mb-8 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
           {middleAd.link ? (
@@ -451,7 +512,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         </div>
       )}
 
-      {/* 8. VAGAS DE EMPREGO (10 ÚLTIMAS) */}
+      {/* 7. VAGAS DE EMPREGO (10 ÚLTIMAS) */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -480,6 +541,3 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
     </div>
   );
 }
-
-// Exportamos também para uso global
-export { MiniOffersCarousel, AdsCarousel };
