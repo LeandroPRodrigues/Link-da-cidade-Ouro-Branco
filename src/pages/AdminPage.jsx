@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
+import { uploadFile } from '../utils/uploadHelper';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
   const [modalOpen, setModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [editingItem, setEditingItem] = useState(null);
   const [newsBlocks, setNewsBlocks] = useState([]);
@@ -86,13 +88,22 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  const handleLocalImageUpload = (e, callback) => {
+  // UPLOAD DE IMAGEM CORRIGIDO VIA FIREBASE STORAGE
+  const handleLocalImageUpload = async (e, callback) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => callback(reader.result);
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const url = await uploadFile(file, `${activeTab}_images`);
+        if (url) callback(url);
+      } catch (err) {
+        console.error("Erro no upload:", err);
+        alert("Erro ao enviar a imagem. Tente novamente ou verifique se tem permissão no Firebase Storage.");
+      } finally {
+        setIsUploading(false);
+      }
     }
+    e.target.value = null; // reseta o input
   };
 
   const openEditModal = (item = {}) => {
@@ -103,32 +114,42 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setModalOpen(true);
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isUploading) {
+      alert("Aguarde o envio da imagem terminar.");
+      return;
+    }
+    
     let payload = { ...editingItem };
     
     if (activeTab === 'news') payload.content = newsBlocks;
 
-    if (payload.id) {
-      if (activeTab === 'offers') crud.updateOffer(payload);
-      if (activeTab === 'ads') crud.updateAd(payload);
-      if (activeTab === 'news') crud.updateNews(payload);
-      if (activeTab === 'events') crud.updateEvent(payload);
-      if (activeTab === 'jobs') crud.updateJob(payload);
-      if (activeTab === 'guide') crud.updateGuideItem(payload);
-    } else {
-      payload.date = payload.date || new Date().toISOString();
-      if (activeTab === 'offers') crud.addOffer(payload);
-      if (activeTab === 'ads') crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()});
-      if (activeTab === 'news') crud.addNews(payload);
-      if (activeTab === 'events') crud.addEvent(payload);
-      if (activeTab === 'jobs') crud.addJob({...payload, createdAt: new Date().toISOString()});
-      if (activeTab === 'guide') crud.addGuideItem({...payload, status: 'active'});
+    try {
+      if (payload.id) {
+        if (activeTab === 'offers') await crud.updateOffer(payload);
+        if (activeTab === 'ads') await crud.updateAd(payload);
+        if (activeTab === 'news') await crud.updateNews(payload);
+        if (activeTab === 'events') await crud.updateEvent(payload);
+        if (activeTab === 'jobs') await crud.updateJob(payload);
+        if (activeTab === 'guide') await crud.updateGuideItem(payload);
+      } else {
+        payload.date = payload.date || new Date().toISOString();
+        if (activeTab === 'offers') await crud.addOffer(payload);
+        if (activeTab === 'ads') await crud.addAd({...payload, status: 'active', createdAt: new Date().toISOString()});
+        if (activeTab === 'news') await crud.addNews(payload);
+        if (activeTab === 'events') await crud.addEvent(payload);
+        if (activeTab === 'jobs') await crud.addJob({...payload, createdAt: new Date().toISOString()});
+        if (activeTab === 'guide') await crud.addGuideItem({...payload, status: 'active'});
+      }
+      
+      setModalOpen(false);
+      setEditingItem(null);
+      setNewsBlocks([]);
+    } catch(err) {
+      console.error("Erro ao salvar no banco:", err);
+      alert("Erro ao salvar! Verifique sua conexão e tente novamente.");
     }
-    
-    setModalOpen(false);
-    setEditingItem(null);
-    setNewsBlocks([]);
   };
 
   const renderField = (label, field, type="text", required=false, options=null, placeholder="") => {
@@ -162,13 +183,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       <div key={field}>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
         <div className="flex gap-2">
-          <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Link da imagem..." required={required}/>
-          <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors">
-            <Upload size={20} />
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLocalImageUpload(e, (base64) => setEditingItem({...editingItem, [field]: base64}))} />
+          <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Link da imagem..." required={required && !val}/>
+          <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {isUploading ? <Loader size={20} className="animate-spin"/> : <Upload size={20} />}
+            <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={(e) => handleLocalImageUpload(e, (url) => setEditingItem({...editingItem, [field]: url}))} />
           </label>
         </div>
-        {val && <img src={val} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
+        {isUploading && <p className="text-xs text-indigo-600 mt-1 font-bold">Enviando imagem, aguarde...</p>}
+        {val && !isUploading && <img src={val} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
       </div>
     );
   };
