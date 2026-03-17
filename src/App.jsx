@@ -45,7 +45,6 @@ const createSlug = (text) => {
 const GlobalAdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filtra apenas as propagandas marcadas para o topo
   const topAds = ads?.filter(ad => ad.position !== 'middle' && ad.position !== 'sidebar') || [];
 
   useEffect(() => {
@@ -114,15 +113,12 @@ export default function App() {
   const [adsData, setAdsData] = useState([]);
   const [offersData, setOffersData] = useState([]); 
 
-  // =========================================================================
-  // SISTEMA INTELIGENTE DE ROTAS
-  // =========================================================================
   const resolveUrlPath = useCallback((pathname, dataSets) => {
     const parts = pathname.split('/').filter(Boolean);
     if (parts.length === 0) { setCurrentPage('home'); return; }
 
     const route = parts[0];
-    const id = parts[1]; // Pode ser o ID ou o Slug (Título da notícia)
+    const id = parts[1]; 
 
     switch(route) {
       case 'admin': setCurrentPage('admin'); break;
@@ -206,14 +202,11 @@ export default function App() {
     loadAllData(); 
   }, []);
 
-  // =========================================================================
-  // GERADOR DE LINKS E TÍTULOS (SEO BÁSICO) QUANDO MUDA DE PÁGINA
-  // =========================================================================
   useEffect(() => {
     if (loading) return; 
 
     let newUrl = '/';
-    let pageTitle = `${APP_BRAND} da Cidade | ${CITY_NAME}`; // Título padrão da Home
+    let pageTitle = `${APP_BRAND} da Cidade | ${CITY_NAME}`;
 
     if (currentPage === 'offers') { newUrl = '/ofertas'; pageTitle = `Shopping e Ofertas | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'admin') { newUrl = '/admin'; pageTitle = 'Painel Administrativo'; }
@@ -225,7 +218,6 @@ export default function App() {
     else if (currentPage === 'vehicles') { newUrl = '/veiculos'; pageTitle = `Veículos em ${CITY_NAME}`; }
     else if (currentPage === 'guide') { newUrl = '/guia'; pageTitle = `Guia Comercial de ${CITY_NAME}`; }
     
-    // LINKS E TÍTULOS INDIVIDUAIS (A MÁGICA DO SEO):
     else if (currentPage === 'news_detail' && selectedNews) { 
         newUrl = `/noticias/${createSlug(selectedNews.title)}`;
         pageTitle = `${selectedNews.title} | Notícias`;
@@ -255,14 +247,10 @@ export default function App() {
         pageTitle = `${selectedGuideItem.name} | Guia Comercial`;
     }
 
-    // Muda a URL no navegador
     if (window.location.pathname !== newUrl) {
       window.history.pushState(null, '', newUrl);
     }
-    
-    // MUDA O TÍTULO DA ABA DO NAVEGADOR (Para o Google ler!)
     document.title = pageTitle;
-
   }, [currentPage, selectedNews, selectedOffer, selectedEvent, selectedProperty, selectedJob, selectedVehicle, selectedGuideItem, loading]);
 
   useEffect(() => {
@@ -276,8 +264,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [resolveUrlPath, newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, offersData]);
   
-  // =========================================================================
-
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
@@ -351,6 +337,14 @@ export default function App() {
   
   const handleLogout = async () => { 
     await db.logoutUser(); setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); setIsUserMenuOpen(false);
+  };
+
+  // ESTA É A NOVA FUNÇÃO QUE REGISTRA O CLIQUE E ABRE A NOTÍCIA
+  const handleNewsClick = (n) => {
+    db.incrementNewsView(n.id, n._collection);
+    setSelectedNews(n);
+    setCurrentPage('news_detail');
+    window.scrollTo(0,0);
   };
 
   const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
@@ -451,7 +445,7 @@ export default function App() {
               jobsData={jobsData}
               adsData={adsData}
               user={user} 
-              onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
+              onNewsClick={handleNewsClick} 
               onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }}
           />}
           
@@ -459,7 +453,7 @@ export default function App() {
           {currentPage === 'offer_detail' && <OfferDetailPage offer={selectedOffer} onBack={() => setCurrentPage('offers')} />}
 
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
-          {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={handleNewsClick} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
           {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={propertiesData} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}

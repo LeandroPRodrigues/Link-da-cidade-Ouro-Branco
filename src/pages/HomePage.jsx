@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  MapPin, Calendar, Heart, MessageCircle, Share2, 
+  MapPin, Heart, MessageCircle, Share2, 
   MoreHorizontal, Home, Briefcase, Car, Store, 
-  Send, ExternalLink, ShoppingBag, ChevronLeft, ChevronRight
+  Send, ExternalLink, ShoppingBag, ChevronLeft, ChevronRight, TrendingUp
 } from 'lucide-react';
 import { db } from '../utils/database';
 
@@ -319,31 +319,6 @@ const QuickAccessItem = ({ label, icon: Icon, color, onClick }) => (
   </button>
 );
 
-// --- COMPONENTE DE CARTÃO DE EVENTO ---
-const EventCard = ({ event, onClick }) => (
-  <div onClick={() => onClick && onClick(event)} className="shrink-0 w-72 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-md transition-all relative">
-    <div className="relative h-40 overflow-hidden">
-      <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-center shadow-sm z-10">
-        <span className="block text-[10px] font-bold uppercase text-red-500">{new Date(event.date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.','')}</span>
-        <span className="block text-xl font-black leading-none text-slate-900">{new Date(event.date + 'T00:00:00').getDate()}</span>
-      </div>
-    </div>
-    <div className="p-3">
-      <h3 className="font-bold text-slate-800 text-base truncate mb-1">{event.title}</h3>
-      <div className="flex items-center gap-1 text-xs text-slate-500 mb-3">
-        <MapPin size={12} className="text-indigo-500"/>
-        <span className="truncate">{event.location}</span>
-      </div>
-      {event.link && (
-        <a href={event.link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition" onClick={(e) => e.stopPropagation()}>
-          <ExternalLink size={12}/> Ingressos / Mais Info
-        </a>
-      )}
-    </div>
-  </div>
-);
-
 // --- COMPONENTE DE CARTÃO DE FEED ---
 const FeedCard = ({ item, user, onNewsClick }) => {
   const [likes, setLikes] = useState(item.likes || []);
@@ -430,20 +405,25 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, jobsData, adsData, user, onJobClick }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const upcomingEvents = [...eventsData]
-    .filter(e => {
-      const eventDate = new Date(e.date + 'T00:00:00');
-      return eventDate >= today; 
-    })
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
+  
   // Notícias (Limitar a 6 no total: 3 destaques e 3 feed)
   const feedItems = newsData || [];
   const topNews = feedItems.slice(0, 3);
   const regularNews = feedItems.slice(3, 6);
+
+  // --- CÁLCULO DAS NOTÍCIAS EM ALTA ---
+  const trendingNews = [...feedItems].map(news => {
+    const views = news.views || 0;
+    const likes = news.likes?.length || 0;
+    const comments = news.comments?.length || 0;
+    // Fórmula: 1 view = 1 ponto, 1 like = 5 pontos, 1 comment = 10 pontos
+    const score = views + (likes * 5) + (comments * 10);
+    return { ...news, score };
+  }).sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    // Critério de desempate: data mais recente
+    return new Date(b.date) - new Date(a.date);
+  }).slice(0, 5);
 
   // Últimas Vagas (Limitar a 10)
   const latestJobs = jobsData?.slice(0, 10) || [];
@@ -470,22 +450,35 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
 
-      {/* 3. CARROSSEL DE EVENTOS */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
-            <Calendar size={18} className="text-purple-600"/> Agenda Ouro Branco
-          </h2>
-          <button onClick={() => navigate('events')} className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition">Ver tudo</button>
+      {/* 3. RANKING EM ALTA (SUBSTITUIU OS EVENTOS) */}
+      {trendingNews.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-8">
+          <div className="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
+            <h2 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
+              <TrendingUp size={20} className="text-red-500"/> Notícias em Alta
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mais Lidas</span>
+          </div>
+          
+          <div className="flex flex-col gap-4">
+            {trendingNews.map((news, index) => (
+              <div key={news.id} onClick={() => onNewsClick(news)} className="flex items-center gap-5 cursor-pointer group">
+                <span className="text-5xl font-black text-slate-100 group-hover:text-indigo-100 transition-colors w-10 text-center leading-none">
+                  {index + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 block">
+                    {news.category}
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">
+                    {news.title}
+                  </h3>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x px-1 -mx-4 md:mx-0 px-4 md:px-0">
-          {upcomingEvents.length > 0 ? upcomingEvents.map(event => (
-            <EventCard key={event.id} event={event} />
-          )) : (
-            <div className="w-full text-center py-10 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhum evento futuro agendado.</div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* 4. BARRA DE BUSCA "O QUE PROCURA" */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition transform hover:scale-[1.01]" onClick={() => navigate('guide')}>

@@ -1,5 +1,5 @@
 import { db as firestoreDB, auth, googleProvider } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, signInWithPopup } from 'firebase/auth';
 
 const mapList = (snapshot) => {
@@ -28,9 +28,19 @@ export const database = {
     combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     return combined; 
   },
-  addNews: async (item) => { const { id, _collection, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [] }); },
+  // Adicionado views: 0 nas novas notícias
+  addNews: async (item) => { const { id, _collection, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [], views: 0 }); },
   updateNews: async (item) => { const { id, _collection, ...data } = item; await updateDoc(doc(firestoreDB, _collection || "news", id), data); },
   deleteNews: async (id) => { await deleteDoc(doc(firestoreDB, "news", id)); await deleteDoc(doc(firestoreDB, "noticias", id)); },
+
+  // Nova função para contar as visualizações
+  incrementNewsView: async (id, collectionName = "news") => {
+    try {
+      await updateDoc(doc(firestoreDB, collectionName, id), { views: increment(1) });
+    } catch (error) {
+      console.error("Erro ao registrar visualização:", error);
+    }
+  },
 
   getEvents: async () => { const q = await getDocs(collection(firestoreDB, "events")); return mapList(q); },
   addEvent: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "events"), { ...data, likes: [], comments: [] }); },
@@ -128,9 +138,6 @@ export const database = {
     return true;
   },
 
-  // ==========================================
-  // NOVA FUNÇÃO: ATUALIZAR PERFIL
-  // ==========================================
   updateUserProfile: async (uid, updatedData) => {
     try {
       const q = query(collection(firestoreDB, "users"), where("uid", "==", uid));
