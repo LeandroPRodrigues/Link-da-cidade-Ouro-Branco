@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Bell, Search, Grid, Settings, ShoppingBag, ExternalLink } from 'lucide-react';
+import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Search, Grid, Settings, ShoppingBag, Facebook, Instagram, Youtube, MessageCircle } from 'lucide-react';
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
@@ -22,29 +22,24 @@ import WeatherWidget from './components/WeatherWidget';
 import OffersPage from './pages/OffersPage'; 
 import OfferDetailPage from './pages/OfferDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
-// =========================================================================
-// FUNÇÃO PARA CRIAR URLS AMIGÁVEIS (SEO)
-// =========================================================================
 const createSlug = (text) => {
   if (!text) return '';
   return text.toString().toLowerCase()
     .trim()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
-    .replace(/[^a-z0-9 -]/g, "") // Remove caracteres especiais
-    .replace(/\s+/g, "-") // Troca espaços por hífens
-    .replace(/-+/g, "-"); // Remove múltiplos hífens
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 -]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 };
 
-// =========================================================================
-// CARROSSEL GLOBAL DE PUBLICIDADE
-// =========================================================================
 const GlobalAdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const topAds = ads?.filter(ad => ad.position !== 'middle' && ad.position !== 'sidebar') || [];
 
   useEffect(() => {
@@ -112,6 +107,14 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
   const [offersData, setOffersData] = useState([]); 
+  const [settingsData, setSettingsData] = useState({});
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const resolveUrlPath = useCallback((pathname, dataSets) => {
     const parts = pathname.split('/').filter(Boolean);
@@ -123,6 +126,8 @@ export default function App() {
     switch(route) {
       case 'admin': setCurrentPage('admin'); break;
       case 'perfil': setCurrentPage('profile'); break;
+      case 'quem-somos': setCurrentPage('about'); break;
+      case 'contato': setCurrentPage('contact'); break;
       
       case 'ofertas':
         if (id && dataSets.offers) {
@@ -181,10 +186,10 @@ export default function App() {
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
-      const [n, e, p, j, v, g, a, o] = await Promise.all([
-        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds(), db.getOffers()
+      const [n, e, p, j, v, g, a, o, s] = await Promise.all([
+        db.getNews(), db.getEvents(), db.getProperties(), db.getJobs(), db.getVehicles(), db.getGuide(), db.getAds(), db.getOffers(), db.getSettings()
       ]);
-      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o);
+      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o); setSettingsData(s);
       
       resolveUrlPath(window.location.pathname, {
           news: n, events: e, real_estate: p, jobs: j, vehicles: v, guide: g, offers: o
@@ -211,6 +216,8 @@ export default function App() {
     if (currentPage === 'offers') { newUrl = '/ofertas'; pageTitle = `Shopping e Ofertas | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'admin') { newUrl = '/admin'; pageTitle = 'Painel Administrativo'; }
     else if (currentPage === 'profile') { newUrl = '/perfil'; pageTitle = 'Meu Perfil'; }
+    else if (currentPage === 'about') { newUrl = '/quem-somos'; pageTitle = `Quem Somos | ${APP_BRAND} da Cidade`; }
+    else if (currentPage === 'contact') { newUrl = '/contato'; pageTitle = `Contato | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'news') { newUrl = '/noticias'; pageTitle = `Notícias de ${CITY_NAME}`; }
     else if (currentPage === 'events') { newUrl = '/agenda'; pageTitle = `Agenda de Eventos | ${CITY_NAME}`; }
     else if (currentPage === 'real_estate') { newUrl = '/imoveis'; pageTitle = `Imóveis em ${CITY_NAME}`; }
@@ -288,7 +295,8 @@ export default function App() {
     deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); },
     addOffer: async (item) => { await db.addOffer(item); setOffersData(await db.getOffers()); },
     updateOffer: async (item) => { await db.updateOffer(item); setOffersData(await db.getOffers()); },
-    deleteOffer: async (id) => { await db.deleteOffer(id); setOffersData(await db.getOffers()); }
+    deleteOffer: async (id) => { await db.deleteOffer(id); setOffersData(await db.getOffers()); },
+    updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); }
   };
 
   const handleAddPropertyClick = (openModalCallback) => { 
@@ -339,7 +347,6 @@ export default function App() {
     await db.logoutUser(); setUser(null); localStorage.removeItem('app_user'); setCurrentPage('home'); setIsUserMenuOpen(false);
   };
 
-  // ESTA É A NOVA FUNÇÃO QUE REGISTRA O CLIQUE E ABRE A NOTÍCIA
   const handleNewsClick = (n) => {
     db.incrementNewsView(n.id, n._collection);
     setSelectedNews(n);
@@ -364,60 +371,100 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
       
-      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200 h-16">
-        <div className="max-w-[1600px] mx-auto px-4 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-            <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2 rounded-lg shadow-lg shadow-indigo-200"><Grid className="text-white" size={20} /></div>
-            <div><h1 className="font-extrabold text-xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1><p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p></div>
-          </div>
-          
-          <div className="hidden md:flex bg-slate-100 items-center px-4 py-2 rounded-full w-96 border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all">
-            <Search size={18} className="text-slate-400 mr-2"/><input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {user ? (
-               <div className="flex items-center gap-3">
-                 {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
-                 
-                 <div className="relative">
-                   <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
-                     {user.image ? (
-                        <img src={user.image} alt="Perfil" className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
-                     ) : (
-                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
-                     )}
-                     <div className="hidden md:block text-left leading-tight"><p className="text-xs font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400">Minha Conta</p></div>
-                   </div>
-                   
-                   {isUserMenuOpen && (
-                     <>
-                       <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)}></div>
-                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2">
-                         <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
-                           <User size={16}/> Meu Perfil
-                         </button>
-                         <div className="h-px bg-slate-100 my-1"></div>
-                         <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
-                           <LogOut size={16}/> Sair do Site
-                         </button>
-                       </div>
-                     </>
-                   )}
-                 </div>
-               </div>
-            ) : (
-              <div className="flex gap-2">
-                <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-full transition">Entrar</button>
-                <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="hidden md:flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-full shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">Cadastrar</button>
-              </div>
-            )}
+      {/* NOVO CABEÇALHO (2 FAIXAS) */}
+      <div className="sticky top-0 z-50">
+        
+        {/* FAIXA 1: TOPO ESCURO COM DATA/HORA E REDES SOCIAIS */}
+        <div className="bg-slate-900 text-slate-300 text-[11px] md:text-xs py-2 px-4 flex justify-between items-center">
+          <div className="max-w-[1600px] w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-0">
+            <div className="font-medium tracking-wide">
+              {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Facebook size={14} /></a>}
+              {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Instagram size={14} /></a>}
+              {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition"><Youtube size={14} /></a>}
+              {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition"><MessageCircle size={14} /></a>}
+            </div>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-64px)]">
-        <aside className="hidden lg:block w-64 shrink-0 sticky top-24 h-fit space-y-2">
+        {/* FAIXA 2: LOGO, MENU E LOGIN */}
+        <header className="bg-white shadow-sm border-b border-slate-200">
+          <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between">
+            {/* LOGO */}
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
+              <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2.5 rounded-lg shadow-lg shadow-indigo-200"><Grid className="text-white" size={24} /></div>
+              <div>
+                <h1 className="font-extrabold text-2xl tracking-tight text-slate-800 leading-none">{APP_BRAND}<span className="text-indigo-600">daCidade</span></h1>
+                <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">{CITY_NAME}</p>
+              </div>
+            </div>
+            
+            {/* LINKS PRINCIPAIS (PC) */}
+            <div className="hidden lg:flex items-center gap-8 font-bold text-sm text-slate-600">
+               <button onClick={() => setCurrentPage('home')} className={`hover:text-indigo-600 transition ${currentPage === 'home' ? 'text-indigo-600' : ''}`}>Início</button>
+               <button onClick={() => setCurrentPage('news')} className={`hover:text-indigo-600 transition ${currentPage === 'news' ? 'text-indigo-600' : ''}`}>Notícias</button>
+               <button onClick={() => setCurrentPage('guide')} className={`hover:text-indigo-600 transition ${currentPage === 'guide' ? 'text-indigo-600' : ''}`}>Guia Comercial</button>
+               <button onClick={() => setCurrentPage('about')} className={`hover:text-indigo-600 transition ${currentPage === 'about' ? 'text-indigo-600' : ''}`}>Quem Somos</button>
+               <button onClick={() => setCurrentPage('contact')} className={`hover:text-indigo-600 transition ${currentPage === 'contact' ? 'text-indigo-600' : ''}`}>Contato</button>
+            </div>
+            
+            {/* CONTA/LOGIN */}
+            <div className="flex items-center gap-3">
+              {user ? (
+                 <div className="flex items-center gap-3">
+                   {user.role === 'admin' && (<button onClick={() => setCurrentPage('admin')} className="hidden md:flex items-center gap-2 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full font-bold border border-red-100 hover:bg-red-100 transition"><Settings size={14}/> Admin</button>)}
+                   
+                   <div className="relative">
+                     <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1 pr-3 rounded-full border border-transparent hover:border-slate-200 transition" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
+                       {user.image ? (
+                          <img src={user.image} alt="Perfil" className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                       ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-sm uppercase text-sm">{user.name[0]}</div>
+                       )}
+                       <div className="hidden md:block text-left leading-tight"><p className="text-sm font-bold text-slate-700">{user.name.split(' ')[0]}</p><p className="text-[10px] text-slate-400 uppercase tracking-wider">Minha Conta</p></div>
+                     </div>
+                     
+                     {isUserMenuOpen && (
+                       <>
+                         <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)}></div>
+                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in slide-in-from-top-2">
+                           <button onClick={() => { setCurrentPage('profile'); setIsUserMenuOpen(false); window.scrollTo(0,0); }} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
+                             <User size={16}/> Meu Perfil
+                           </button>
+                           <div className="h-px bg-slate-100 my-1"></div>
+                           <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
+                             <LogOut size={16}/> Sair do Site
+                           </button>
+                         </div>
+                       </>
+                     )}
+                   </div>
+                 </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('login'); }} className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2.5 rounded-full transition">Entrar</button>
+                  <button onClick={() => { setIsLoginOpen(true); setAuthMode('register'); }} className="hidden md:flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 rounded-full shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">Cadastrar</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+      </div>
+
+      {/* BARRA DE PESQUISA (Abaixo do Cabeçalho Principal) */}
+      <div className="bg-white border-b border-slate-200 py-3 hidden md:block">
+         <div className="max-w-[1600px] mx-auto px-4">
+           <div className="flex bg-slate-100 items-center px-4 py-2.5 rounded-full w-full max-w-2xl mx-auto border border-transparent focus-within:border-indigo-300 focus-within:bg-white transition-all shadow-inner">
+              <Search size={18} className="text-slate-400 mr-2"/><input placeholder="Buscar no Link da Cidade..." className="bg-transparent outline-none text-sm w-full placeholder:text-slate-400"/>
+            </div>
+         </div>
+      </div>
+
+      <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
+        <aside className="hidden lg:block w-64 shrink-0 sticky top-40 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
           <NavItem page="news" label="Notícias" icon={List} />
@@ -464,12 +511,16 @@ export default function App() {
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
-          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} crud={crud} />}
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
           
           {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} />}
+          
+          {/* NOVAS PÁGINAS */}
+          {currentPage === 'about' && <AboutPage />}
+          {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
         </main>
 
-        <aside className="hidden xl:block w-80 shrink-0 sticky top-24 h-fit space-y-6">
+        <aside className="hidden xl:block w-80 shrink-0 sticky top-40 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>

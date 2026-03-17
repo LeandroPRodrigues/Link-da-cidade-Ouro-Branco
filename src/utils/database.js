@@ -15,6 +15,17 @@ const mapList = (snapshot) => {
 };
 
 export const database = {
+  // CONFIGURAÇÕES DO SITE (REDES SOCIAIS ETC)
+  getSettings: async () => {
+    const snap = await getDocs(collection(firestoreDB, "settings"));
+    if (snap.empty) return { facebook: '', instagram: '', youtube: '', whatsapp: '', showWhatsapp: false };
+    return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  },
+  updateSettings: async (item) => {
+    if (item.id) { await updateDoc(doc(firestoreDB, "settings", item.id), item); }
+    else { await addDoc(collection(firestoreDB, "settings"), item); }
+  },
+
   getNews: async () => { 
     const [newsQ, noticiasQ] = await Promise.all([ getDocs(collection(firestoreDB, "news")), getDocs(collection(firestoreDB, "noticias")) ]);
     const formatarNoticia = (doc, nomeColecao) => {
@@ -28,18 +39,13 @@ export const database = {
     combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     return combined; 
   },
-  // Adicionado views: 0 nas novas notícias
   addNews: async (item) => { const { id, _collection, ...data } = item; await addDoc(collection(firestoreDB, "news"), { ...data, likes: [], comments: [], views: 0 }); },
   updateNews: async (item) => { const { id, _collection, ...data } = item; await updateDoc(doc(firestoreDB, _collection || "news", id), data); },
   deleteNews: async (id) => { await deleteDoc(doc(firestoreDB, "news", id)); await deleteDoc(doc(firestoreDB, "noticias", id)); },
 
-  // Nova função para contar as visualizações
   incrementNewsView: async (id, collectionName = "news") => {
-    try {
-      await updateDoc(doc(firestoreDB, collectionName, id), { views: increment(1) });
-    } catch (error) {
-      console.error("Erro ao registrar visualização:", error);
-    }
+    try { await updateDoc(doc(firestoreDB, collectionName, id), { views: increment(1) }); } 
+    catch (error) { console.error("Erro ao registrar visualização:", error); }
   },
 
   getEvents: async () => { const q = await getDocs(collection(firestoreDB, "events")); return mapList(q); },

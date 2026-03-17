@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
 import { uploadFile } from '../utils/uploadHelper';
 
-export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, crud }) {
+export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, settingsData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
   const [modalOpen, setModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
   const [editingItem, setEditingItem] = useState(null);
   const [newsBlocks, setNewsBlocks] = useState([]);
+  
+  // Estado local para as configurações do site
+  const [siteSettings, setSiteSettings] = useState(settingsData || { facebook: '', instagram: '', youtube: '', whatsapp: '', showWhatsapp: false });
+
+  useEffect(() => {
+    if (settingsData) setSiteSettings(settingsData);
+  }, [settingsData]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    await crud.updateSettings(siteSettings);
+    alert("Configurações do site salvas com sucesso!");
+  };
 
   // ==========================================
   // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
@@ -88,7 +101,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // UPLOAD DE IMAGEM CORRIGIDO VIA FIREBASE STORAGE
   const handleLocalImageUpload = async (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -103,7 +115,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         setIsUploading(false);
       }
     }
-    e.target.value = null; // reseta o input
+    e.target.value = null;
   };
 
   const openEditModal = (item = {}) => {
@@ -244,7 +256,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'real_estate', label: 'Imóveis' },
           { id: 'jobs', label: 'Vagas' },
           { id: 'vehicles', label: 'Veículos' },
-          { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' }
+          { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' },
+          { id: 'settings', label: 'Configurações' }
         ].map(tab => (
           <button
             key={tab.id}
@@ -259,6 +272,49 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
+        {/* ABA DE CONFIGURAÇÕES DO SITE */}
+        {activeTab === 'settings' && (
+          <div>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-xl font-black text-slate-800">Configurações Gerais do Site</h2>
+            </div>
+            
+            <form onSubmit={handleSaveSettings} className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-5">
+              <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Redes Sociais (Cabeçalho)</h3>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Facebook</label>
+                <input type="url" value={siteSettings.facebook} onChange={e => setSiteSettings({...siteSettings, facebook: e.target.value})} placeholder="Ex: https://facebook.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Instagram</label>
+                <input type="url" value={siteSettings.instagram} onChange={e => setSiteSettings({...siteSettings, instagram: e.target.value})} placeholder="Ex: https://instagram.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do YouTube</label>
+                <input type="url" value={siteSettings.youtube} onChange={e => setSiteSettings({...siteSettings, youtube: e.target.value})} placeholder="Ex: https://youtube.com/c/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do WhatsApp</label>
+                <input type="url" value={siteSettings.whatsapp} onChange={e => setSiteSettings({...siteSettings, whatsapp: e.target.value})} placeholder="Ex: https://wa.me/5531999999999" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
+              </div>
+
+              <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                <input type="checkbox" id="showWhatsapp" checked={siteSettings.showWhatsapp} onChange={e => setSiteSettings({...siteSettings, showWhatsapp: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                <label htmlFor="showWhatsapp" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Exibir Ícone do WhatsApp no Cabeçalho</label>
+              </div>
+
+              <button type="submit" className="mt-4 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition">
+                <Save size={18}/> Salvar Configurações
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* RESTANTE DAS ABAS... (Guia, Offers, Ads, News, Events, Real Estate, Jobs, Vehicles) */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
