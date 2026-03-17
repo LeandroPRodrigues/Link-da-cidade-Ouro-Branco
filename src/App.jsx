@@ -61,7 +61,7 @@ const GlobalAdsCarousel = ({ ads }) => {
   const ad = topAds[currentIndex];
 
   return (
-    <div className="mb-6 w-full max-w-2xl rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative h-36 md:h-48 group animate-in fade-in">
+    <div className="mb-6 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative h-36 md:h-56 group animate-in fade-in">
       {ad.link ? (
         <a href={ad.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 w-full h-full block">
            <img key={ad.id} src={ad.image} alt={ad.title || 'Publicidade'} className="w-full h-full object-cover animate-in fade-in duration-500" />
@@ -480,6 +480,7 @@ export default function App() {
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>
           </div>
+          
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
           
           <SidebarAd ads={adsData} />

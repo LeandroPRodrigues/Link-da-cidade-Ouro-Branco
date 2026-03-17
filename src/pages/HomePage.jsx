@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../utils/database';
 
-// --- COMPONENTE CARROSSEL DE ANÚNCIOS (Exportado para o App.jsx) ---
+// --- COMPONENTE CARROSSEL DE ANÚNCIOS ---
 export const AdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const safeAds = ads || [];
@@ -138,7 +138,15 @@ export const MiniOffersCarousel = ({ offers, navigate, onOfferClick }) => {
 // --- COMPONENTE BANNER LATERAL ---
 export const SidebarAd = ({ ads }) => {
   const sidebarAd = ads?.find(ad => ad.position === 'sidebar');
-  if (!sidebarAd) return null;
+  
+  if (!sidebarAd) return (
+    <div className="w-full h-[250px] rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-slate-400 text-sm font-bold uppercase tracking-widest text-center px-4">
+      <div>
+        <span className="block mb-2">Espaço<br/>Publicitário</span>
+        <span className="text-[10px] normal-case font-normal">(Cadastre no painel Adm)</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
@@ -174,7 +182,17 @@ export const MiniPropertiesCarousel = ({ properties, navigate, onPropertyClick, 
   const nextSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev + 1) % featuredProps.length); };
   const prevSlide = (e) => { e.stopPropagation(); setCurrentIndex((prev) => (prev - 1 + featuredProps.length) % featuredProps.length); };
 
-  if (featuredProps.length === 0) return null;
+  if (featuredProps.length === 0) return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative flex flex-col items-center justify-center text-center">
+      <Home size={32} className="text-emerald-200 mb-2"/>
+      <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-1">Imóveis em Destaque</h3>
+      <p className="text-xs text-slate-400 mb-4">Nenhum imóvel destacado ainda.</p>
+      <div className="w-full flex flex-col gap-2">
+        <button onClick={() => navigate('real_estate')} className="text-xs font-bold text-indigo-600 hover:underline">Ver Mais Imóveis</button>
+        <button onClick={onCadastrarClick} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-2">Cadastrar Imóvel</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative">
@@ -372,7 +390,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
         <h2 onClick={() => onNewsClick(item)} className="text-lg font-bold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 leading-snug">{item.title}</h2>
         <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 cursor-pointer" onClick={() => onNewsClick(item)}>{item.summary}</p>
       </div>
-      <div onClick={() => onNewsClick(item)} className="w-full h-64 sm:h-80 bg-slate-100 cursor-pointer relative group">
+      <div onClick={() => onNewsClick(item)} className="w-full h-64 sm:h-[400px] bg-slate-100 cursor-pointer relative group">
         <img src={item.image} alt={item.title} className="w-full h-full object-cover transition duration-500 group-hover:opacity-95" />
       </div>
       <div className="px-4 py-3 border-t border-slate-50 flex items-center justify-between select-none">
@@ -434,7 +452,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
   const middleAd = adsData?.find(ad => ad.position === 'middle');
 
   return (
-    <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
+    <div className="animate-in fade-in w-full pb-10">
       
       {/* 1. ATALHOS RÁPIDOS */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
@@ -495,22 +513,29 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
       </div>
 
       {/* 6. PUBLICIDADE FIXA DO MEIO DA PÁGINA */}
-      {middleAd && (
-        <div className="mb-8 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
-          {middleAd.link ? (
+      <div className="mb-8 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
+        {middleAd ? (
+          middleAd.link ? (
             <a href={middleAd.link} target="_blank" rel="noopener noreferrer" className="block w-full">
-               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-cover mx-auto" />
+               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[350px] object-cover mx-auto" />
             </a>
           ) : (
             <div className="block w-full">
-               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-cover mx-auto" />
+               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[350px] object-cover mx-auto" />
             </div>
-          )}
+          )
+        ) : (
+          <div className="w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl text-slate-400">
+             <span className="font-bold uppercase tracking-widest text-sm">Banner Fixo (Meio da Página)</span>
+             <span className="text-[10px]">Adicione no painel Adm para substituir</span>
+          </div>
+        )}
+        {middleAd && (
           <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
             Publicidade
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 7. VAGAS DE EMPREGO (10 ÚLTIMAS) */}
       <div className="mb-8">
