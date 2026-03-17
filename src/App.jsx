@@ -57,9 +57,7 @@ const GlobalAdsCarousel = ({ ads }) => {
 
   useEffect(() => {
     if (topAds.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % topAds.length);
-    }, 5000); 
+    const interval = setInterval(() => { setCurrentIndex((prev) => (prev + 1) % topAds.length); }, 5000); 
     return () => clearInterval(interval);
   }, [topAds.length]);
 
@@ -84,11 +82,7 @@ const GlobalAdsCarousel = ({ ads }) => {
       {topAds.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
           {topAds.map((_, idx) => (
-            <button 
-              key={idx} 
-              onClick={() => setCurrentIndex(idx)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} 
-            />
+            <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} />
           ))}
         </div>
       )}
@@ -142,6 +136,8 @@ export default function App() {
       case 'perfil': setCurrentPage('profile'); break;
       case 'quem-somos': setCurrentPage('about'); break;
       case 'contato': setCurrentPage('contact'); break;
+      case 'history': setCurrentPage('history'); break;
+      case 'gallery': setCurrentPage('gallery'); break;
       case 'busca': setCurrentPage('search'); break;
       
       case 'ofertas':
@@ -270,6 +266,8 @@ export default function App() {
     else if (currentPage === 'profile') { newUrl = '/perfil'; pageTitle = 'Meu Perfil'; }
     else if (currentPage === 'about') { newUrl = '/quem-somos'; pageTitle = `Quem Somos | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'contact') { newUrl = '/contato'; pageTitle = `Contato | ${APP_BRAND} da Cidade`; }
+    else if (currentPage === 'history') { newUrl = '/history'; pageTitle = `História de ${CITY_NAME} | ${APP_BRAND} da Cidade`; }
+    else if (currentPage === 'gallery') { newUrl = '/gallery'; pageTitle = `Galeria de Fotos | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'search') { newUrl = '/busca'; pageTitle = `Resultados da Busca | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'news') { newUrl = '/noticias'; pageTitle = `Notícias de ${CITY_NAME}`; }
     else if (currentPage === 'events') { newUrl = '/agenda'; pageTitle = `Agenda de Eventos | ${CITY_NAME}`; }
@@ -473,16 +471,13 @@ export default function App() {
   if (loading && !newsData.length && !user) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900">
+    <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900 flex flex-col">
       
       <div className="sticky top-0 z-50">
-        
-        {/* FAIXA 1: TOPO AZUL */}
         <div className="bg-blue-600 text-blue-50 text-sm py-3 px-4 flex justify-between items-center shadow-md">
           <div className="max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
             
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 font-medium tracking-wide">
-              
               <div className="flex items-center gap-3">
                 {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Facebook size={20} /></a>}
                 {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Instagram size={20} /></a>}
@@ -540,10 +535,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* FAIXA 2: LOGO E BUSCA */}
         <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
           <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between gap-4 md:gap-12">
-            
             <div className="flex items-center cursor-pointer group h-14 md:h-16 shrink-0" onClick={() => setCurrentPage('home')}>
               <img src={logoImg} alt="Link da Cidade" className="h-full w-auto object-contain transition-transform group-hover:scale-105" />
             </div>
@@ -553,12 +546,12 @@ export default function App() {
               <input name="searchQuery" defaultValue={searchQuery} placeholder="Buscar notícias, vagas, imóveis, empresas..." className="bg-transparent outline-none text-sm md:text-base w-full placeholder:text-slate-400 font-medium text-slate-700"/>
               <button type="submit" className="hidden">Buscar</button>
             </form>
-            
           </div>
         </header>
       </div>
 
-      <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
+      {/* ÁREA PRINCIPAL COM FLEX-1 PARA EMPURRAR O RODAPÉ PARA O FUNDO */}
+      <div className="max-w-[1600px] mx-auto w-full pt-6 px-0 md:px-4 flex gap-6 flex-1">
         <aside className="hidden lg:block w-64 shrink-0 sticky top-36 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
@@ -574,8 +567,7 @@ export default function App() {
           <NavItem page="guide" label="Guia Comercial" icon={Store} />
         </aside>
 
-        <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
-          
+        <main className="flex-1 w-full min-w-0 pb-10">
           {currentPage === 'home' && (
             <div className="px-4 md:px-0">
                <GlobalAdsCarousel ads={adsData} />
@@ -601,23 +593,25 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
-          {currentPage === 'admin' && user?.role === 'admin' && (
-             <AdminPage 
-                newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} 
-                vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} 
-                settingsData={settingsData} crud={crud} 
-             />
-          )}
-          
-          {currentPage === 'profile' && user && (
-             <ProfilePage 
-                user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} 
-                propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} 
-             />
-          )}
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
+          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} />}
           
           {currentPage === 'about' && <AboutPage />}
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
+
+          {/* NOVAS PÁGINAS DO RODAPÉ EM CONSTRUÇÃO */}
+          {currentPage === 'history' && (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-slate-200 animate-in fade-in">
+              <h2 className="text-2xl font-black text-slate-800 mb-2">História de Ouro Branco</h2>
+              <p className="text-slate-500">Página em construção. Em breve disponível!</p>
+            </div>
+          )}
+          {currentPage === 'gallery' && (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-slate-200 animate-in fade-in">
+              <h2 className="text-2xl font-black text-slate-800 mb-2">Galeria de Fotos</h2>
+              <p className="text-slate-500">Página em construção. Em breve disponível!</p>
+            </div>
+          )}
         </main>
 
         <aside className="hidden xl:block w-80 shrink-0 sticky top-36 h-fit space-y-6">
@@ -627,12 +621,76 @@ export default function App() {
           </div>
           
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
-          
           <SidebarAd ads={adsData} />
-          
           <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => handleAddPropertyClick(() => { setCurrentPage('real_estate'); window.scrollTo(0,0); })} />
         </aside>
       </div>
+
+      {/* RODAPÉ GLOBAL */}
+      <footer className="bg-blue-700 text-blue-50 py-10 pb-24 lg:pb-10 border-t-4 border-blue-500 w-full mt-auto">
+        <div className="max-w-[1600px] mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          
+          {/* SOBRE O PORTAL */}
+          <div>
+            <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={() => {setCurrentPage('home'); window.scrollTo(0,0);}}>
+              <div className="bg-white p-2 rounded-lg shadow-md"><Grid className="text-blue-600" size={24} /></div>
+              <div>
+                <h2 className="font-extrabold text-2xl tracking-tight text-white leading-none">{APP_BRAND}<span className="text-blue-300">daCidade</span></h2>
+                <p className="text-[10px] text-blue-200 font-bold tracking-[0.2em] uppercase mt-0.5">{CITY_NAME}</p>
+              </div>
+            </div>
+            <p className="text-sm text-blue-200 leading-relaxed mb-6">O portal mais completo de notícias, classificados e guia comercial de {CITY_NAME} e região.</p>
+            <div className="flex items-center gap-3">
+               {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-blue-800 flex items-center justify-center hover:bg-blue-500 transition"><Facebook size={18} /></a>}
+               {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-blue-800 flex items-center justify-center hover:bg-blue-500 transition"><Instagram size={18} /></a>}
+               {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-blue-800 flex items-center justify-center hover:bg-blue-500 transition"><Youtube size={18} /></a>}
+            </div>
+          </div>
+
+          {/* INSTITUCIONAL */}
+          <div>
+            <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Institucional</h3>
+            <ul className="space-y-3 text-sm text-blue-200 font-medium">
+              <li><button onClick={() => { setCurrentPage('about'); window.scrollTo(0,0); }} className="hover:text-white transition">Quem Somos</button></li>
+              <li><button onClick={() => { setCurrentPage('contact'); window.scrollTo(0,0); }} className="hover:text-white transition">Contato</button></li>
+              <li><button onClick={() => { setCurrentPage('history'); window.scrollTo(0,0); }} className="hover:text-white transition">História de Ouro Branco</button></li>
+              <li><button onClick={() => { setCurrentPage('gallery'); window.scrollTo(0,0); }} className="hover:text-white transition">Galeria de Fotos</button></li>
+            </ul>
+          </div>
+
+          {/* INTERATIVIDADE */}
+          <div>
+            <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Interatividade</h3>
+            <ul className="space-y-3 text-sm text-blue-200 font-medium">
+              <li><button onClick={() => handleAddPropertyClick(() => { setCurrentPage('real_estate'); window.scrollTo(0,0); })} className="hover:text-white transition">Anunciar Imóvel</button></li>
+              <li><button onClick={() => handleAddVehicleClick(() => { setCurrentPage('vehicles'); window.scrollTo(0,0); })} className="hover:text-white transition">Anunciar Veículo</button></li>
+              <li><button onClick={() => handleAddJobClick(() => { setCurrentPage('jobs'); window.scrollTo(0,0); })} className="hover:text-white transition">Cadastrar Vaga de Emprego</button></li>
+              <li><button onClick={() => { 
+                  if (!user) { alert("Faça login para cadastrar uma empresa."); setIsLoginOpen(true); return; }
+                  setCurrentPage('guide'); window.scrollTo(0,0); 
+                }} className="hover:text-white transition">Cadastrar Empresa no Guia</button></li>
+            </ul>
+          </div>
+
+          {/* CONTEÚDO */}
+          <div>
+            <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Conteúdo</h3>
+            <ul className="space-y-3 text-sm text-blue-200 font-medium">
+              <li><button onClick={() => { setCurrentPage('news'); window.scrollTo(0,0); }} className="hover:text-white transition">Notícias</button></li>
+              <li><button onClick={() => { setCurrentPage('real_estate'); window.scrollTo(0,0); }} className="hover:text-white transition">Imóveis</button></li>
+              <li><button onClick={() => { setCurrentPage('vehicles'); window.scrollTo(0,0); }} className="hover:text-white transition">Veículos</button></li>
+              <li><button onClick={() => { setCurrentPage('jobs'); window.scrollTo(0,0); }} className="hover:text-white transition">Vagas de Emprego</button></li>
+              <li><button onClick={() => { setCurrentPage('guide'); window.scrollTo(0,0); }} className="hover:text-white transition">Guia Comercial</button></li>
+              <li><button onClick={() => { setCurrentPage('offers'); window.scrollTo(0,0); }} className="hover:text-white transition">Shopping e Ofertas</button></li>
+            </ul>
+          </div>
+
+        </div>
+        
+        <div className="max-w-[1600px] mx-auto px-4 mt-10 pt-6 border-t border-blue-600/50 text-center text-xs text-blue-300 font-medium">
+          <p>&copy; {new Date().getFullYear()} {APP_BRAND} da Cidade {CITY_NAME}. Todos os direitos reservados.</p>
+        </div>
+      </footer>
 
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
