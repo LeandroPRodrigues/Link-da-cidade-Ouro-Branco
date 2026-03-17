@@ -45,17 +45,20 @@ const createSlug = (text) => {
 const GlobalAdsCarousel = ({ ads }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Filtra apenas as propagandas que não foram marcadas para o "meio"
+  const topAds = ads?.filter(ad => ad.position !== 'middle') || [];
+
   useEffect(() => {
-    if (!ads || ads.length <= 1) return;
+    if (topAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % ads.length);
+      setCurrentIndex((prev) => (prev + 1) % topAds.length);
     }, 5000); 
     return () => clearInterval(interval);
-  }, [ads]);
+  }, [topAds.length]);
 
-  if (!ads || ads.length === 0) return null;
+  if (topAds.length === 0) return null;
 
-  const ad = ads[currentIndex];
+  const ad = topAds[currentIndex];
 
   return (
     <div className="mb-6 w-full max-w-2xl rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative h-36 md:h-48 group animate-in fade-in">
@@ -71,9 +74,9 @@ const GlobalAdsCarousel = ({ ads }) => {
       <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
         Publicidade
       </div>
-      {ads.length > 1 && (
+      {topAds.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
-          {ads.map((_, idx) => (
+          {topAds.map((_, idx) => (
             <button 
               key={idx} 
               onClick={() => setCurrentIndex(idx)}
@@ -440,7 +443,21 @@ export default function App() {
              <GlobalAdsCarousel ads={adsData} />
           </div>
 
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} user={user} onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
+          {/* NOVAS PROPRIEDADES INJETADAS NA HOMEPAGE */}
+          {currentPage === 'home' && <HomePage 
+              navigate={setCurrentPage} 
+              newsData={newsData} 
+              eventsData={eventsData} 
+              offersData={offersData} 
+              propertiesData={propertiesData}
+              jobsData={jobsData}
+              adsData={adsData}
+              user={user} 
+              onNewsClick={(n) => { setSelectedNews(n); setCurrentPage('news_detail'); window.scrollTo(0,0); }} 
+              onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} 
+              onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }}
+              onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }}
+          />}
           
           {currentPage === 'offers' && <OffersPage offersData={offersData} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'offer_detail' && <OfferDetailPage offer={selectedOffer} onBack={() => setCurrentPage('offers')} />}

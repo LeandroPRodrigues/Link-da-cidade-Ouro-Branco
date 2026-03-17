@@ -131,10 +131,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     setNewsBlocks([]);
   };
 
-  // =========================================================================
-  // FIX: CAMPOS DE FORMULÁRIO COMO FUNÇÕES RETORNANDO JSX DIRETAMENTE
-  // (Isto impede o React de perder o foco ao recarregar a tela em cada letra)
-  // =========================================================================
   const renderField = (label, field, type="text", required=false, options=null, placeholder="") => {
     const val = editingItem?.[field] || '';
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
@@ -176,7 +172,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
     );
   };
-  // =========================================================================
 
   const renderList = (data, titleField, deleteFunc) => (
     <div className="space-y-3 mt-4">
@@ -185,6 +180,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           <div className="flex flex-col">
              <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
              {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
+             {item.position === 'middle' && <span className="text-[10px] text-pink-600 font-bold uppercase mt-1">Banner Meio da Página</span>}
           </div>
           <div className="flex gap-2">
             <button onClick={() => openEditModal(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Editar">
@@ -316,7 +312,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Gerenciar Publicidade (Banners)</h2>
-              <button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
+              <button onClick={() => openEditModal({ position: 'top' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
                 <PlusCircle size={18}/> Adicionar Banner
               </button>
             </div>
@@ -419,6 +415,10 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 {activeTab === 'ads' && (
                   <>
                     {renderField("Título da Campanha (Empresa/Anunciante)", "title", "text", true, null, "Ex: Ótica Visual")}
+                    {renderField("Posição do Banner", "position", "select", true, [
+                      {value: 'top', label: 'Carrossel Principal (Topo da Página)'},
+                      {value: 'middle', label: 'Banner Fixo (Meio da Página)'}
+                    ])}
                     {renderField("Link de Destino (Opcional)", "link", "text", false, null, "Deixe em branco se for apenas uma imagem estática")}
                     {renderImagePicker("Banner (Qualquer formato de imagem serve)", "image", true)}
                   </>

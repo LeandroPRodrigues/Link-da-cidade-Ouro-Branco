@@ -320,7 +320,7 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, eventsData, offersData, user }) {
+export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick, onPropertyClick, onJobClick, eventsData, offersData, propertiesData, jobsData, adsData, user }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -331,9 +331,19 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  // Notícias (Limitar a 6 no total: 3 destaques e 3 feed)
   const feedItems = newsData || [];
   const topNews = feedItems.slice(0, 3);
-  const regularNews = feedItems.slice(3);
+  const regularNews = feedItems.slice(3, 6);
+
+  // Imóveis em Destaque
+  const featuredProperties = propertiesData?.filter(p => p.featured).slice(0, 6) || [];
+
+  // Últimas Vagas (Limitar a 10)
+  const latestJobs = jobsData?.slice(0, 10) || [];
+
+  // Banner Secundário (Meio da Página)
+  const middleAd = adsData?.find(ad => ad.position === 'middle');
 
   return (
     <div className="animate-in fade-in max-w-2xl mx-auto md:mx-0 w-full pb-10">
@@ -379,15 +389,92 @@ export default function HomePage({ navigate, newsData, onNewsClick, onOfferClick
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 5. FEED RESTANTE DAS NOTÍCIAS */}
-      <div className="space-y-6">
-        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Mais Notícias</h3>
+      {/* 5. IMÓVEIS EM DESTAQUE */}
+      {featuredProperties.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+              <Home size={18} className="text-emerald-600"/> Imóveis em Destaque
+            </h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x px-1 -mx-4 md:mx-0 px-4 md:px-0">
+            {featuredProperties.map(prop => (
+              <div key={prop.id} onClick={() => onPropertyClick && onPropertyClick(prop)} className="shrink-0 w-64 snap-start bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md transition-all">
+                 <img src={prop.photos?.[0] || prop.image} className="w-full h-36 object-cover" alt={prop.title} />
+                 <div className="p-3">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">{prop.type}</span>
+                    <h3 className="font-bold text-slate-800 text-sm truncate mt-1">{prop.title}</h3>
+                    <p className="text-slate-900 font-black mt-1">{Number(prop.price).toLocaleString('pt-BR', {style: 'currency', currency:'BRL'})}</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 mt-1 px-1">
+            <button onClick={() => navigate('real_estate')} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">Anunciar Imóvel</button>
+            <button onClick={() => navigate('real_estate')} className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-3 rounded-xl transition shadow-sm">Mais Imóveis</button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. FEED RESTANTE DAS NOTÍCIAS (MÁX 3) */}
+      <div className="space-y-6 mb-8">
+        <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
           <FeedCard key={item.id} item={item} user={user} onNewsClick={onNewsClick}/>
         )) : (
           <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-400">Nenhuma notícia adicional publicada.</p></div>
         )}
-        <div className="text-center py-8 text-slate-400 text-xs uppercase tracking-widest font-semibold opacity-50">Fim do conteúdo</div>
+        
+        {/* BOTÃO MAIS NOTÍCIAS */}
+        <div className="px-1">
+           <button onClick={() => navigate('news')} className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3.5 rounded-xl transition shadow-sm">
+             Ver todas as Notícias
+           </button>
+        </div>
+      </div>
+
+      {/* 7. PUBLICIDADE FIXA DO MEIO DA PÁGINA */}
+      {middleAd && (
+        <div className="mb-8 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative group">
+          {middleAd.link ? (
+            <a href={middleAd.link} target="_blank" rel="noopener noreferrer" className="block w-full">
+               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-cover mx-auto" />
+            </a>
+          ) : (
+            <div className="block w-full">
+               <img src={middleAd.image} alt={middleAd.title || 'Publicidade'} className="w-full h-auto max-h-[280px] object-cover mx-auto" />
+            </div>
+          )}
+          <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider backdrop-blur-sm z-10 pointer-events-none">
+            Publicidade
+          </div>
+        </div>
+      )}
+
+      {/* 8. VAGAS DE EMPREGO (10 ÚLTIMAS) */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+            <Briefcase size={18} className="text-blue-600"/> Vagas de Emprego
+          </h2>
+        </div>
+        <div className="space-y-3 px-1">
+          {latestJobs.length > 0 ? latestJobs.map(job => (
+            <div key={job.id} onClick={() => onJobClick && onJobClick(job)} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-300 transition-colors shadow-sm">
+              <div className="flex-1 min-w-0 pr-4">
+                  <h4 className="font-bold text-slate-800 text-sm truncate">{job.title}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">{job.company} • {job.location}</p>
+              </div>
+              <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap shrink-0">{job.type}</span>
+            </div>
+          )) : (
+            <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhuma vaga recente.</div>
+          )}
+        </div>
+        <div className="flex gap-3 mt-4 px-1">
+          <button onClick={() => navigate('jobs')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">Cadastrar Vaga</button>
+          <button onClick={() => navigate('jobs')} className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-3 rounded-xl transition shadow-sm">Mais Vagas</button>
+        </div>
       </div>
 
     </div>

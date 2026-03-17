@@ -6,7 +6,7 @@ export default function PropertyForm({ initialData, onSuccess, onCancel }) {
   const [formData, setFormData] = useState(initialData || {
     title: '', type: 'Venda', price: '', bedrooms: '', bathrooms: '', 
     garage: '', area: '', description: '', image: '', 
-    address: '', lat: null, lng: null
+    address: '', lat: null, lng: null, featured: false
   });
 
   const handleLocalImageUpload = (e) => {
@@ -74,6 +74,12 @@ export default function PropertyForm({ initialData, onSuccess, onCancel }) {
           </label>
         </div>
         {formData.image && <img src={formData.image} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-xl"/>}
+      </div>
+
+      {/* NOVA OPÇÃO DE DESTAQUE AQUI */}
+      <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+        <input type="checkbox" id="featured" checked={formData.featured} onChange={e => setFormData({...formData, featured: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+        <label htmlFor="featured" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Destacar este imóvel na Página Inicial (Carrossel)</label>
       </div>
 
       <div className="pt-4 border-t border-slate-100">
