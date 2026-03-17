@@ -24,22 +24,37 @@ import OfferDetailPage from './pages/OfferDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
-import SearchPage from './pages/SearchPage'; // Import da nova página de buscas
+import SearchPage from './pages/SearchPage';
 
 import logoImg from './logo.jpg'; 
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
+// Ícones SVG compactos para não quebrar a página
 const WhatsAppIcon = ({ size = 20, className = "" }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.004 2C6.48 2 2.004 6.476 2.004 12C2.004 13.824 2.49 15.54 3.328 17.034L2 22L7.098 20.686C8.56 21.524 10.236 22 12.004 22C17.528 22 22.004 17.524 22.004 12C22.004 6.476 17.528 2 12.004 2ZM17.18 16.538C16.99 17.076 16.038 17.514 15.534 17.576C15.06 17.632 14.45 17.682 12.392 16.83C9.314 15.556 7.324 12.438 7.17 12.238C7.02 12.038 5.898 10.554 5.898 9.014C5.898 7.474 6.678 6.726 7 6.406C7.272 6.136 7.726 6.002 8.164 6.002C8.304 6.002 8.432 6.008 8.542 6.014C8.868 6.028 9.032 6.046 9.25 6.568C9.52 7.218 10.176 8.818 10.254 8.98C10.334 9.14 10.412 9.356 10.306 9.566C10.206 9.778 10.12 9.872 9.96 10.058C9.8 10.244 9.654 10.38 9.498 10.584C9.354 10.768 9.192 10.966 9.37 11.274C9.544 11.576 10.15 12.564 11.05 13.364C12.21 14.398 13.16 14.726 13.496 14.866C13.75 14.972 14.052 14.954 14.234 14.756C14.464 14.506 14.752 14.12 15.042 13.726C15.248 13.446 15.5 13.404 15.766 13.504C16.038 13.6 17.49 14.318 17.79 14.468C18.09 14.618 18.29 14.692 18.364 14.82C18.438 14.948 18.438 15.548 18.18 16.538Z"/>
   </svg>
 );
 
+const GoogleIcon = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  </svg>
+);
+
 const createSlug = (text) => {
   if (!text) return '';
-  return text.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 -]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+  return text.toString().toLowerCase()
+    .trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 -]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 };
 
 const GlobalAdsCarousel = ({ ads }) => {
@@ -48,7 +63,9 @@ const GlobalAdsCarousel = ({ ads }) => {
 
   useEffect(() => {
     if (topAds.length <= 1) return;
-    const interval = setInterval(() => { setCurrentIndex((prev) => (prev + 1) % topAds.length); }, 5000); 
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % topAds.length);
+    }, 5000); 
     return () => clearInterval(interval);
   }, [topAds.length]);
 
@@ -73,7 +90,11 @@ const GlobalAdsCarousel = ({ ads }) => {
       {topAds.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
           {topAds.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} />
+            <button 
+              key={idx} 
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} 
+            />
           ))}
         </div>
       )}
@@ -88,8 +109,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login'); 
   const [loading, setLoading] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  // Estado para busca
   const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedNews, setSelectedNews] = useState(null);
@@ -357,7 +376,6 @@ export default function App() {
     window.scrollTo(0,0);
   };
 
-  // FUNÇÃO DE BUSCA GLOBAL
   const handleSearch = (e) => {
     e.preventDefault();
     const query = e.target.searchQuery.value.trim();
@@ -387,38 +405,28 @@ export default function App() {
       
       <div className="sticky top-0 z-50">
         
-        {/* FAIXA 1: TOPO AZUL COM REDES SOCIAIS, LINKS, DATA/HORA E USUÁRIO */}
+        {/* FAIXA 1: TOPO AZUL */}
         <div className="bg-blue-600 text-blue-50 text-sm py-3 px-4 flex justify-between items-center shadow-md">
           <div className="max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
             
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 font-medium tracking-wide">
               
-              {/* Redes Sociais */}
               <div className="flex items-center gap-3">
                 {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Facebook size={20} /></a>}
                 {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Instagram size={20} /></a>}
                 {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Youtube size={20} /></a>}
                 {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-300 transition transform hover:scale-110"><WhatsAppIcon size={20} /></a>}
               </div>
-
               <span className="text-blue-400/50 hidden md:inline">|</span>
-
-              {/* Links Institucionais */}
               <button onClick={() => setCurrentPage('about')} className={`hover:text-white transition ${currentPage === 'about' ? 'text-white font-bold' : ''}`}>Quem Somos</button>
-              
               <span className="text-blue-400/50 hidden md:inline">|</span>
-              
               <button onClick={() => setCurrentPage('contact')} className={`hover:text-white transition ${currentPage === 'contact' ? 'text-white font-bold' : ''}`}>Contato</button>
-              
               <span className="text-blue-400/50 hidden md:inline">|</span>
-
-              {/* Data e Hora */}
               <div className="hidden lg:block text-blue-100">
                 {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
             </div>
 
-            {/* DIREITA: Conta do Usuário / Login */}
             <div className="flex items-center gap-3">
               {user ? (
                  <div className="flex items-center gap-3">
@@ -460,20 +468,14 @@ export default function App() {
           </div>
         </div>
 
-        {/* FAIXA 2: LOGO E BARRA DE BUSCA (Lado a lado) */}
+        {/* FAIXA 2: LOGO E BUSCA */}
         <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
           <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between gap-4 md:gap-12">
             
-            {/* LOGO */}
             <div className="flex items-center cursor-pointer group h-14 md:h-16 shrink-0" onClick={() => setCurrentPage('home')}>
-              <img 
-                src={logoImg} 
-                alt={`${APP_BRAND} da Cidade ${CITY_NAME}`} 
-                className="h-full w-auto object-contain transition-transform group-hover:scale-105"
-              />
+              <img src={logoImg} alt="Link da Cidade" className="h-full w-auto object-contain transition-transform group-hover:scale-105" />
             </div>
             
-            {/* BARRA DE PESQUISA FUNCIONAL */}
             <form onSubmit={handleSearch} className="flex-1 max-w-3xl flex bg-slate-50 items-center px-4 md:px-5 py-2.5 md:py-3 rounded-full border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-inner">
               <Search size={20} className="text-slate-400 mr-2 md:mr-3 shrink-0"/>
               <input name="searchQuery" defaultValue={searchQuery} placeholder="Buscar notícias, vagas, imóveis, empresas..." className="bg-transparent outline-none text-sm md:text-base w-full placeholder:text-slate-400 font-medium text-slate-700"/>
@@ -482,11 +484,10 @@ export default function App() {
             
           </div>
         </header>
-
       </div>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
-        <aside className="hidden lg:block w-64 shrink-0 sticky top-48 h-fit space-y-2">
+        <aside className="hidden lg:block w-64 shrink-0 sticky top-36 h-fit space-y-2">
           <NavItem page="home" label="Feed Inicial" icon={Home} />
           <NavItem page="offers" label="Shopping / Ofertas" icon={ShoppingBag} />
           <NavItem page="news" label="Notícias" icon={List} />
@@ -503,40 +504,18 @@ export default function App() {
 
         <main className="flex-1 w-full min-w-0 pb-24 md:pb-10">
           
-          {/* SÓ MOSTRA O CARROSSEL NO HOME */}
           {currentPage === 'home' && (
             <div className="px-4 md:px-0">
                <GlobalAdsCarousel ads={adsData} />
             </div>
           )}
 
-          {currentPage === 'home' && <HomePage 
-              navigate={setCurrentPage} 
-              newsData={newsData} 
-              eventsData={eventsData} 
-              offersData={offersData} 
-              jobsData={jobsData}
-              adsData={adsData}
-              user={user} 
-              onNewsClick={handleNewsClick} 
-              onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }}
-          />}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={jobsData} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
           
-          {currentPage === 'search' && <SearchPage 
-            query={searchQuery}
-            newsData={newsData} guideData={guideData} jobsData={jobsData} propertiesData={propertiesData} vehiclesData={vehiclesData} eventsData={eventsData} offersData={offersData}
-            onNewsClick={handleNewsClick}
-            onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }}
-            onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }}
-            onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }}
-            onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }}
-            onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }}
-            onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }}
-          />}
+          {currentPage === 'search' && <SearchPage query={searchQuery} newsData={newsData} guideData={guideData} jobsData={jobsData} propertiesData={propertiesData} vehiclesData={vehiclesData} eventsData={eventsData} offersData={offersData} onNewsClick={handleNewsClick} onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
 
           {currentPage === 'offers' && <OffersPage offersData={offersData} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'offer_detail' && <OfferDetailPage offer={selectedOffer} onBack={() => setCurrentPage('offers')} />}
-
           {currentPage === 'news_detail' && <NewsDetailPage news={selectedNews} user={user} onBack={() => setCurrentPage('news')} />}
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={handleNewsClick} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
@@ -550,32 +529,21 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
-          
           {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} />}
-          
           {currentPage === 'about' && <AboutPage />}
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
         </main>
 
-        <aside className="hidden xl:block w-80 shrink-0 sticky top-48 h-fit space-y-6">
+        <aside className="hidden xl:block w-80 shrink-0 sticky top-36 h-fit space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:scale-110 transition duration-700"></div>
             <div className="relative z-10"><WeatherWidget /></div>
           </div>
           
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
-          
           <SidebarAd ads={adsData} />
           
-          <MiniPropertiesCarousel 
-            properties={propertiesData} 
-            navigate={setCurrentPage} 
-            onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} 
-            onCadastrarClick={() => {
-              if (!user) { alert("Faça login ou cadastre-se para anunciar um imóvel."); setIsLoginOpen(true); return; }
-              setCurrentPage('real_estate'); window.scrollTo(0,0);
-            }} 
-          />
+          <MiniPropertiesCarousel properties={propertiesData} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => { if (!user) { alert("Faça login para anunciar um imóvel."); setIsLoginOpen(true); return; } setCurrentPage('real_estate'); window.scrollTo(0,0); }} />
         </aside>
       </div>
 
@@ -599,7 +567,21 @@ export default function App() {
             <button className="btn-primary w-full bg-indigo-600 hover:bg-indigo-700">Entrar na conta</button>
             <div className="relative flex items-center py-4"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
             <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
-              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>
+              <GoogleIcon />
+              Continuar com Google
+            </button>
+            <div className="text-center text-xs mt-4">Não tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('register')}>Cadastre-se</span></div>
+          </form>
+        ) : (
+          <form onSubmit={handleRegister} className="space-y-3">
+            <input name="name" placeholder="Nome Completo" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <div className="grid grid-cols-2 gap-3"><input name="birthDate" type="date" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="cpf" placeholder="CPF" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" maxLength={14} required onChange={(e) => e.target.value = formatCPF(e.target.value)}/></div>
+            <div className="grid grid-cols-2 gap-3"><input name="phone" placeholder="Celular" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/><input name="email" type="email" placeholder="E-mail" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/></div>
+            <input name="password" type="password" placeholder="Senha" className="input w-full bg-slate-50 border-slate-200 focus:bg-white" required/>
+            <button className="btn-primary w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Criar Conta</button>
+            <div className="relative flex items-center py-2 mt-2"><div className="flex-grow border-t border-slate-200"></div><span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-bold">OU</span><div className="flex-grow border-t border-slate-200"></div></div>
+            <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-3 shadow-sm">
+               <GoogleIcon />
                Inscrever com Google
             </button>
             <div className="text-center text-xs mt-2">Já tem conta? <span className="cursor-pointer text-indigo-600 hover:underline font-bold" onClick={() => setAuthMode('login')}>Faça Login</span></div>
