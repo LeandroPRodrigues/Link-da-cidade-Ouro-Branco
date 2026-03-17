@@ -31,7 +31,7 @@ import logoImg from './logo.jpg';
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
-// Ícones SVG compactos para não quebrar a página
+// Ícones personalizados
 const WhatsAppIcon = ({ size = 20, className = "" }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.004 2C6.48 2 2.004 6.476 2.004 12C2.004 13.824 2.49 15.54 3.328 17.034L2 22L7.098 20.686C8.56 21.524 10.236 22 12.004 22C17.528 22 22.004 17.524 22.004 12C22.004 6.476 17.528 2 12.004 2ZM17.18 16.538C16.99 17.076 16.038 17.514 15.534 17.576C15.06 17.632 14.45 17.682 12.392 16.83C9.314 15.556 7.324 12.438 7.17 12.238C7.02 12.038 5.898 10.554 5.898 9.014C5.898 7.474 6.678 6.726 7 6.406C7.272 6.136 7.726 6.002 8.164 6.002C8.304 6.002 8.432 6.008 8.542 6.014C8.868 6.028 9.032 6.046 9.25 6.568C9.52 7.218 10.176 8.818 10.254 8.98C10.334 9.14 10.412 9.356 10.306 9.566C10.206 9.778 10.12 9.872 9.96 10.058C9.8 10.244 9.654 10.38 9.498 10.584C9.354 10.768 9.192 10.966 9.37 11.274C9.544 11.576 10.15 12.564 11.05 13.364C12.21 14.398 13.16 14.726 13.496 14.866C13.75 14.972 14.052 14.954 14.234 14.756C14.464 14.506 14.752 14.12 15.042 13.726C15.248 13.446 15.5 13.404 15.766 13.504C16.038 13.6 17.49 14.318 17.79 14.468C18.09 14.618 18.29 14.692 18.364 14.82C18.438 14.948 18.438 15.548 18.18 16.538Z"/>
@@ -204,6 +204,26 @@ export default function App() {
     }
   }, []);
 
+  // LÓGICA DE VERIFICAÇÃO E LIMPEZA (30/60/90/120 DIAS)
+  const isItemActive = (item, type) => {
+    const updated = new Date(item.updatedAt || item.createdAt || item.date || 0).getTime();
+    const diffDays = (new Date().getTime() - updated) / (1000 * 60 * 60 * 24);
+    const maxActive = (type === 'property' && item.type === 'Temporada') ? 90 : 30;
+    return diffDays <= maxActive;
+  };
+
+  const autoCleanupDeletions = async (data, type, deleteFn) => {
+    const now = new Date().getTime();
+    for (const item of data) {
+      const updated = new Date(item.updatedAt || item.createdAt || item.date || 0).getTime();
+      const diffDays = (now - updated) / (1000 * 60 * 60 * 24);
+      const maxDelete = (type === 'property' && item.type === 'Temporada') ? 120 : 60;
+      if (diffDays > maxDelete) {
+        try { await deleteFn(item.id); } catch(e){} // Apaga silenciosamente os antigos
+      }
+    }
+  };
+
   const loadAllData = async () => {
     try {
       await db.cleanOldEvents();
@@ -212,6 +232,11 @@ export default function App() {
       ]);
       setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o); setSettingsData(s);
       
+      // Limpeza automática em segundo plano
+      autoCleanupDeletions(p, 'property', db.deleteProperty);
+      autoCleanupDeletions(v, 'vehicle', db.deleteVehicle);
+      autoCleanupDeletions(j, 'job', db.deleteJob);
+
       resolveUrlPath(window.location.pathname, {
           news: n, events: e, real_estate: p, jobs: j, vehicles: v, guide: g, offers: o
       });
@@ -293,6 +318,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [resolveUrlPath, newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, offersData]);
   
+  // FUNÇÕES CRUD INJETANDO A DATA DE ATUALIZAÇÃO (updatedAt)
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
@@ -300,15 +326,28 @@ export default function App() {
     addEvent: async (item) => { await db.addEvent(item); setEventsData(await db.getEvents()); },
     updateEvent: async (item) => { await db.updateEvent(item); setEventsData(await db.getEvents()); },
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
-    addProperty: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addProperty(i); setPropertiesData(await db.getProperties()); },
-    updateProperty: async (item) => { await db.updateProperty(item); setPropertiesData(await db.getProperties()); },
+    
+    addProperty: async (item) => { 
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      await db.addProperty(i); setPropertiesData(await db.getProperties()); 
+    },
+    updateProperty: async (item) => { await db.updateProperty({...item, updatedAt: new Date().toISOString()}); setPropertiesData(await db.getProperties()); },
     deleteProperty: async (id) => { await db.deleteProperty(id); setPropertiesData(await db.getProperties()); },
-    addJob: async (item) => { await db.addJob(item); setJobsData(await db.getJobs()); },
-    updateJob: async (item) => { await db.updateJob(item); setJobsData(await db.getJobs()); },
+    
+    addJob: async (item) => { 
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      await db.addJob(i); setJobsData(await db.getJobs()); 
+    },
+    updateJob: async (item) => { await db.updateJob({...item, updatedAt: new Date().toISOString()}); setJobsData(await db.getJobs()); },
     deleteJob: async (id) => { await db.deleteJob(id); setJobsData(await db.getJobs()); },
-    addVehicle: async (item) => { const i = { ...item, ownerId: user.id, ownerName: user.name }; await db.addVehicle(i); setVehiclesData(await db.getVehicles()); },
-    updateVehicle: async (item) => { await db.updateVehicle(item); setVehiclesData(await db.getVehicles()); },
+    
+    addVehicle: async (item) => { 
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      await db.addVehicle(i); setVehiclesData(await db.getVehicles()); 
+    },
+    updateVehicle: async (item) => { await db.updateVehicle({...item, updatedAt: new Date().toISOString()}); setVehiclesData(await db.getVehicles()); },
     deleteVehicle: async (id) => { await db.deleteVehicle(id); setVehiclesData(await db.getVehicles()); },
+    
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
@@ -321,18 +360,27 @@ export default function App() {
     updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); }
   };
 
+  // VERIFICAÇÕES DE LIMITES (3 POR USUÁRIO NORMAL)
   const handleAddPropertyClick = (openModalCallback) => { 
     if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
-    if (user.role !== 'admin' && propertiesData.filter(p => p.ownerId === user.id).length >= 1) {
-      alert("Limite de 1 imóvel cadastrado no plano gratuito atingido."); return;
+    if (user.role !== 'admin' && propertiesData.filter(p => p.ownerId === user.id).length >= 3) {
+      alert("Limite de 3 imóveis atingido. Exclua anúncios antigos no seu Perfil."); return;
     }
     openModalCallback(); 
   };
 
   const handleAddVehicleClick = (openModalCallback) => { 
     if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
-    if (user.role !== 'admin' && vehiclesData.filter(v => v.ownerId === user.id).length >= 1) {
-      alert("Limite de 1 veículo cadastrado no plano gratuito atingido."); return;
+    if (user.role !== 'admin' && vehiclesData.filter(v => v.ownerId === user.id).length >= 3) {
+      alert("Limite de 3 veículos atingido. Exclua anúncios antigos no seu Perfil."); return;
+    }
+    openModalCallback(); 
+  };
+
+  const handleAddJobClick = (openModalCallback) => { 
+    if (!user) { alert("Faça login para publicar."); setIsLoginOpen(true); return; } 
+    if (user.role !== 'admin' && jobsData.filter(j => j.ownerId === user.id).length >= 3) { 
+      alert("Limite de 3 vagas atingido. Exclua anúncios antigos no seu Perfil."); return; 
     }
     openModalCallback(); 
   };
@@ -398,6 +446,11 @@ export default function App() {
     </button>
   );
 
+  // FILTROS ATIVOS PARA O PÚBLICO (Esconde expirados do site, visíveis no perfil)
+  const activeProperties = propertiesData.filter(i => isItemActive(i, 'property'));
+  const activeVehicles = vehiclesData.filter(i => isItemActive(i, 'vehicle'));
+  const activeJobs = jobsData.filter(i => isItemActive(i, 'job'));
+
   if (loading && !newsData.length && !user) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
 
   return (
@@ -405,28 +458,38 @@ export default function App() {
       
       <div className="sticky top-0 z-50">
         
-        {/* FAIXA 1: TOPO AZUL */}
+        {/* FAIXA 1: TOPO AZUL COM REDES SOCIAIS, LINKS, DATA/HORA E USUÁRIO */}
         <div className="bg-blue-600 text-blue-50 text-sm py-3 px-4 flex justify-between items-center shadow-md">
           <div className="max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
             
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 font-medium tracking-wide">
               
+              {/* Redes Sociais */}
               <div className="flex items-center gap-3">
                 {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Facebook size={20} /></a>}
                 {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Instagram size={20} /></a>}
                 {settingsData.youtube && <a href={settingsData.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Youtube size={20} /></a>}
                 {settingsData.showWhatsapp && settingsData.whatsapp && <a href={settingsData.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-300 transition transform hover:scale-110"><WhatsAppIcon size={20} /></a>}
               </div>
+
               <span className="text-blue-400/50 hidden md:inline">|</span>
+
+              {/* Links Institucionais */}
               <button onClick={() => setCurrentPage('about')} className={`hover:text-white transition ${currentPage === 'about' ? 'text-white font-bold' : ''}`}>Quem Somos</button>
+              
               <span className="text-blue-400/50 hidden md:inline">|</span>
+              
               <button onClick={() => setCurrentPage('contact')} className={`hover:text-white transition ${currentPage === 'contact' ? 'text-white font-bold' : ''}`}>Contato</button>
+              
               <span className="text-blue-400/50 hidden md:inline">|</span>
+
+              {/* Data e Hora */}
               <div className="hidden lg:block text-blue-100">
                 {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • <span className="font-bold text-white">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
             </div>
 
+            {/* DIREITA: Conta do Usuário / Login */}
             <div className="flex items-center gap-3">
               {user ? (
                  <div className="flex items-center gap-3">
@@ -472,10 +535,12 @@ export default function App() {
         <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
           <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between gap-4 md:gap-12">
             
+            {/* LOGO */}
             <div className="flex items-center cursor-pointer group h-14 md:h-16 shrink-0" onClick={() => setCurrentPage('home')}>
               <img src={logoImg} alt="Link da Cidade" className="h-full w-auto object-contain transition-transform group-hover:scale-105" />
             </div>
             
+            {/* BARRA DE PESQUISA FUNCIONAL */}
             <form onSubmit={handleSearch} className="flex-1 max-w-3xl flex bg-slate-50 items-center px-4 md:px-5 py-2.5 md:py-3 rounded-full border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-inner">
               <Search size={20} className="text-slate-400 mr-2 md:mr-3 shrink-0"/>
               <input name="searchQuery" defaultValue={searchQuery} placeholder="Buscar notícias, vagas, imóveis, empresas..." className="bg-transparent outline-none text-sm md:text-base w-full placeholder:text-slate-400 font-medium text-slate-700"/>
@@ -484,6 +549,7 @@ export default function App() {
             
           </div>
         </header>
+
       </div>
 
       <div className="max-w-[1600px] mx-auto pt-6 px-0 md:px-4 flex gap-6 min-h-[calc(100vh-144px)]">
@@ -510,9 +576,10 @@ export default function App() {
             </div>
           )}
 
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={jobsData} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
+          {/* AS PÁGINAS RECEBEM AS LISTAS FILTRADAS (activeProperties, etc) PARA NÃO MOSTRAR OS VENCIDOS */}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={activeJobs} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
           
-          {currentPage === 'search' && <SearchPage query={searchQuery} newsData={newsData} guideData={guideData} jobsData={jobsData} propertiesData={propertiesData} vehiclesData={vehiclesData} eventsData={eventsData} offersData={offersData} onNewsClick={handleNewsClick} onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'search' && <SearchPage query={searchQuery} newsData={newsData} guideData={guideData} jobsData={activeJobs} propertiesData={activeProperties} vehiclesData={activeVehicles} eventsData={eventsData} offersData={offersData} onNewsClick={handleNewsClick} onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
 
           {currentPage === 'offers' && <OffersPage offersData={offersData} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'offer_detail' && <OfferDetailPage offer={selectedOffer} onBack={() => setCurrentPage('offers')} />}
@@ -520,16 +587,19 @@ export default function App() {
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={handleNewsClick} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
-          {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={propertiesData} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={activeProperties} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'property_detail' && <PropertyDetailPage property={selectedProperty} onBack={() => setCurrentPage('real_estate')} />}
-          {currentPage === 'jobs' && <JobsPage jobsData={jobsData} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'jobs' && <JobsPage jobsData={activeJobs} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCrud={crud} checkLimit={handleAddJobClick} />}
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
-          {currentPage === 'vehicles' && <VehiclesPage vehiclesData={vehiclesData} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'vehicles' && <VehiclesPage vehiclesData={activeVehicles} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
+          
+          {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS (PARA PODER GERIR OS EXPIRADOS TAMBÉM) */}
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
-          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} />}
+          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} />}
+          
           {currentPage === 'about' && <AboutPage />}
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
         </main>
@@ -541,9 +611,10 @@ export default function App() {
           </div>
           
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
+          
           <SidebarAd ads={adsData} />
           
-          <MiniPropertiesCarousel properties={propertiesData} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => { if (!user) { alert("Faça login para anunciar um imóvel."); setIsLoginOpen(true); return; } setCurrentPage('real_estate'); window.scrollTo(0,0); }} />
+          <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => { if (!user) { alert("Faça login para anunciar um imóvel."); setIsLoginOpen(true); return; } setCurrentPage('real_estate'); window.scrollTo(0,0); }} />
         </aside>
       </div>
 
