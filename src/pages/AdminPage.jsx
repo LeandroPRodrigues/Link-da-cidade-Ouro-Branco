@@ -12,7 +12,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [editingItem, setEditingItem] = useState(null);
   const [newsBlocks, setNewsBlocks] = useState([]);
   
-  // Estado local para as configurações do site
   const [siteSettings, setSiteSettings] = useState(settingsData || { facebook: '', instagram: '', youtube: '', whatsapp: '', showWhatsapp: false });
 
   useEffect(() => {
@@ -95,6 +94,96 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            for (const item of newItems) { await crud.addGuideItem({...item, status: 'active'}); }
            alert("Importação concluída com sucesso! Verifique o Guia Comercial.");
          } catch(err) { alert("Ocorreu um erro durante a importação."); }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = null;
+  };
+
+  // ==========================================
+  // FUNÇÃO DE IMPORTAÇÃO DE CSV (VAGAS DO SINE)
+  // ==========================================
+  const handleJobsCSVUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const buffer = event.target.result;
+      let text = new TextDecoder('utf-8').decode(buffer);
+      if (text.includes('')) text = new TextDecoder('windows-1252').decode(buffer);
+      text = text.replace(/^\uFEFF/, '');
+      const lines = text.split(/\r?\n/);
+      if (lines.length < 2) return alert("Arquivo CSV vazio ou sem dados suficientes.");
+      const separator = lines[0].includes(';') ? ';' : ',';
+      
+      // Lê os cabeçalhos limpando os acentos para facilitar a busca
+      const headers = lines[0].toLowerCase().split(separator).map(h => h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+      // Busca os índices das colunas, independentemente da ordem
+      const findColumn = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
+      const idxOcupacao = findColumn(['ocupacao', 'cargo', 'funcao']);
+      const idxVagas = findColumn(['vaga', 'quantidade']);
+      const idxEscolaridade = findColumn(['escolaridade', 'ensino']);
+      const idxExperiencia = findColumn(['experiencia', 'ctps']);
+      const idxPcd = findColumn(['pcd', 'deficiencia']);
+      const idxCnh = findColumn(['cnh', 'habilitacao']);
+      const idxSalario = findColumn(['salario', 'remuneracao']);
+
+      const newItems = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const regex = new RegExp(`\\s*${separator}\\s*(?=(?:[^"]*"[^"]*")*[^"]*$)`);
+        const values = line.split(regex).map(v => v.replace(/^"|"$/g, '').trim());
+
+        if (idxOcupacao >= 0 && values[idxOcupacao]) {
+          let item = {
+            title: values[idxOcupacao],
+            company: "SINE Ouro Branco",
+            category: "Outros", // Fallback, vagas do sine misturam categorias
+            type: "CLT",
+            location: "Ouro Branco - MG",
+            salary: (idxSalario >= 0 && values[idxSalario] && values[idxSalario] !== '-') ? values[idxSalario] : "A combinar",
+            contact: "Compareça ao SINE Ouro Branco com a sua carteira de trabalho e documentos pessoais.",
+            date: new Date().toISOString()
+          };
+
+          // Construir a descrição (Vagas + PCD)
+          let descParts = [];
+          if (idxVagas >= 0 && values[idxVagas] && values[idxVagas] !== '-') descParts.push(`Quantidade de Vagas: ${values[idxVagas]}`);
+          if (idxPcd >= 0 && values[idxPcd]) {
+             const isPcd = values[idxPcd].toUpperCase();
+             if(isPcd !== 'NÃO' && isPcd !== 'NAO' && isPcd !== '-') descParts.push(`Vaga aceita PCD: Sim`);
+          }
+          item.description = descParts.join('\n') || "Vaga disponibilizada pelo SINE de Ouro Branco.";
+
+          // Construir os Requisitos (Escolaridade + Experiência + CNH)
+          let reqParts = [];
+          if (idxEscolaridade >= 0 && values[idxEscolaridade] && values[idxEscolaridade] !== '-') reqParts.push(`Escolaridade: ${values[idxEscolaridade]}`);
+          if (idxExperiencia >= 0 && values[idxExperiencia] && values[idxExperiencia] !== '-') reqParts.push(`Experiência exigida: ${values[idxExperiencia]}`);
+          if (idxCnh >= 0 && values[idxCnh]) {
+              const cnh = values[idxCnh].toUpperCase();
+              if(cnh !== 'NÃO EXIGIDA' && cnh !== 'NAO EXIGIDA' && cnh !== '-') reqParts.push(`CNH Exigida: ${values[idxCnh]}`);
+          }
+          item.requirements = reqParts.join('\n');
+
+          newItems.push(item);
+        }
+      }
+
+      if (newItems.length === 0) return alert("Nenhuma vaga válida encontrada no CSV. Verifique os nomes das colunas.");
+      
+      if (window.confirm(`Foram encontradas ${newItems.length} vagas do SINE.\nDeseja iniciar a importação?`)) {
+         setIsUploading(true);
+         try {
+           for (const item of newItems) { await crud.addJob(item); }
+           alert("Vagas do SINE importadas com sucesso!");
+         } catch(err) { 
+           alert("Ocorreu um erro durante a importação."); 
+         } finally {
+           setIsUploading(false);
+         }
       }
     };
     reader.readAsArrayBuffer(file);
@@ -213,7 +302,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         <div key={item.id} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex flex-col">
              <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
-             {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase">{item.category}</span>}
+             {item.company && <span className="text-[10px] text-slate-500 font-bold mt-0.5">{item.company}</span>}
+             {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase mt-1">{item.category}</span>}
              {item.position === 'middle' && <span className="text-[10px] text-pink-600 font-bold uppercase mt-1">Banner Meio da Página</span>}
              {item.position === 'sidebar' && <span className="text-[10px] text-purple-600 font-bold uppercase mt-1">Banner Lateral Direita</span>}
           </div>
@@ -244,8 +334,16 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const activeGuideItems = guideData?.filter(i => i.status !== 'pending') || [];
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
+    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] relative">
       
+      {/* LOADER GLOBAL DA PÁGINA ADMIN (Cobre a tela durante importação em massa) */}
+      {isUploading && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <Loader size={48} className="text-indigo-600 animate-spin mb-4" />
+          <p className="font-bold text-slate-800 text-lg">Processando...</p>
+        </div>
+      )}
+
       {/* MENU DE ABAS */}
       <div className="flex overflow-x-auto bg-slate-50 border-b border-slate-200 scrollbar-hide">
         {[
@@ -314,7 +412,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* RESTANTE DAS ABAS... (Guia, Offers, Ads, News, Events, Real Estate, Jobs, Vehicles) */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -438,12 +535,26 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              {renderList(propertiesData, 'title', crud.deleteProperty)}
            </div>
         )}
+        
+        {/* NOVA ABA DE VAGAS COM BOTÃO DE IMPORTAÇÃO SINE */}
         {activeTab === 'jobs' && (
            <div>
-             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Vagas</h2><button onClick={() => openEditModal({type: 'CLT'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Nova Vaga</button></div>
+             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+               <h2 className="text-xl font-black text-slate-800">Gerenciar Vagas</h2>
+               <div className="flex gap-2 w-full md:w-auto">
+                 <button onClick={() => openEditModal({type: 'CLT'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 w-full md:w-auto">
+                   <PlusCircle size={18}/> Nova Vaga
+                 </button>
+                 <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
+                   <Upload size={18}/> Importar SINE (CSV)
+                   <input type="file" accept=".csv" className="hidden" onChange={handleJobsCSVUpload} />
+                 </label>
+               </div>
+             </div>
              {renderList(jobsData, 'title', crud.deleteJob)}
            </div>
         )}
+
         {activeTab === 'vehicles' && (
            <div>
              <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Veículos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
@@ -465,6 +576,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               <div className="mt-4">
                 <PropertyForm 
                   initialData={editingItem} 
+                  isAdmin={true} // Permite ao admin ver o checkbox de Destaque
                   onSuccess={(formData) => {
                     if (editingItem && editingItem.id) crud.updateProperty(formData);
                     else crud.addProperty(formData);
@@ -539,16 +651,16 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                       {renderField("Empresa", "company", "text", true)}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      {renderField("Categoria", "category", "select", true, ["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing"])}
-                      {renderField("Tipo de Vaga", "type", "select", true, ['CLT', 'Estágio', 'PJ', 'Temporário'])}
+                      {renderField("Categoria", "category", "select", true, ["Comércio & Vendas", "Alimentação & Gastronomia", "Administrativo & Financeiro", "Serviços Gerais & Manutenção", "Saúde & Cuidados", "Indústria & Logística", "Educação", "Tecnologia & Marketing", "Outros"])}
+                      {renderField("Tipo de Vaga", "type", "select", true, ['CLT', 'Estágio', 'PJ', 'Temporário', 'A Combinar'])}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       {renderField("Salário", "salary", "text", false, null, "Ex: R$ 1.500,00 ou A combinar")}
-                      {renderField("Localização / Bairro", "location", "text", true)}
+                      {renderField("Localização / Bairro", "location", "text", true, null, "Ouro Branco - MG")}
                     </div>
-                    {renderField("Descrição da Vaga", "description", "textarea", true)}
-                    {renderField("Requisitos", "requirements", "textarea")}
-                    {renderField("Contato para Envio de Currículo", "contact", "text", true, null, "E-mail ou WhatsApp")}
+                    {renderField("Descrição da Vaga (E PCD)", "description", "textarea", true)}
+                    {renderField("Requisitos (Escolaridade, CNH, Experiência)", "requirements", "textarea")}
+                    {renderField("Contato (E-mail, Zap ou Endereço SINE)", "contact", "text", true, null, "E-mail ou WhatsApp")}
                   </>
                 )}
 
