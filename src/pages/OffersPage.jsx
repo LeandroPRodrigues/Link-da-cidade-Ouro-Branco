@@ -26,19 +26,20 @@ export default function OffersPage({ offersData, onOfferClick }) {
     return () => window.removeEventListener('click', handleCloseMenu);
   }, [isMenuOpen]);
 
-  // 1. Extrai Estrutura Dinâmica (Lê o banco de dados e organiza em hierarchy)
+  // 1. Extrai Estrutura Dinâmica (Lê o banco de dados e organiza inteligentemente)
   const menuStructure = useMemo(() => {
     const data = (offersData || []).filter(o => o.status !== 'inactive');
     const structure = {};
     
-    // Lista de categorias que não devem aparecer no menu flutuante (pois já são fixos)
+    // Lista de categorias que não devem aparecer no menu flutuante (pois já são fixos no botão "Ofertas do Dia")
     const excludeCategories = ['bestsellers', 'ofertas do dia', 'ofertas-do-dia'];
 
     data.forEach(offer => {
-      const gName = offer.group || offer.grupo;
-      const cName = offer.category || offer.categoria;
+      // Se não houver grupo definido (cadastros novos), agrupa em "Departamentos"
+      const gName = offer.group || offer.grupo || 'Departamentos';
+      const cName = offer.subcategory || offer.subgrupo || offer.category || offer.categoria;
       
-      if (!gName || !cName || excludeCategories.includes(cName.toLowerCase()) || excludeCategories.includes(createSlug(cName))) return;
+      if (!cName || excludeCategories.includes(cName.toLowerCase()) || excludeCategories.includes(createSlug(cName))) return;
 
       if (!structure[gName]) {
         structure[gName] = new Set();
@@ -58,19 +59,18 @@ export default function OffersPage({ offersData, onOfferClick }) {
     const data = (offersData || []).filter(o => o.status !== 'inactive');
     
     return data.filter(offer => {
-      // Busca (Título ou Descrição)
+      // Busca por texto (Título ou Descrição)
       const matchSearch = offer.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           offer.description?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchSearch) return false;
 
-      const offerGroup = offer.group || offer.grupo;
-      const offerCategory = offer.category || offer.categoria;
+      const offerGroup = offer.group || offer.grupo || 'Departamentos';
+      const offerCategory = offer.subcategory || offer.subgrupo || offer.category || offer.categoria;
 
-      // Filtros do Menu
+      // Aplica os filtros do Menu
       switch (activeFilter.type) {
         case 'all': return true;
         case 'daily': 
-          // Checa se é bestsellers
           const isDaily = offerCategory && (offerCategory.toLowerCase() === 'bestsellers' || offerCategory.toLowerCase() === 'ofertas do dia' || createSlug(offerCategory) === 'ofertas-do-dia');
           return isDaily;
         case 'group': return offerGroup === activeFilter.group;
@@ -80,7 +80,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
     });
   }, [offersData, searchTerm, activeFilter]);
 
-  // Texto amigável para o breadcrumb
+  // Texto amigável para mostrar ao usuário o que está sendo filtrado
   const getFilterText = () => {
     switch (activeFilter.type) {
       case 'all': return 'Todas as Ofertas';
@@ -117,7 +117,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
         </div>
       </div>
 
-      {/* NOVO MENU DE NAVEGAÇÃO SECUNDÁRIA */}
+      {/* MENU DE NAVEGAÇÃO SECUNDÁRIA (Estilo Marketplace) */}
       <div className="bg-slate-100 rounded-full shadow-inner border border-slate-200 p-1 mb-6 max-w-4xl mx-auto flex items-center justify-center gap-1">
         
         {/* TODAS AS OFERTAS */}
@@ -172,14 +172,14 @@ export default function OffersPage({ offersData, onOfferClick }) {
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                       <List size={16} className="text-pink-500" /> Explore as Categorias
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">{menuStructure.length} departamentos</p>
+                  <p className="text-xs text-slate-400 font-medium">{menuStructure.length} departamento(s)</p>
               </div>
 
               {menuStructure.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
                   {menuStructure.map(({ group, categories }) => (
                     <div key={group}>
-                      {/* GRUPO */}
+                      {/* GRUPO PRINCIPAL */}
                       <button 
                         onClick={() => { setActiveFilter({ type: 'group', group: group, category: null }); setIsMenuOpen(false); setSearchTerm(''); }}
                         className="font-bold text-slate-800 hover:text-pink-600 transition text-left mb-2.5 block text-sm"
@@ -187,7 +187,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
                         {group}
                       </button>
                       
-                      {/* CATEGORIAS */}
+                      {/* SUBCATEGORIAS */}
                       <div className="space-y-2">
                         {categories.map(category => (
                           <button
@@ -210,7 +210,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
         </div>
       </div>
 
-      {/* BREADCRUMB / FEEDBACK DO FILTRO */}
+      {/* FEEDBACK DO FILTRO */}
       <div className="flex items-center gap-3 mb-6 px-1 text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
         <Filter size={16} className="text-slate-400" /> 
         <span>{getFilterText()}</span>
@@ -225,9 +225,14 @@ export default function OffersPage({ offersData, onOfferClick }) {
           const hasDiscount = offer.originalPrice && Number(offer.originalPrice) > Number(offer.price);
           const discountPercent = hasDiscount ? Math.round(((offer.originalPrice - offer.price) / offer.originalPrice) * 100) : 0;
 
+          // Processamento seguro de Grupo/Categoria para o card
+          const offerGroup = offer.group || offer.grupo || 'Departamentos';
+          const offerCategory = offer.subcategory || offer.subgrupo || offer.category || offer.categoria;
+
           return (
             <div key={offer.id} onClick={() => onOfferClick(offer)} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:border-pink-300 hover:shadow-md transition-all group flex flex-col">
               
+              {/* IMAGEM DO PRODUTO */}
               <div className="w-full h-48 bg-white relative p-4 flex items-center justify-center border-b border-slate-50">
                 <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 
@@ -238,18 +243,20 @@ export default function OffersPage({ offersData, onOfferClick }) {
                 )}
               </div>
 
+              {/* INFORMAÇÕES DO PRODUTO */}
               <div className="p-4 flex flex-col flex-1">
                 <div className="mb-auto">
                   <div className="flex items-center flex-wrap gap-1.5 mb-2">
-                    {(offer.group || offer.grupo) && <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{offer.group || offer.grupo}</span>}
-                    {(offer.group || offer.grupo) && (offer.category || offer.categoria) && <span className="text-slate-300 text-[9px]">•</span>}
-                    {(offer.category || offer.categoria) && <span className="text-[9px] font-bold uppercase tracking-wider text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded border border-pink-100">{offer.category || offer.categoria}</span>}
+                    {offerGroup && <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{offerGroup}</span>}
+                    {offerGroup && offerCategory && <span className="text-slate-300 text-[9px]">•</span>}
+                    {offerCategory && <span className="text-[9px] font-bold uppercase tracking-wider text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded border border-pink-100">{offerCategory}</span>}
                   </div>
                   <h3 className="font-bold text-slate-800 text-xs leading-snug line-clamp-2 group-hover:text-pink-600 transition-colors mb-2">
                     {offer.title}
                   </h3>
                 </div>
 
+                {/* PREÇOS */}
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-end justify-between">
                   <div>
                     {hasDiscount ? (
