@@ -404,9 +404,9 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 };
 
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
-export default function HomePage({ navigate, newsData, onNewsClick, eventsData, jobsData, adsData, user, onJobClick }) {
+export default function HomePage({ navigate, newsData, onNewsClick, eventsData, jobsData, adsData, offersData, user, onJobClick, onCadastrarVagaClick }) {
   
-  // Notícias (Limitar a 6 no total: 3 destaques e 3 feed)
+  // Notícias
   const feedItems = newsData || [];
   const topNews = feedItems.slice(0, 3);
   const regularNews = feedItems.slice(3, 6);
@@ -416,19 +416,17 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
     const views = news.views || 0;
     const likes = news.likes?.length || 0;
     const comments = news.comments?.length || 0;
-    // Fórmula: 1 view = 1 ponto, 1 like = 5 pontos, 1 comment = 10 pontos
     const score = views + (likes * 5) + (comments * 10);
     return { ...news, score };
   }).sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    // Critério de desempate: data mais recente
     return new Date(b.date) - new Date(a.date);
   }).slice(0, 5);
 
-  // Últimas Vagas (Limitar a 10)
-  const latestJobs = jobsData?.slice(0, 10) || [];
+  // Últimas Vagas (AGORA SÃO 12 PARA PREENCHER A NOVA GRADE)
+  const latestJobs = jobsData?.slice(0, 12) || [];
 
-  // Banner Secundário (Meio da Página)
+  // Banner Secundário
   const middleAd = adsData?.find(ad => ad.position === 'middle');
 
   return (
@@ -450,7 +448,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
       )}
 
-      {/* 3. RANKING EM ALTA (SUBSTITUIU OS EVENTOS) */}
+      {/* 3. RANKING EM ALTA */}
       {trendingNews.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-8">
           <div className="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
@@ -488,7 +486,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         <div className="flex-1 bg-slate-100 rounded-full px-5 py-3 text-slate-500 text-sm">O que você está procurando em Ouro Branco?</div>
       </div>
 
-      {/* 5. FEED RESTANTE DAS NOTÍCIAS (MÁX 3) */}
+      {/* 5. FEED RESTANTE DAS NOTÍCIAS */}
       <div className="space-y-6 mb-8">
         <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 px-1">Últimas Notícias</h3>
         {regularNews.length > 0 ? regularNews.map((item) => (
@@ -497,7 +495,6 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
           <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-400">Nenhuma notícia adicional publicada.</p></div>
         )}
         
-        {/* BOTÃO MAIS NOTÍCIAS */}
         <div className="px-1">
            <button onClick={() => navigate('news')} className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3.5 rounded-xl transition shadow-sm">
              Ver todas as Notícias
@@ -530,29 +527,41 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         )}
       </div>
 
-      {/* 7. VAGAS DE EMPREGO (10 ÚLTIMAS) */}
+      {/* 7. NOVA GRADE DE VAGAS DE EMPREGO (12 Vagas em formato de tabela) */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
             <Briefcase size={18} className="text-blue-600"/> Vagas de Emprego
           </h2>
         </div>
-        <div className="space-y-3 px-1">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 px-1">
           {latestJobs.length > 0 ? latestJobs.map(job => (
-            <div key={job.id} onClick={() => onJobClick && onJobClick(job)} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-300 transition-colors shadow-sm">
-              <div className="flex-1 min-w-0 pr-4">
-                  <h4 className="font-bold text-slate-800 text-sm truncate">{job.title}</h4>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">{job.company} • {job.location}</p>
+            <div key={job.id} onClick={() => onJobClick && onJobClick(job)} className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between group">
+              <div>
+                <h4 className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors mb-1">{job.title}</h4>
+                <p className="text-[10px] text-slate-500 font-medium line-clamp-1">{job.company}</p>
               </div>
-              <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap shrink-0">{job.type}</span>
+              <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-50">
+                <span className="text-[10px] text-slate-400 truncate max-w-[60%]">{job.location}</span>
+                <span className="bg-blue-50 text-blue-700 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">{job.type}</span>
+              </div>
             </div>
           )) : (
-            <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Nenhuma vaga recente.</div>
+            <div className="col-span-full text-center py-6 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">
+              Nenhuma vaga recente.
+            </div>
           )}
         </div>
+        
         <div className="flex gap-3 mt-4 px-1">
-          <button onClick={() => navigate('jobs')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">Cadastrar Vaga</button>
-          <button onClick={() => navigate('jobs')} className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-3 rounded-xl transition shadow-sm">Mais Vagas</button>
+          {/* BOTÃO AGORA CHAMA O MODAL DIRETAMENTE VIA onCadastrarVagaClick */}
+          <button onClick={onCadastrarVagaClick} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">
+            Cadastrar Vaga
+          </button>
+          <button onClick={() => navigate('jobs')} className="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold py-3 rounded-xl transition shadow-sm">
+            Mais Vagas
+          </button>
         </div>
       </div>
 

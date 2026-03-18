@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Search, Grid, Settings, ShoppingBag, Facebook, Instagram, Youtube } from 'lucide-react';
+import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Search, Grid, Settings, ShoppingBag, Facebook, Instagram, Youtube, X } from 'lucide-react';
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
+
+import PropertyForm from './components/PropertyForm';
+import VehicleForm from './components/VehicleForm';
+import JobForm from './components/JobForm';
+import GuideForm from './components/GuideForm';
 
 import HomePage, { MiniOffersCarousel, AdsCarousel, SidebarAd, MiniPropertiesCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
@@ -48,7 +53,12 @@ const GoogleIcon = () => (
 
 const createSlug = (text) => {
   if (!text) return '';
-  return text.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 -]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+  return text.toString().toLowerCase()
+    .trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 -]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 };
 
 const GlobalAdsCarousel = ({ ads }) => {
@@ -57,7 +67,9 @@ const GlobalAdsCarousel = ({ ads }) => {
 
   useEffect(() => {
     if (topAds.length <= 1) return;
-    const interval = setInterval(() => { setCurrentIndex((prev) => (prev + 1) % topAds.length); }, 5000); 
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % topAds.length);
+    }, 5000); 
     return () => clearInterval(interval);
   }, [topAds.length]);
 
@@ -82,7 +94,11 @@ const GlobalAdsCarousel = ({ ads }) => {
       {topAds.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-20">
           {topAds.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} />
+            <button 
+              key={idx} 
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-5 bg-indigo-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'}`} 
+            />
           ))}
         </div>
       )}
@@ -98,6 +114,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // ESTADO GLOBAL DO POP-UP (MODAL)
+  const [globalFormOpen, setGlobalFormOpen] = useState(null);
 
   const [selectedNews, setSelectedNews] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
@@ -363,28 +382,34 @@ export default function App() {
     updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); }
   };
 
-  const handleAddPropertyClick = (openModalCallback) => { 
+  // FUNÇÕES GLOBAIS DE CADASTRO (Abrem os Modais Diretamente)
+  const handleAddPropertyClick = () => { 
     if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
     if (user.role !== 'admin' && propertiesData.filter(p => p.ownerId === user.id).length >= 3) {
       alert("Limite de 3 imóveis atingido. Exclua anúncios antigos no seu Perfil."); return;
     }
-    openModalCallback(); 
+    setGlobalFormOpen('property'); 
   };
 
-  const handleAddVehicleClick = (openModalCallback) => { 
+  const handleAddVehicleClick = () => { 
     if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
     if (user.role !== 'admin' && vehiclesData.filter(v => v.ownerId === user.id).length >= 3) {
       alert("Limite de 3 veículos atingido. Exclua anúncios antigos no seu Perfil."); return;
     }
-    openModalCallback(); 
+    setGlobalFormOpen('vehicle'); 
   };
 
-  const handleAddJobClick = (openModalCallback) => { 
+  const handleAddJobClick = () => { 
     if (!user) { alert("Faça login para publicar."); setIsLoginOpen(true); return; } 
     if (user.role !== 'admin' && jobsData.filter(j => j.ownerId === user.id).length >= 3) { 
       alert("Limite de 3 vagas atingido. Exclua anúncios antigos no seu Perfil."); return; 
     }
-    openModalCallback(); 
+    setGlobalFormOpen('job'); 
+  };
+
+  const handleAddGuideClick = () => {
+    if (!user) { alert("Faça login para cadastrar uma empresa."); setIsLoginOpen(true); return; }
+    setGlobalFormOpen('guide');
   };
   
   const handleLogin = async (e) => {
@@ -474,10 +499,13 @@ export default function App() {
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-slate-900 flex flex-col">
       
       <div className="sticky top-0 z-50">
+        
+        {/* FAIXA 1: TOPO AZUL */}
         <div className="bg-blue-600 text-blue-50 text-sm py-3 px-4 flex justify-between items-center shadow-md">
           <div className="max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
             
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-5 font-medium tracking-wide">
+              
               <div className="flex items-center gap-3">
                 {settingsData.facebook && <a href={settingsData.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Facebook size={20} /></a>}
                 {settingsData.instagram && <a href={settingsData.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white transition transform hover:scale-110"><Instagram size={20} /></a>}
@@ -535,8 +563,10 @@ export default function App() {
           </div>
         </div>
 
+        {/* FAIXA 2: LOGO E BUSCA */}
         <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
           <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between gap-4 md:gap-12">
+            
             <div className="flex items-center cursor-pointer group h-14 md:h-16 shrink-0" onClick={() => setCurrentPage('home')}>
               <img src={logoImg} alt="Link da Cidade" className="h-full w-auto object-contain transition-transform group-hover:scale-105" />
             </div>
@@ -546,6 +576,7 @@ export default function App() {
               <input name="searchQuery" defaultValue={searchQuery} placeholder="Buscar notícias, vagas, imóveis, empresas..." className="bg-transparent outline-none text-sm md:text-base w-full placeholder:text-slate-400 font-medium text-slate-700"/>
               <button type="submit" className="hidden">Buscar</button>
             </form>
+            
           </div>
         </header>
       </div>
@@ -568,13 +599,15 @@ export default function App() {
         </aside>
 
         <main className="flex-1 w-full min-w-0 pb-10">
+          
           {currentPage === 'home' && (
             <div className="px-4 md:px-0">
                <GlobalAdsCarousel ads={adsData} />
             </div>
           )}
 
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={activeJobs} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} />}
+          {/* AS PÁGINAS RECEBEM AS LISTAS FILTRADAS (activeProperties, etc) PARA NÃO MOSTRAR OS VENCIDOS */}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={activeJobs} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCadastrarVagaClick={handleAddJobClick} />}
           
           {currentPage === 'search' && <SearchPage query={searchQuery} newsData={newsData} guideData={guideData} jobsData={activeJobs} propertiesData={activeProperties} vehiclesData={activeVehicles} eventsData={eventsData} offersData={offersData} onNewsClick={handleNewsClick} onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
 
@@ -593,6 +626,7 @@ export default function App() {
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
+          {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS (PARA PODER GERIR OS EXPIRADOS TAMBÉM) */}
           {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
           {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} />}
           
@@ -621,8 +655,10 @@ export default function App() {
           </div>
           
           <MiniOffersCarousel offers={offersData} navigate={setCurrentPage} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />
+          
           <SidebarAd ads={adsData} />
-          <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => handleAddPropertyClick(() => { setCurrentPage('real_estate'); window.scrollTo(0,0); })} />
+          
+          <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={handleAddPropertyClick} />
         </aside>
       </div>
 
@@ -658,17 +694,14 @@ export default function App() {
             </ul>
           </div>
 
-          {/* INTERATIVIDADE */}
+          {/* INTERATIVIDADE (CHAMANDO OS MODAIS GLOBAIS) */}
           <div>
             <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Interatividade</h3>
             <ul className="space-y-3 text-sm text-blue-200 font-medium">
-              <li><button onClick={() => handleAddPropertyClick(() => { setCurrentPage('real_estate'); window.scrollTo(0,0); })} className="hover:text-white transition">Anunciar Imóvel</button></li>
-              <li><button onClick={() => handleAddVehicleClick(() => { setCurrentPage('vehicles'); window.scrollTo(0,0); })} className="hover:text-white transition">Anunciar Veículo</button></li>
-              <li><button onClick={() => handleAddJobClick(() => { setCurrentPage('jobs'); window.scrollTo(0,0); })} className="hover:text-white transition">Cadastrar Vaga de Emprego</button></li>
-              <li><button onClick={() => { 
-                  if (!user) { alert("Faça login para cadastrar uma empresa."); setIsLoginOpen(true); return; }
-                  setCurrentPage('guide'); window.scrollTo(0,0); 
-                }} className="hover:text-white transition">Cadastrar Empresa no Guia</button></li>
+              <li><button onClick={handleAddPropertyClick} className="hover:text-white transition">Anunciar Imóvel</button></li>
+              <li><button onClick={handleAddVehicleClick} className="hover:text-white transition">Anunciar Veículo</button></li>
+              <li><button onClick={handleAddJobClick} className="hover:text-white transition">Cadastrar Vaga de Emprego</button></li>
+              <li><button onClick={handleAddGuideClick} className="hover:text-white transition">Cadastrar Empresa no Guia</button></li>
             </ul>
           </div>
 
@@ -704,6 +737,54 @@ export default function App() {
         </div>
       </nav>
 
+      {/* MODAL GLOBAL PARA RENDERIZAR OS FORMULÁRIOS DE CADASTRO */}
+      {globalFormOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onClick={() => setGlobalFormOpen(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition z-10">
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-black text-slate-800 mb-6 border-b border-slate-100 pb-4">
+              {globalFormOpen === 'property' && 'Anunciar Imóvel'}
+              {globalFormOpen === 'vehicle' && 'Anunciar Veículo'}
+              {globalFormOpen === 'job' && 'Cadastrar Vaga de Emprego'}
+              {globalFormOpen === 'guide' && 'Cadastrar Empresa no Guia'}
+            </h2>
+            
+            {globalFormOpen === 'property' && (
+              <PropertyForm 
+                isAdmin={user?.role === 'admin'} 
+                onSuccess={(data) => { crud.addProperty(data); setGlobalFormOpen(null); alert("Imóvel publicado com sucesso!"); }} 
+                onCancel={() => setGlobalFormOpen(null)} 
+              />
+            )}
+            
+            {globalFormOpen === 'vehicle' && (
+              <VehicleForm 
+                user={user} 
+                onSuccess={(data) => { crud.addVehicle(data); setGlobalFormOpen(null); alert("Veículo publicado com sucesso!"); }} 
+                onCancel={() => setGlobalFormOpen(null)} 
+              />
+            )}
+            
+            {globalFormOpen === 'job' && (
+              <JobForm 
+                onSuccess={(data) => { crud.addJob(data); setGlobalFormOpen(null); alert("Vaga publicada com sucesso!"); }} 
+                onCancel={() => setGlobalFormOpen(null)} 
+              />
+            )}
+            
+            {globalFormOpen === 'guide' && (
+              <GuideForm 
+                onSuccess={(data) => { crud.addGuideItem({...data, status: 'pending'}); setGlobalFormOpen(null); alert("Empresa enviada para aprovação!"); }} 
+                onCancel={() => setGlobalFormOpen(null)} 
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE LOGIN */}
       <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title={authMode === 'login' ? "Bem-vindo de volta" : "Criar nova conta"}>
         {authMode === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
