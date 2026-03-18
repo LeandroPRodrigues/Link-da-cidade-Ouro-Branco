@@ -323,8 +323,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     </div>
   );
 
-  const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '' }]);
-  const updateNewsBlock = (id, newValue) => setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, value: newValue } : block));
+  // === LÓGICA ATUALIZADA DOS BLOCOS DE NOTÍCIA ===
+  const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '', caption: '' }]);
+  
+  // Função atualizada para atualizar qualquer campo de um bloco
+  const updateNewsBlockField = (id, field, newValue) => {
+    setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, [field]: newValue } : block));
+  };
+  
   const removeNewsBlock = (id) => setNewsBlocks(newsBlocks.filter(block => block.id !== id));
   const moveNewsBlock = (index, direction) => {
     const newBlocks = [...newsBlocks];
@@ -548,7 +554,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                    <PlusCircle size={18}/> Nova Vaga
                  </button>
                  <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
-                   <Upload size={18}/> Importar SINE
+                   <Upload size={18}/> Importar SINE (CSV)
                    <input type="file" accept=".csv" className="hidden" onChange={handleJobsCSVUpload} />
                  </label>
                </div>
@@ -564,7 +570,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            </div>
         )}
 
-        {/* NOVA ABA PARA CLASSIFICADOS */}
         {activeTab === 'classifieds' && (
            <div>
              <div className="flex justify-between items-center mb-6">
@@ -575,7 +580,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         )}
       </div>
 
-      {/* MODAL GERAL DE CADASTRO E EDIÇÃO DO ADMIN */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -689,6 +693,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
+                {/* ===== EDIÇÃO DE NOTÍCIAS COM UPLOAD DE IMAGEM NO CORPO E LEGENDA ===== */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
@@ -712,10 +717,25 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                               <button type="button" onClick={() => moveNewsBlock(index, 'down')} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"><ArrowDown size={16}/></button>
                               <button type="button" onClick={() => removeNewsBlock(block.id)} className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600 mt-2"><Trash2 size={16}/></button>
                             </div>
+                            
                             <div className="flex-1 w-full">
-                              {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
-                              {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
-                              {block.type === 'image' && <input value={block.value} onChange={(e) => updateNewsBlock(block.id, e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem..." required/>}
+                              {block.type === 'paragraph' && <textarea value={block.value} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} rows="4" className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Escreva o parágrafo..." required/>}
+                              
+                              {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
+                              
+                              {block.type === 'image' && (
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex gap-2">
+                                    <input value={block.value || ''} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem (ou faça upload ao lado)..." required/>
+                                    <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                      {isUploading ? <Loader size={20} className="animate-spin"/> : <Upload size={20} />}
+                                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={(e) => handleLocalImageUpload(e, (url) => updateNewsBlockField(block.id, 'value', url))} />
+                                    </label>
+                                  </div>
+                                  {block.value && <img src={block.value} alt="Preview" className="h-32 object-cover rounded-lg border border-slate-200 w-fit"/>}
+                                  <input value={block.caption || ''} onChange={(e) => updateNewsBlockField(block.id, 'caption', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none text-sm italic" placeholder="Legenda da foto (Opcional)..."/>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}

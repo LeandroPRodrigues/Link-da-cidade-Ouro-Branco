@@ -102,15 +102,21 @@ export default function NewsDetailPage({ news, onBack, user }) {
           <div className="space-y-6 text-lg text-slate-800 leading-relaxed">
             {news.content && news.content.map((block, index) => {
               if (block.type === 'paragraph') {
-                return <p key={index}>{block.value}</p>;
+                return <p key={index} className="whitespace-pre-wrap">{block.value}</p>;
               }
               if (block.type === 'subtitle') {
                 return <h3 key={index} className="text-2xl font-bold text-slate-900 mt-8 mb-4">{block.value}</h3>;
               }
               if (block.type === 'image') {
                 return (
-                  <figure key={index} className="my-8">
-                    <img src={block.value} alt="Ilustração da matéria" className="w-full rounded-xl shadow-md" />
+                  <figure key={index} className="my-8 flex flex-col items-center">
+                    <img src={block.value} alt={block.caption || "Ilustração da matéria"} className="w-full rounded-xl shadow-md" />
+                    {/* AQUI ESTÁ A NOVA LEGENDA DA IMAGEM */}
+                    {block.caption && (
+                      <figcaption className="mt-3 text-sm text-slate-500 italic text-center border-b border-slate-100 pb-4 w-full">
+                        {block.caption}
+                      </figcaption>
+                    )}
                   </figure>
                 );
               }
@@ -129,7 +135,7 @@ export default function NewsDetailPage({ news, onBack, user }) {
             </div>
           )}
 
-          {/* === NOVA SECÇÃO: CURTIDAS E COMENTÁRIOS === */}
+          {/* === SECÇÃO: CURTIDAS E COMENTÁRIOS === */}
           <div className="mt-12 pt-8 border-t border-slate-100">
             <h3 className="text-xl font-bold text-slate-800 mb-6">O que você achou desta matéria?</h3>
             
