@@ -244,7 +244,7 @@ export const MiniPropertiesCarousel = ({ properties, navigate, onPropertyClick, 
   );
 };
 
-// --- COMPONENTE INDIVIDUAL DO DESTAQUE ---
+// --- COMPONENTE INDIVIDUAL DO DESTAQUE COM LINHA FINA ---
 const HeroItem = ({ item, user, onNewsClick, isMain }) => {
   const [likes, setLikes] = useState(item.likes || []);
   const [comments] = useState(item.comments || []);
@@ -262,11 +262,12 @@ const HeroItem = ({ item, user, onNewsClick, isMain }) => {
 
   return (
     <div 
-      className={`relative rounded-2xl overflow-hidden cursor-pointer group shadow-sm bg-slate-900 ${isMain ? 'md:col-span-2 h-64 md:h-[380px]' : 'h-48 md:h-[184px]'}`}
+      className={`relative rounded-2xl overflow-hidden cursor-pointer group shadow-sm bg-slate-900 ${isMain ? 'md:col-span-2 h-72 md:h-[450px]' : 'h-52 md:h-[219px]'}`}
       onClick={() => onNewsClick(item)}
     >
       <img src={item.image} alt={item.title} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      {/* Ajuste no degradê para a linha fina ficar bem legível */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
       
       <div className="absolute top-3 right-3 flex gap-2 z-20">
         <button onClick={handleLike} className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur transition shadow-sm ${isLiked ? 'bg-red-500/90 text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}>
@@ -281,23 +282,52 @@ const HeroItem = ({ item, user, onNewsClick, isMain }) => {
         <span className={`${isMain ? 'bg-red-600' : 'bg-indigo-600'} text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block shadow-sm`}>
           {item.category}
         </span>
-        <h2 className={`text-white font-bold leading-tight group-hover:underline decoration-2 underline-offset-4 line-clamp-3 ${isMain ? 'text-xl md:text-3xl' : 'text-sm md:text-base'}`}>
+        <h2 className={`text-white font-bold leading-tight group-hover:underline decoration-2 underline-offset-4 line-clamp-3 mb-2 ${isMain ? 'text-2xl md:text-3xl' : 'text-sm md:text-base'}`}>
           {item.title}
         </h2>
+        {/* === LINHA FINA === */}
+        {item.summary && (
+           <p className={`text-slate-300 italic line-clamp-2 ${isMain ? 'text-sm md:text-base' : 'text-xs hidden md:block'}`}>
+             {item.summary}
+           </p>
+        )}
       </div>
     </div>
   );
 };
 
-// --- COMPONENTE DE DESTAQUES ---
+// --- COMPONENTE DE DESTAQUES (LÊ AS POSIÇÕES DO PAINEL ADMIN) ---
 const HeroNewsGrid = ({ news, user, onNewsClick }) => {
   if (!news || news.length === 0) return null;
-  const mainNews = news[0];
-  const sideNews = news.slice(1, 3);
+
+  // Lógica para definir os Destaques
+  let mainNews = news.find(n => n.featuredPosition === 1);
+  let sideNews1 = news.find(n => n.featuredPosition === 2);
+  let sideNews2 = news.find(n => n.featuredPosition === 3);
+
+  // Lista de notícias que já foram selecionadas (para não repetir)
+  const usedIds = new Set();
+  if (mainNews) usedIds.add(mainNews.id);
+  if (sideNews1) usedIds.add(sideNews1.id);
+  if (sideNews2) usedIds.add(sideNews2.id);
+
+  // Pega as notícias mais recentes que não estão nos destaques selecionados
+  const remainingNews = news.filter(n => !usedIds.has(n.id));
+
+  // Preenche os espaços vazios com as notícias mais recentes (Fluxo normal)
+  if (!mainNews && remainingNews.length > 0) mainNews = remainingNews.shift();
+  if (!sideNews1 && remainingNews.length > 0) sideNews1 = remainingNews.shift();
+  if (!sideNews2 && remainingNews.length > 0) sideNews2 = remainingNews.shift();
+
+  // Se mesmo assim não houver a notícia principal, aborta (não há notícias)
+  if (!mainNews) return null;
+
+  const sideNews = [sideNews1, sideNews2].filter(Boolean);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8 px-1 md:px-0">
       <HeroItem item={mainNews} user={user} onNewsClick={onNewsClick} isMain={true} />
+      
       {sideNews.length > 0 && (
         <div className="flex flex-col gap-3">
           {sideNews.map((item, idx) => (
@@ -406,10 +436,28 @@ const FeedCard = ({ item, user, onNewsClick }) => {
 // --- COMPONENTE PRINCIPAL HOMEPAGE ---
 export default function HomePage({ navigate, newsData, onNewsClick, eventsData, jobsData, adsData, offersData, user, onJobClick, onCadastrarVagaClick }) {
   
-  // Notícias
   const feedItems = newsData || [];
-  const topNews = feedItems.slice(0, 3);
-  const regularNews = feedItems.slice(3, 6);
+  
+  // A lógica de TopNews agora é feita dentro do HeroNewsGrid (que você viu acima).
+  // Precisamos descobrir quais foram usadas nos destaques para não repetir no feed de baixo
+  const featuredIds = new Set();
+  if (feedItems.length > 0) {
+    let m = feedItems.find(n => n.featuredPosition === 1);
+    let s1 = feedItems.find(n => n.featuredPosition === 2);
+    let s2 = feedItems.find(n => n.featuredPosition === 3);
+    
+    if (m) featuredIds.add(m.id);
+    if (s1) featuredIds.add(s1.id);
+    if (s2) featuredIds.add(s2.id);
+
+    const rem = feedItems.filter(n => !featuredIds.has(n.id));
+    if (!m && rem.length > 0) featuredIds.add(rem.shift().id);
+    if (!s1 && rem.length > 0) featuredIds.add(rem.shift().id);
+    if (!s2 && rem.length > 0) featuredIds.add(rem.shift().id);
+  }
+
+  // O restante das notícias que vão aparecer na lista normal (O Feed de Notícias)
+  const regularNews = feedItems.filter(n => !featuredIds.has(n.id)).slice(0, 3);
 
   // --- CÁLCULO DAS NOTÍCIAS EM ALTA ---
   const trendingNews = [...feedItems].map(news => {
@@ -423,7 +471,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
     return new Date(b.date) - new Date(a.date);
   }).slice(0, 5);
 
-  // Últimas Vagas (AGORA SÃO 12 PARA PREENCHER A NOVA GRADE)
+  // Últimas Vagas
   const latestJobs = jobsData?.slice(0, 12) || [];
 
   // Banner Secundário
@@ -443,10 +491,8 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
       </div>
 
-      {/* 2. DESTAQUES NOTÍCIAS */}
-      {topNews.length > 0 && (
-        <HeroNewsGrid news={topNews} user={user} onNewsClick={onNewsClick} />
-      )}
+      {/* 2. DESTAQUES NOTÍCIAS (LÓGICA DOS BOTÕES DE POSIÇÃO E LINHA FINA) */}
+      <HeroNewsGrid news={feedItems} user={user} onNewsClick={onNewsClick} />
 
       {/* 3. RANKING EM ALTA */}
       {trendingNews.length > 0 && (
@@ -527,7 +573,7 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         )}
       </div>
 
-      {/* 7. NOVA GRADE DE VAGAS DE EMPREGO (12 Vagas em formato de tabela) */}
+      {/* 7. GRADE DE VAGAS DE EMPREGO */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wide">
@@ -555,7 +601,6 @@ export default function HomePage({ navigate, newsData, onNewsClick, eventsData, 
         </div>
         
         <div className="flex gap-3 mt-4 px-1">
-          {/* BOTÃO AGORA CHAMA O MODAL DIRETAMENTE VIA onCadastrarVagaClick */}
           <button onClick={onCadastrarVagaClick} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm">
             Cadastrar Vaga
           </button>

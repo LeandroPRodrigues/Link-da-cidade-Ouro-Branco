@@ -25,6 +25,33 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   };
 
   // ==========================================
+  // FUNÇÃO DE DEFINIR DESTAQUE DA NOTÍCIA NA HOME
+  // ==========================================
+  const handleSetFeaturedNews = async (item, pos) => {
+    setIsUploading(true);
+    try {
+      // Verifica se já existe alguma notícia ocupando esta posição e remove o destaque dela
+      const existing = newsData.find(n => n.featuredPosition === pos);
+      if (existing && existing.id !== item.id) {
+        await crud.updateNews({ ...existing, featuredPosition: null });
+      }
+      
+      // Se clicar na mesma posição, remove o destaque
+      if (item.featuredPosition === pos) {
+        await crud.updateNews({ ...item, featuredPosition: null });
+      } else {
+        // Aplica a nova posição
+        await crud.updateNews({ ...item, featuredPosition: pos });
+      }
+    } catch(err) {
+      console.error(err);
+      alert("Erro ao alterar o destaque da notícia.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ==========================================
   // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
   // ==========================================
   const handleCSVUpload = async (e) => {
@@ -205,7 +232,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // === NOVA FUNÇÃO PARA UPLOAD MÚLTIPLO NOS BLOCOS DE NOTÍCIA ===
+  // === FUNÇÃO PARA UPLOAD MÚLTIPLO NOS BLOCOS DE NOTÍCIA ===
   const handleNewsMultiImageUpload = async (e, blockId, currentValues) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -215,7 +242,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       const urls = await Promise.all(uploadPromises);
       const validUrls = urls.filter(Boolean);
       
-      // Garante que o currentValues seja sempre interpretado como um array
       let newValues = Array.isArray(currentValues) ? [...currentValues] : (currentValues ? [currentValues] : []);
       newValues = [...newValues, ...validUrls];
       
@@ -519,7 +545,27 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   <div className="flex-1 min-w-0 pr-20">
                     <h3 className="font-bold text-slate-800 text-base line-clamp-2" title={item.title}>{item.title}</h3>
                     <p className="text-xs text-slate-500 mt-1">{item.author} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Sem data'}</p>
-                    {item.isOfficial && <span className="inline-block mt-2 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-xs font-bold">Oficial</span>}
+                    
+                    {/* === BOTÕES PARA SELECIONAR A POSIÇÃO DA NOTÍCIA NA HOME === */}
+                    <div className="flex items-center gap-3 mt-3">
+                      {item.isOfficial && <span className="inline-block bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Oficial</span>}
+                      
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase px-1.5 hidden sm:inline">Destaque:</span>
+                        {[1, 2, 3].map(pos => (
+                          <button
+                            key={pos}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleSetFeaturedNews(item, pos); }}
+                            className={`w-7 h-7 rounded flex items-center justify-center text-[10px] font-black transition-colors ${item.featuredPosition === pos ? 'bg-amber-400 text-white shadow-inner' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-100'}`}
+                            title={pos === 1 ? "Destaque Maior (Esquerda)" : `Destaque Menor (${pos})`}
+                          >
+                            {pos}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                   </div>
                   <div className="absolute top-4 right-4 flex gap-2">
                     <button onClick={() => openEditModal(item)} className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg shadow-sm border border-slate-200 transition-colors"><Edit size={18}/></button>
@@ -692,7 +738,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* ===== EDIÇÃO DE NOTÍCIAS COM UPLOAD MÚLTIPLO DE IMAGENS ===== */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
@@ -722,7 +767,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                               
                               {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
                               
-                              {/* BLOCO DE IMAGEM ATUALIZADO PARA SUPORTAR MÚLTIPLAS IMAGENS */}
                               {block.type === 'image' && (
                                 <div className="flex flex-col gap-2">
                                   <div className="flex gap-2">
@@ -750,7 +794,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                                     </label>
                                   </div>
 
-                                  {/* PREVIEW DAS MINIATURAS ENVIADAS NESTE BLOCO */}
                                   {(Array.isArray(block.value) ? block.value : (block.value ? [block.value] : [])).length > 0 && (
                                     <div className="flex flex-wrap gap-3 mt-2 mb-2 p-3 bg-white border border-slate-200 rounded-lg">
                                       {(Array.isArray(block.value) ? block.value : (block.value ? [block.value] : [])).map((imgUrl, i) => (
