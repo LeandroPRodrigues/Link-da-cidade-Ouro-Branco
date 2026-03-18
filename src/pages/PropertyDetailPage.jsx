@@ -1,54 +1,102 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Map as MapIcon, Phone, MessageCircle, Mail, Share2 } from 'lucide-react';
+import { 
+  ArrowLeft, Map as MapIcon, Phone, MessageCircle, 
+  Mail, Share2, Copy, X 
+} from 'lucide-react';
 import LocationPicker from '../components/LocationPicker';
 
 export default function PropertyDetailPage({ property, onBack }) {
   const [showPhone, setShowPhone] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   if (!property) return null;
 
+  // --- FUNÇÃO DE CONTATO VIA WHATSAPP ---
   const handleWhatsApp = () => {
     if (!property.contactPhone) return alert("Telefone não informado");
-    
-    // Gera o link para WhatsApp
     const message = `Olá, vi o imóvel "${property.title}" no Link da Cidade e tenho interesse. Link: https://linkdacidade.com.br/imoveis/${property.id}`;
     const cleanPhone = property.contactPhone.replace(/\D/g,'');
-    const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
-    
-    window.open(url, '_blank');
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  // === NOVA FUNÇÃO DE COMPARTILHAMENTO ===
-  const handleShare = async () => {
-    const shareData = {
-      title: property.title,
-      text: `Dê uma olhada neste imóvel em Ouro Branco: ${property.title} por R$ ${parseFloat(property.price).toLocaleString('pt-BR')}.`,
-      url: window.location.href
-    };
+  // --- FUNÇÕES DO MODAL DE COMPARTILHAMENTO ---
+  const currentUrl = window.location.href;
+  const shareText = `Dê uma olhada neste imóvel em Ouro Branco: ${property.title} por R$ ${parseFloat(property.price).toLocaleString('pt-BR')}.`;
 
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        // Fallback para PC: Copia o link
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Link do imóvel copiado para a área de transferência! Cole nas suas redes sociais para compartilhar.");
-      }
-    } catch (err) {
-      console.log("Compartilhamento cancelado ou erro:", err);
-    }
+  const shareToWhatsApp = () => {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText} - ${currentUrl}`)}`, '_blank');
+  };
+
+  const shareToFacebook = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(currentUrl);
+    alert("Link do imóvel copiado com sucesso! Cole nas suas redes sociais.");
+    setIsShareModalOpen(false);
   };
 
   return (
-    <div className="px-4 md:px-0 pb-12 animate-in fade-in max-w-6xl mx-auto">
+    <div className="px-4 md:px-0 pb-12 animate-in fade-in max-w-6xl mx-auto relative">
+      
+      {/* MODAL DE COMPARTILHAMENTO */}
+      {isShareModalOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" 
+          onClick={() => setIsShareModalOpen(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-xl text-slate-800">Compartilhar Imóvel</h3>
+              <button 
+                onClick={() => setIsShareModalOpen(false)} 
+                className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition"
+              >
+                <X size={20}/>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={shareToWhatsApp} 
+                className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition shadow-sm"
+              >
+                <MessageCircle size={20}/> Enviar no WhatsApp
+              </button>
+              
+              <button 
+                onClick={shareToFacebook} 
+                className="w-full bg-[#1877F2] hover:bg-[#155fc2] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition shadow-sm"
+              >
+                 Compartilhar no Facebook
+              </button>
+
+              <button 
+                onClick={copyToClipboard} 
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition"
+              >
+                <Copy size={20}/> Copiar Link (Para Instagram, etc)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CABEÇALHO DE NAVEGAÇÃO */}
       <div className="flex items-center justify-between mb-6 mt-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold transition-colors">
+        <button 
+          onClick={onBack} 
+          className="flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold transition-colors"
+        >
           <ArrowLeft size={20}/> Voltar para lista
         </button>
-
-        {/* BOTÃO COMPARTILHAR NO TOPO */}
+        
         <button 
-          onClick={handleShare} 
+          onClick={() => setIsShareModalOpen(true)} 
           className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl font-bold transition shadow-sm"
         >
           <Share2 size={18} /> <span className="hidden sm:inline">Compartilhar Imóvel</span>
@@ -56,12 +104,17 @@ export default function PropertyDetailPage({ property, onBack }) {
       </div>
       
       <div className="grid md:grid-cols-3 gap-8">
+        
+        {/* COLUNA ESQUERDA: FOTO E DETALHES */}
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             
-            {/* Imagem Principal */}
             <div className="relative">
-              <img src={property.photos?.[0] || property.image} className="w-full h-[400px] object-cover" alt={property.title} />
+              <img 
+                src={property.photos?.[0] || property.image} 
+                className="w-full h-[400px] object-cover" 
+                alt={property.title} 
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
               <span className={`absolute bottom-4 left-4 text-white text-xs font-black px-3 py-1.5 rounded uppercase tracking-wider shadow-sm ${property.type === 'Venda' ? 'bg-blue-600' : property.type === 'Aluguel' ? 'bg-emerald-600' : 'bg-purple-600'}`}>
                 {property.type}
@@ -71,18 +124,24 @@ export default function PropertyDetailPage({ property, onBack }) {
             <div className="p-6 md:p-8">
               <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4 border-b border-slate-100 pb-6">
                 <div className="flex-1">
-                  <h1 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight mb-2">{property.title}</h1>
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight mb-2">
+                    {property.title}
+                  </h1>
                   <p className="text-slate-500 font-medium flex items-center gap-1.5 mt-1">
-                    <MapIcon size={16} className="text-slate-400"/> {property.privacy === 'exact' ? property.address : "Localização Aproximada (Bairro)"}
+                    <MapIcon size={16} className="text-slate-400"/> 
+                    {property.privacy === 'exact' ? property.address : "Localização Aproximada (Bairro)"}
                   </p>
                 </div>
                 <div className="text-left md:text-right shrink-0">
-                  <p className="text-3xl font-black text-emerald-600">R$ {parseFloat(property.price).toLocaleString('pt-BR')}</p>
-                  {property.type !== 'Venda' && <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">por mês</p>}
+                  <p className="text-3xl font-black text-emerald-600">
+                    R$ {parseFloat(property.price).toLocaleString('pt-BR')}
+                  </p>
+                  {property.type !== 'Venda' && (
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">por mês</p>
+                  )}
                 </div>
               </div>
 
-              {/* Informações Resumidas */}
               <div className="grid grid-cols-4 gap-4 py-4 mb-6 text-center bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <span className="block font-black text-xl text-slate-800">{property.bedrooms || '-'}</span>
@@ -103,29 +162,33 @@ export default function PropertyDetailPage({ property, onBack }) {
               </div>
 
               <div className="mt-6">
-                <h3 className="font-black text-lg text-slate-800 mb-3 flex items-center gap-2">Sobre o Imóvel</h3>
-                <p className="text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">{property.description || "Sem descrição informada pelo anunciante."}</p>
+                <h3 className="font-black text-lg text-slate-800 mb-3 flex items-center gap-2">
+                  Sobre o Imóvel
+                </h3>
+                <p className="text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">
+                  {property.description || "Sem descrição informada pelo anunciante."}
+                </p>
               </div>
 
-              {/* BOTÃO COMPARTILHAR NO FINAL DO TEXTO (Secundário) */}
               <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                 <button 
-                  onClick={handleShare} 
+                  onClick={() => setIsShareModalOpen(true)} 
                   className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition"
                 >
                   <Share2 size={18} /> Partilhar com um amigo
                 </button>
               </div>
-
             </div>
           </div>
         </div>
 
+        {/* COLUNA DIREITA: CONTATO E MAPA */}
         <div className="md:col-span-1 space-y-6">
           
-          {/* Card Contato */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="font-black text-slate-800 text-lg mb-6 border-b border-slate-100 pb-3">Falar com Anunciante</h3>
+            <h3 className="font-black text-slate-800 text-lg mb-6 border-b border-slate-100 pb-3">
+              Falar com Anunciante
+            </h3>
             
             <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
               <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center font-bold text-white uppercase text-lg shadow-inner">
@@ -163,12 +226,16 @@ export default function PropertyDetailPage({ property, onBack }) {
             </div>
           </div>
 
-          {/* Card Mapa */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="font-black text-slate-800 text-lg mb-4 border-b border-slate-100 pb-3">Localização</h3>
             
             <div className="h-56 rounded-xl overflow-hidden relative border border-slate-200">
-              <LocationPicker lat={property.location?.lat || -20.5} lng={property.location?.lng || -43.7} privacy={property.privacy} readOnly />
+              <LocationPicker 
+                lat={property.location?.lat || -20.5} 
+                lng={property.location?.lng || -43.7} 
+                privacy={property.privacy} 
+                readOnly 
+              />
             </div>
             
             {property.privacy === 'approx' && (
