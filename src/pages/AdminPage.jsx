@@ -116,13 +116,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       if (lines.length < 2) return alert("Arquivo CSV vazio ou sem dados suficientes.");
       const separator = lines[0].includes(';') ? ';' : ',';
       
-      // Lê os cabeçalhos limpando os acentos para facilitar a busca
       const headers = lines[0].toLowerCase().split(separator).map(h => h.trim().replace(/^"|"$/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
 
-      // Busca os índices das colunas, independentemente da ordem
       const findColumn = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
       const idxOcupacao = findColumn(['ocupacao', 'cargo', 'funcao']);
-      const idxVagas = findColumn(['vaga', 'quantidade']);
+      const idxCodigo = findColumn(['vaga', 'codigo']); // Corrigido para interpretar como Código da Vaga
       const idxEscolaridade = findColumn(['escolaridade', 'ensino']);
       const idxExperiencia = findColumn(['experiencia', 'ctps']);
       const idxPcd = findColumn(['pcd', 'deficiencia']);
@@ -141,7 +139,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           let item = {
             title: values[idxOcupacao],
             company: "SINE Ouro Branco",
-            category: "Outros", // Fallback, vagas do sine misturam categorias
+            category: "Outros", 
             type: "CLT",
             location: "Ouro Branco - MG",
             salary: (idxSalario >= 0 && values[idxSalario] && values[idxSalario] !== '-') ? values[idxSalario] : "A combinar",
@@ -149,9 +147,11 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             date: new Date().toISOString()
           };
 
-          // Construir a descrição (Vagas + PCD)
+          // Construir a descrição (Código da Vaga + PCD)
           let descParts = [];
-          if (idxVagas >= 0 && values[idxVagas] && values[idxVagas] !== '-') descParts.push(`Quantidade de Vagas: ${values[idxVagas]}`);
+          if (idxCodigo >= 0 && values[idxCodigo] && values[idxCodigo] !== '-') {
+            descParts.push(`Código da Vaga (SINE): ${values[idxCodigo]}`);
+          }
           if (idxPcd >= 0 && values[idxPcd]) {
              const isPcd = values[idxPcd].toUpperCase();
              if(isPcd !== 'NÃO' && isPcd !== 'NAO' && isPcd !== '-') descParts.push(`Vaga aceita PCD: Sim`);
@@ -336,7 +336,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] relative">
       
-      {/* LOADER GLOBAL DA PÁGINA ADMIN (Cobre a tela durante importação em massa) */}
+      {/* LOADER GLOBAL DA PÁGINA ADMIN */}
       {isUploading && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
           <Loader size={48} className="text-indigo-600 animate-spin mb-4" />
@@ -370,7 +370,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
-        {/* ABA DE CONFIGURAÇÕES DO SITE */}
         {activeTab === 'settings' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -536,7 +535,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            </div>
         )}
         
-        {/* NOVA ABA DE VAGAS COM BOTÃO DE IMPORTAÇÃO SINE */}
         {activeTab === 'jobs' && (
            <div>
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -563,7 +561,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         )}
       </div>
 
-      {/* MODAL DE CADASTRO E EDIÇÃO */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -576,7 +573,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
               <div className="mt-4">
                 <PropertyForm 
                   initialData={editingItem} 
-                  isAdmin={true} // Permite ao admin ver o checkbox de Destaque
+                  isAdmin={true} 
                   onSuccess={(formData) => {
                     if (editingItem && editingItem.id) crud.updateProperty(formData);
                     else crud.addProperty(formData);
