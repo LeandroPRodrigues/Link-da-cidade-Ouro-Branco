@@ -84,6 +84,12 @@ export const database = {
   updateOffer: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "offers", id), data); },
   deleteOffer: async (id) => { await deleteDoc(doc(firestoreDB, "offers", id)); },
 
+  // --- NOVA COLEÇÃO: CLASSIFICADOS (PRODUTOS USADOS E SERVIÇOS) ---
+  getClassifieds: async () => { const q = await getDocs(collection(firestoreDB, "classifieds")); return mapList(q); },
+  addClassified: async (item) => { const { id, ...data } = item; await addDoc(collection(firestoreDB, "classifieds"), data); },
+  updateClassified: async (item) => { const { id, ...data } = item; await updateDoc(doc(firestoreDB, "classifieds", id), data); },
+  deleteClassified: async (id) => { await deleteDoc(doc(firestoreDB, "classifieds", id)); },
+
   toggleLike: async (colName, itemId, userId) => {
     const itemRef = doc(firestoreDB, colName, itemId);
     const snap = await getDoc(itemRef);

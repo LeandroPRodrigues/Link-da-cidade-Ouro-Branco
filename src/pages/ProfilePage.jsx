@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Home, Car, Briefcase, Trash2, RefreshCw, AlertTriangle, CheckCircle, Clock, Save } from 'lucide-react';
+import { User, Home, Car, Briefcase, Trash2, RefreshCw, AlertTriangle, CheckCircle, Clock, Save, Tag } from 'lucide-react';
 
-export default function ProfilePage({ user, db, setUser, onBack, propertiesData, vehiclesData, jobsData, crud }) {
+export default function ProfilePage({ user, db, setUser, onBack, propertiesData, vehiclesData, jobsData, classifiedsData, crud }) {
   const [activeTab, setActiveTab] = useState('profile');
   
   // Função para salvar alterações no nome e telefone
@@ -36,6 +36,7 @@ export default function ProfilePage({ user, db, setUser, onBack, propertiesData,
   const myProperties = (propertiesData || []).filter(p => p.ownerId === user.id);
   const myVehicles = (vehiclesData || []).filter(v => v.ownerId === user.id);
   const myJobs = (jobsData || []).filter(j => j.ownerId === user.id);
+  const myClassifieds = (classifiedsData || []).filter(c => c.ownerId === user.id);
 
   const renderItemsList = (items, type, deleteFn, updateFn) => {
     if (!items || items.length === 0) return (
@@ -59,15 +60,15 @@ export default function ProfilePage({ user, db, setUser, onBack, propertiesData,
           const info = getExpirationInfo(item, type);
           return (
             <div key={item.id} className={`border ${info.isActive ? 'border-slate-200' : 'border-red-200 bg-red-50/30'} rounded-xl p-4 bg-white flex flex-col md:flex-row gap-4 justify-between items-start md:items-center shadow-sm`}>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
                 {(item.photos?.[0] || item.image) ? (
                   <img src={item.photos?.[0] || item.image} alt={item.title} className="w-16 h-16 object-cover rounded-lg shrink-0 border border-slate-100" />
                 ) : (
                   <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 shrink-0 border border-slate-200">
-                    {type === 'property' ? <Home size={24}/> : type === 'vehicle' ? <Car size={24}/> : <Briefcase size={24}/>}
+                    {type === 'property' ? <Home size={24}/> : type === 'vehicle' ? <Car size={24}/> : type === 'classified' ? <Tag size={24}/> : <Briefcase size={24}/>}
                   </div>
                 )}
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-bold text-slate-800 line-clamp-1">{item.title}</h3>
                   {info.isActive ? (
                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-1">
@@ -80,7 +81,7 @@ export default function ProfilePage({ user, db, setUser, onBack, propertiesData,
                   )}
                 </div>
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                 <button onClick={() => {
                   updateFn({...item, updatedAt: new Date().toISOString()});
                   alert("Anúncio renovado com sucesso! Ele já voltou ao topo das listas.");
@@ -109,6 +110,11 @@ export default function ProfilePage({ user, db, setUser, onBack, propertiesData,
           <button onClick={() => setActiveTab('profile')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'profile' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}>
             <User size={18}/> Meu Perfil
           </button>
+          
+          <button onClick={() => setActiveTab('classifieds')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'classifieds' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}>
+            <Tag size={18}/> Meus Classificados ({myClassifieds.length}/3)
+          </button>
+
           <button onClick={() => setActiveTab('properties')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'properties' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}>
             <Home size={18}/> Meus Imóveis ({myProperties.length}/3)
           </button>
@@ -144,6 +150,14 @@ export default function ProfilePage({ user, db, setUser, onBack, propertiesData,
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {activeTab === 'classifieds' && (
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 mb-2">Meus Classificados</h2>
+              <p className="text-slate-500 mb-6 font-medium">Gerencie produtos ou serviços que você anunciou na comunidade (Máximo de 3 cadastros).</p>
+              {renderItemsList(myClassifieds, 'classified', crud.deleteClassified, crud.updateClassified)}
             </div>
           )}
 

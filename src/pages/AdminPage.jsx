@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
 import { uploadFile } from '../utils/uploadHelper';
 
-export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, adsData, offersData, settingsData, crud }) {
+export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, classifiedsData, adsData, offersData, settingsData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
   const [modalOpen, setModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -120,7 +120,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       const findColumn = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
       const idxOcupacao = findColumn(['ocupacao', 'cargo', 'funcao']);
-      const idxCodigo = findColumn(['vaga', 'codigo']); // Corrigido para interpretar como Código da Vaga
+      const idxCodigo = findColumn(['vaga', 'codigo']); 
       const idxEscolaridade = findColumn(['escolaridade', 'ensino']);
       const idxExperiencia = findColumn(['experiencia', 'ctps']);
       const idxPcd = findColumn(['pcd', 'deficiencia']);
@@ -147,7 +147,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             date: new Date().toISOString()
           };
 
-          // Construir a descrição (Código da Vaga + PCD)
           let descParts = [];
           if (idxCodigo >= 0 && values[idxCodigo] && values[idxCodigo] !== '-') {
             descParts.push(`Código da Vaga (SINE): ${values[idxCodigo]}`);
@@ -158,7 +157,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           }
           item.description = descParts.join('\n') || "Vaga disponibilizada pelo SINE de Ouro Branco.";
 
-          // Construir os Requisitos (Escolaridade + Experiência + CNH)
           let reqParts = [];
           if (idxEscolaridade >= 0 && values[idxEscolaridade] && values[idxEscolaridade] !== '-') reqParts.push(`Escolaridade: ${values[idxEscolaridade]}`);
           if (idxExperiencia >= 0 && values[idxExperiencia] && values[idxExperiencia] !== '-') reqParts.push(`Experiência exigida: ${values[idxExperiencia]}`);
@@ -234,6 +232,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         if (activeTab === 'events') await crud.updateEvent(payload);
         if (activeTab === 'jobs') await crud.updateJob(payload);
         if (activeTab === 'guide') await crud.updateGuideItem(payload);
+        if (activeTab === 'classifieds') await crud.updateClassified(payload);
       } else {
         payload.date = payload.date || new Date().toISOString();
         if (activeTab === 'offers') await crud.addOffer(payload);
@@ -242,6 +241,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         if (activeTab === 'events') await crud.addEvent(payload);
         if (activeTab === 'jobs') await crud.addJob({...payload, createdAt: new Date().toISOString()});
         if (activeTab === 'guide') await crud.addGuideItem({...payload, status: 'active'});
+        if (activeTab === 'classifieds') await crud.addClassified({...payload, createdAt: new Date().toISOString()});
       }
       
       setModalOpen(false);
@@ -304,13 +304,16 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <span className="font-bold text-slate-800">{item[titleField] || item.title || item.name || 'Item sem título'}</span>
              {item.company && <span className="text-[10px] text-slate-500 font-bold mt-0.5">{item.company}</span>}
              {item.category && <span className="text-[10px] text-indigo-600 font-bold uppercase mt-1">{item.category}</span>}
+             {item.ownerName && <span className="text-[10px] text-slate-400 font-bold mt-1">Por: {item.ownerName}</span>}
              {item.position === 'middle' && <span className="text-[10px] text-pink-600 font-bold uppercase mt-1">Banner Meio da Página</span>}
              {item.position === 'sidebar' && <span className="text-[10px] text-purple-600 font-bold uppercase mt-1">Banner Lateral Direita</span>}
           </div>
           <div className="flex gap-2">
-            <button onClick={() => openEditModal(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Editar">
-              <Edit size={18} />
-            </button>
+            {activeTab !== 'classifieds' && (
+              <button onClick={() => openEditModal(item)} className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Editar">
+                <Edit size={18} />
+              </button>
+            )}
             <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir?')) deleteFunc(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Excluir">
               <Trash2 size={18} />
             </button>
@@ -336,7 +339,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] relative">
       
-      {/* LOADER GLOBAL DA PÁGINA ADMIN */}
+      {/* LOADER GLOBAL */}
       {isUploading && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
           <Loader size={48} className="text-indigo-600 animate-spin mb-4" />
@@ -354,6 +357,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'real_estate', label: 'Imóveis' },
           { id: 'jobs', label: 'Vagas' },
           { id: 'vehicles', label: 'Veículos' },
+          { id: 'classifieds', label: 'Classificados' },
           { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' },
           { id: 'settings', label: 'Configurações' }
         ].map(tab => (
@@ -544,7 +548,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                    <PlusCircle size={18}/> Nova Vaga
                  </button>
                  <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
-                   <Upload size={18}/> Importar SINE (CSV)
+                   <Upload size={18}/> Importar SINE
                    <input type="file" accept=".csv" className="hidden" onChange={handleJobsCSVUpload} />
                  </label>
                </div>
@@ -559,8 +563,19 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              {renderList(vehiclesData, 'title', crud.deleteVehicle)}
            </div>
         )}
+
+        {/* NOVA ABA PARA CLASSIFICADOS */}
+        {activeTab === 'classifieds' && (
+           <div>
+             <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><Tag size={24} className="text-indigo-600"/> Classificados da Comunidade</h2>
+             </div>
+             {renderList(classifiedsData, 'title', crud.deleteClassified)}
+           </div>
+        )}
       </div>
 
+      {/* MODAL GERAL DE CADASTRO E EDIÇÃO DO ADMIN */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">

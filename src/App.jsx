@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Search, Grid, Settings, ShoppingBag, Facebook, Instagram, Youtube, X } from 'lucide-react';
+import { Home, Briefcase, Car, Store, Menu, User, LogOut, List, Calendar, Loader, PlusCircle, Search, Grid, Settings, ShoppingBag, Facebook, Instagram, Youtube, X, Tag } from 'lucide-react';
 import { db } from './utils/database';
 import { validateCPF, formatCPF } from './utils/cpfValidator';
 import Modal from './components/Modal';
@@ -8,6 +8,7 @@ import PropertyForm from './components/PropertyForm';
 import VehicleForm from './components/VehicleForm';
 import JobForm from './components/JobForm';
 import GuideForm from './components/GuideForm';
+import ClassifiedForm from './components/ClassifiedForm';
 
 import HomePage, { MiniOffersCarousel, AdsCarousel, SidebarAd, MiniPropertiesCarousel } from './pages/HomePage';
 import NewsPage from './pages/NewsPage';
@@ -30,12 +31,14 @@ import ProfilePage from './pages/ProfilePage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import SearchPage from './pages/SearchPage';
+import ClassifiedsPage from './pages/ClassifiedsPage';
 
 import logoImg from './logo.jpg'; 
 
 const APP_BRAND = "Link"; 
 const CITY_NAME = "Ouro Branco";
 
+// Ícones compactos
 const WhatsAppIcon = ({ size = 20, className = "" }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.004 2C6.48 2 2.004 6.476 2.004 12C2.004 13.824 2.49 15.54 3.328 17.034L2 22L7.098 20.686C8.56 21.524 10.236 22 12.004 22C17.528 22 22.004 17.524 22.004 12C22.004 6.476 17.528 2 12.004 2ZM17.18 16.538C16.99 17.076 16.038 17.514 15.534 17.576C15.06 17.632 14.45 17.682 12.392 16.83C9.314 15.556 7.324 12.438 7.17 12.238C7.02 12.038 5.898 10.554 5.898 9.014C5.898 7.474 6.678 6.726 7 6.406C7.272 6.136 7.726 6.002 8.164 6.002C8.304 6.002 8.432 6.008 8.542 6.014C8.868 6.028 9.032 6.046 9.25 6.568C9.52 7.218 10.176 8.818 10.254 8.98C10.334 9.14 10.412 9.356 10.306 9.566C10.206 9.778 10.12 9.872 9.96 10.058C9.8 10.244 9.654 10.38 9.498 10.584C9.354 10.768 9.192 10.966 9.37 11.274C9.544 11.576 10.15 12.564 11.05 13.364C12.21 14.398 13.16 14.726 13.496 14.866C13.75 14.972 14.052 14.954 14.234 14.756C14.464 14.506 14.752 14.12 15.042 13.726C15.248 13.446 15.5 13.404 15.766 13.504C16.038 13.6 17.49 14.318 17.79 14.468C18.09 14.618 18.29 14.692 18.364 14.82C18.438 14.948 18.438 15.548 18.18 16.538Z"/>
@@ -115,7 +118,7 @@ export default function App() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ESTADO GLOBAL DO POP-UP (MODAL)
+  // ESTADO GLOBAL DO POP-UP (MODAL DE CADASTRO)
   const [globalFormOpen, setGlobalFormOpen] = useState(null);
 
   const [selectedNews, setSelectedNews] = useState(null);
@@ -134,6 +137,7 @@ export default function App() {
   const [guideData, setGuideData] = useState([]);
   const [adsData, setAdsData] = useState([]);
   const [offersData, setOffersData] = useState([]); 
+  const [classifiedsData, setClassifiedsData] = useState([]); 
   const [settingsData, setSettingsData] = useState({});
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -158,6 +162,7 @@ export default function App() {
       case 'history': setCurrentPage('history'); break;
       case 'gallery': setCurrentPage('gallery'); break;
       case 'busca': setCurrentPage('search'); break;
+      case 'classificados': setCurrentPage('classifieds'); break;
       
       case 'ofertas':
         if (id && dataSets.offers) {
@@ -240,7 +245,7 @@ export default function App() {
         try { return await fetchPromise; } catch (err) { return fallback; }
       };
 
-      const [n, e, p, j, v, g, a, o, s] = await Promise.all([
+      const [n, e, p, j, v, g, a, o, s, c] = await Promise.all([
         safeFetch(db.getNews(), []),
         safeFetch(db.getEvents(), []),
         safeFetch(db.getProperties(), []),
@@ -249,17 +254,19 @@ export default function App() {
         safeFetch(db.getGuide(), []),
         safeFetch(db.getAds(), []),
         safeFetch(db.getOffers(), []),
-        safeFetch(db.getSettings(), {})
+        safeFetch(db.getSettings(), {}),
+        safeFetch(db.getClassifieds(), [])
       ]);
 
-      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o); setSettingsData(s);
+      setNewsData(n); setEventsData(e); setPropertiesData(p); setJobsData(j); setVehiclesData(v); setGuideData(g); setAdsData(a); setOffersData(o); setSettingsData(s); setClassifiedsData(c);
       
       autoCleanupDeletions(p, 'property', db.deleteProperty);
       autoCleanupDeletions(v, 'vehicle', db.deleteVehicle);
       autoCleanupDeletions(j, 'job', db.deleteJob);
+      autoCleanupDeletions(c, 'classified', db.deleteClassified);
 
       resolveUrlPath(window.location.pathname, {
-          news: n, events: e, real_estate: p, jobs: j, vehicles: v, guide: g, offers: o
+          news: n, events: e, real_estate: p, jobs: j, vehicles: v, guide: g, offers: o, classifieds: c
       });
     } catch (error) {
       console.error("Erro ao carregar:", error);
@@ -288,6 +295,7 @@ export default function App() {
     else if (currentPage === 'history') { newUrl = '/history'; pageTitle = `História de ${CITY_NAME} | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'gallery') { newUrl = '/gallery'; pageTitle = `Galeria de Fotos | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'search') { newUrl = '/busca'; pageTitle = `Resultados da Busca | ${APP_BRAND} da Cidade`; }
+    else if (currentPage === 'classifieds') { newUrl = '/classificados'; pageTitle = `Classificados da Comunidade | ${APP_BRAND} da Cidade`; }
     else if (currentPage === 'news') { newUrl = '/noticias'; pageTitle = `Notícias de ${CITY_NAME}`; }
     else if (currentPage === 'events') { newUrl = '/agenda'; pageTitle = `Agenda de Eventos | ${CITY_NAME}`; }
     else if (currentPage === 'real_estate') { newUrl = '/imoveis'; pageTitle = `Imóveis em ${CITY_NAME}`; }
@@ -334,17 +342,18 @@ export default function App() {
     const handlePopState = () => {
       resolveUrlPath(window.location.pathname, {
         news: newsData, events: eventsData, real_estate: propertiesData, 
-        jobs: jobsData, vehicles: vehiclesData, guide: guideData, offers: offersData
+        jobs: jobsData, vehicles: vehiclesData, guide: guideData, offers: offersData, classifieds: classifiedsData
       });
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [resolveUrlPath, newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, offersData]);
+  }, [resolveUrlPath, newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, offersData, classifiedsData]);
   
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
     deleteNews: async (id) => { await db.deleteNews(id); setNewsData(await db.getNews()); },
+    
     addEvent: async (item) => { await db.addEvent(item); setEventsData(await db.getEvents()); },
     updateEvent: async (item) => { await db.updateEvent(item); setEventsData(await db.getEvents()); },
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
@@ -373,43 +382,43 @@ export default function App() {
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
     updateGuideItem: async (item) => { await db.updateGuideItem(item); setGuideData(await db.getGuide()); },
     deleteGuideItem: async (id) => { await db.deleteGuideItem(id); setGuideData(await db.getGuide()); },
+    
     addAd: async (item) => { await db.addAd(item); setAdsData(await db.getAds()); },
     updateAd: async (item) => { await db.updateAd(item); setAdsData(await db.getAds()); },
     deleteAd: async (id) => { await db.deleteAd(id); setAdsData(await db.getAds()); },
+    
     addOffer: async (item) => { await db.addOffer(item); setOffersData(await db.getOffers()); },
     updateOffer: async (item) => { await db.updateOffer(item); setOffersData(await db.getOffers()); },
     deleteOffer: async (id) => { await db.deleteOffer(id); setOffersData(await db.getOffers()); },
-    updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); }
+    
+    updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); },
+
+    addClassified: async (item) => { 
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      await db.addClassified(i); setClassifiedsData(await db.getClassifieds()); 
+    },
+    updateClassified: async (item) => { await db.updateClassified({...item, updatedAt: new Date().toISOString()}); setClassifiedsData(await db.getClassifieds()); },
+    deleteClassified: async (id) => { await db.deleteClassified(id); setClassifiedsData(await db.getClassifieds()); },
   };
 
   // FUNÇÕES GLOBAIS DE CADASTRO (Abrem os Modais Diretamente)
-  const handleAddPropertyClick = () => { 
-    if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
-    if (user.role !== 'admin' && propertiesData.filter(p => p.ownerId === user.id).length >= 3) {
-      alert("Limite de 3 imóveis atingido. Exclua anúncios antigos no seu Perfil."); return;
+  const handleAddClick = (type) => {
+    if (!user) { 
+      alert("Faça login para anunciar."); 
+      setIsLoginOpen(true); 
+      return; 
+    } 
+    let limit = 0;
+    if (type === 'property') limit = propertiesData.filter(p => p.ownerId === user.id).length;
+    if (type === 'vehicle') limit = vehiclesData.filter(v => v.ownerId === user.id).length;
+    if (type === 'job') limit = jobsData.filter(j => j.ownerId === user.id).length;
+    if (type === 'classified') limit = classifiedsData.filter(c => c.ownerId === user.id).length;
+    
+    if (user.role !== 'admin' && type !== 'guide' && limit >= 3) {
+      alert("Limite de 3 cadastros atingido para esta categoria. Exclua anúncios antigos no seu Perfil."); 
+      return;
     }
-    setGlobalFormOpen('property'); 
-  };
-
-  const handleAddVehicleClick = () => { 
-    if (!user) { alert("Faça login ou crie uma conta gratuita para anunciar."); setIsLoginOpen(true); return; } 
-    if (user.role !== 'admin' && vehiclesData.filter(v => v.ownerId === user.id).length >= 3) {
-      alert("Limite de 3 veículos atingido. Exclua anúncios antigos no seu Perfil."); return;
-    }
-    setGlobalFormOpen('vehicle'); 
-  };
-
-  const handleAddJobClick = () => { 
-    if (!user) { alert("Faça login para publicar."); setIsLoginOpen(true); return; } 
-    if (user.role !== 'admin' && jobsData.filter(j => j.ownerId === user.id).length >= 3) { 
-      alert("Limite de 3 vagas atingido. Exclua anúncios antigos no seu Perfil."); return; 
-    }
-    setGlobalFormOpen('job'); 
-  };
-
-  const handleAddGuideClick = () => {
-    if (!user) { alert("Faça login para cadastrar uma empresa."); setIsLoginOpen(true); return; }
-    setGlobalFormOpen('guide');
+    setGlobalFormOpen(type); 
   };
   
   const handleLogin = async (e) => {
@@ -477,9 +486,9 @@ export default function App() {
     }
   };
 
-  const NavItem = ({ page, label, icon: Icon, mobileOnly }) => (
-    <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${mobileOnly ? 'md:hidden' : ''} ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
-      <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> <span className="hidden md:inline">{label}</span><span className="md:hidden text-[10px] mt-1">{label}</span>
+  const NavItem = ({ page, label, icon: Icon }) => (
+    <button onClick={() => { setCurrentPage(page); window.scrollTo(0,0); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm w-full ${currentPage === page ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
+      <Icon size={22} strokeWidth={currentPage === page ? 2.5 : 2} /> {label}
     </button>
   );
   
@@ -492,6 +501,7 @@ export default function App() {
   const activeProperties = propertiesData.filter(i => isItemActive(i, 'property'));
   const activeVehicles = vehiclesData.filter(i => isItemActive(i, 'vehicle'));
   const activeJobs = jobsData.filter(i => isItemActive(i, 'job'));
+  const activeClassifieds = classifiedsData.filter(i => isItemActive(i, 'classified'));
 
   if (loading && !newsData.length && !user) return (<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400"><Loader className="animate-spin mb-4 text-indigo-600" size={48} /><p>Carregando Link da Cidade...</p></div>);
 
@@ -590,6 +600,7 @@ export default function App() {
           <NavItem page="events" label="Agenda & Eventos" icon={Calendar} />
           <div className="my-4 border-t border-slate-200 mx-4"></div>
           <p className="px-4 text-xs font-bold text-slate-400 uppercase mb-1">Classificados</p>
+          <NavItem page="classifieds" label="Anúncios da Comunidade" icon={Tag} />
           <NavItem page="real_estate" label="Imóveis" icon={Home} />
           <NavItem page="jobs" label="Vagas de Emprego" icon={Briefcase} />
           <NavItem page="vehicles" label="Veículos" icon={Car} />
@@ -606,8 +617,8 @@ export default function App() {
             </div>
           )}
 
-          {/* AS PÁGINAS RECEBEM AS LISTAS FILTRADAS (activeProperties, etc) PARA NÃO MOSTRAR OS VENCIDOS */}
-          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={activeJobs} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCadastrarVagaClick={handleAddJobClick} />}
+          {/* AS PÁGINAS RECEBEM AS LISTAS FILTRADAS */}
+          {currentPage === 'home' && <HomePage navigate={setCurrentPage} newsData={newsData} eventsData={eventsData} offersData={offersData} jobsData={activeJobs} adsData={adsData} user={user} onNewsClick={handleNewsClick} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCadastrarVagaClick={() => handleAddClick('job')} />}
           
           {currentPage === 'search' && <SearchPage query={searchQuery} newsData={newsData} guideData={guideData} jobsData={activeJobs} propertiesData={activeProperties} vehiclesData={activeVehicles} eventsData={eventsData} offersData={offersData} onNewsClick={handleNewsClick} onGuideClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} onOfferClick={(o) => { setSelectedOffer(o); setCurrentPage('offer_detail'); window.scrollTo(0,0); }} />}
 
@@ -617,23 +628,26 @@ export default function App() {
           {currentPage === 'news' && <NewsPage newsData={newsData} user={user} onNewsClick={handleNewsClick} />}
           {currentPage === 'events' && <EventsPage eventsData={eventsData} onEventClick={(evt) => { setSelectedEvent(evt); setCurrentPage('event_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'event_detail' && <EventDetailPage event={selectedEvent} onBack={() => setCurrentPage('events')} />}
-          {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={activeProperties} onCrud={crud} checkLimit={handleAddPropertyClick} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
+          
+          {currentPage === 'classifieds' && <ClassifiedsPage classifiedsData={activeClassifieds} onAddClick={() => handleAddClick('classified')} />}
+          
+          {currentPage === 'real_estate' && <RealEstatePage user={user} navigate={setCurrentPage} propertiesData={activeProperties} onCrud={crud} checkLimit={() => handleAddClick('property')} onSelectProperty={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'property_detail' && <PropertyDetailPage property={selectedProperty} onBack={() => setCurrentPage('real_estate')} />}
-          {currentPage === 'jobs' && <JobsPage jobsData={activeJobs} user={user} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCrud={crud} checkLimit={handleAddJobClick} />}
+          {currentPage === 'jobs' && <JobsPage jobsData={activeJobs} user={user} onJobClick={(j) => { setSelectedJob(j); setCurrentPage('job_detail'); window.scrollTo(0,0); }} onCrud={crud} checkLimit={() => handleAddClick('job')} />}
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
-          {currentPage === 'vehicles' && <VehiclesPage vehiclesData={activeVehicles} user={user} onCrud={crud} checkLimit={handleAddVehicleClick} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'vehicles' && <VehiclesPage vehiclesData={activeVehicles} user={user} onCrud={crud} checkLimit={() => handleAddClick('vehicle')} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
           {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
-          {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS (PARA PODER GERIR OS EXPIRADOS TAMBÉM) */}
-          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
-          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} crud={crud} />}
+          {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS */}
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} classifiedsData={classifiedsData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
+          {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} classifiedsData={classifiedsData} crud={crud} />}
           
           {currentPage === 'about' && <AboutPage />}
           {currentPage === 'contact' && <ContactPage settingsData={settingsData} />}
 
-          {/* NOVAS PÁGINAS DO RODAPÉ EM CONSTRUÇÃO */}
+          {/* NOVAS PÁGINAS EM CONSTRUÇÃO */}
           {currentPage === 'history' && (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-slate-200 animate-in fade-in">
               <h2 className="text-2xl font-black text-slate-800 mb-2">História de Ouro Branco</h2>
@@ -658,7 +672,7 @@ export default function App() {
           
           <SidebarAd ads={adsData} />
           
-          <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={handleAddPropertyClick} />
+          <MiniPropertiesCarousel properties={activeProperties} navigate={setCurrentPage} onPropertyClick={(p) => { setSelectedProperty(p); setCurrentPage('property_detail'); window.scrollTo(0,0); }} onCadastrarClick={() => handleAddClick('property')} />
         </aside>
       </div>
 
@@ -694,14 +708,15 @@ export default function App() {
             </ul>
           </div>
 
-          {/* INTERATIVIDADE (CHAMANDO OS MODAIS GLOBAIS) */}
+          {/* INTERATIVIDADE */}
           <div>
             <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Interatividade</h3>
             <ul className="space-y-3 text-sm text-blue-200 font-medium">
-              <li><button onClick={handleAddPropertyClick} className="hover:text-white transition">Anunciar Imóvel</button></li>
-              <li><button onClick={handleAddVehicleClick} className="hover:text-white transition">Anunciar Veículo</button></li>
-              <li><button onClick={handleAddJobClick} className="hover:text-white transition">Cadastrar Vaga de Emprego</button></li>
-              <li><button onClick={handleAddGuideClick} className="hover:text-white transition">Cadastrar Empresa no Guia</button></li>
+              <li><button onClick={() => handleAddClick('classified')} className="hover:text-white transition">Anunciar nos Classificados</button></li>
+              <li><button onClick={() => handleAddClick('property')} className="hover:text-white transition">Anunciar Imóvel</button></li>
+              <li><button onClick={() => handleAddClick('vehicle')} className="hover:text-white transition">Anunciar Veículo</button></li>
+              <li><button onClick={() => handleAddClick('job')} className="hover:text-white transition">Cadastrar Vaga de Emprego</button></li>
+              <li><button onClick={() => handleAddClick('guide')} className="hover:text-white transition">Cadastrar Empresa no Guia</button></li>
             </ul>
           </div>
 
@@ -710,11 +725,11 @@ export default function App() {
             <h3 className="font-bold text-lg text-white mb-4 uppercase tracking-wider">Conteúdo</h3>
             <ul className="space-y-3 text-sm text-blue-200 font-medium">
               <li><button onClick={() => { setCurrentPage('news'); window.scrollTo(0,0); }} className="hover:text-white transition">Notícias</button></li>
+              <li><button onClick={() => { setCurrentPage('classifieds'); window.scrollTo(0,0); }} className="hover:text-white transition">Classificados</button></li>
               <li><button onClick={() => { setCurrentPage('real_estate'); window.scrollTo(0,0); }} className="hover:text-white transition">Imóveis</button></li>
               <li><button onClick={() => { setCurrentPage('vehicles'); window.scrollTo(0,0); }} className="hover:text-white transition">Veículos</button></li>
               <li><button onClick={() => { setCurrentPage('jobs'); window.scrollTo(0,0); }} className="hover:text-white transition">Vagas de Emprego</button></li>
               <li><button onClick={() => { setCurrentPage('guide'); window.scrollTo(0,0); }} className="hover:text-white transition">Guia Comercial</button></li>
-              <li><button onClick={() => { setCurrentPage('offers'); window.scrollTo(0,0); }} className="hover:text-white transition">Shopping e Ofertas</button></li>
             </ul>
           </div>
 
@@ -725,15 +740,18 @@ export default function App() {
         </div>
       </footer>
 
+      {/* NAVEGAÇÃO MOBILE */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           <MobileTabItem page="home" label="Início" icon={Home} />
-          <MobileTabItem page="offers" label="Shopping" icon={ShoppingBag} />
+          <MobileTabItem page="classifieds" label="Classificados" icon={Tag} />
           <div className="relative -top-5">
-            <button onClick={() => { setIsLoginOpen(true); }} className="bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-200 hover:scale-105 transition"><PlusCircle size={24} /></button>
+            <button onClick={() => { setIsLoginOpen(true); }} className="bg-indigo-600 text-white p-4 rounded-full shadow-lg shadow-indigo-200 hover:scale-105 transition">
+              <PlusCircle size={24} />
+            </button>
           </div>
-          <MobileTabItem page="events" label="Agenda" icon={Calendar} />
           <MobileTabItem page="guide" label="Guia" icon={Store} />
+          <MobileTabItem page="offers" label="Shopping" icon={ShoppingBag} />
         </div>
       </nav>
 
@@ -749,6 +767,7 @@ export default function App() {
               {globalFormOpen === 'vehicle' && 'Anunciar Veículo'}
               {globalFormOpen === 'job' && 'Cadastrar Vaga de Emprego'}
               {globalFormOpen === 'guide' && 'Cadastrar Empresa no Guia'}
+              {globalFormOpen === 'classified' && 'Criar Anúncio na Comunidade'}
             </h2>
             
             {globalFormOpen === 'property' && (
@@ -777,6 +796,14 @@ export default function App() {
             {globalFormOpen === 'guide' && (
               <GuideForm 
                 onSuccess={(data) => { crud.addGuideItem({...data, status: 'pending'}); setGlobalFormOpen(null); alert("Empresa enviada para aprovação!"); }} 
+                onCancel={() => setGlobalFormOpen(null)} 
+              />
+            )}
+
+            {globalFormOpen === 'classified' && (
+              <ClassifiedForm 
+                user={user} 
+                onSuccess={(data) => { crud.addClassified(data); setGlobalFormOpen(null); alert("Anúncio publicado nos Classificados!"); }} 
                 onCancel={() => setGlobalFormOpen(null)} 
               />
             )}
