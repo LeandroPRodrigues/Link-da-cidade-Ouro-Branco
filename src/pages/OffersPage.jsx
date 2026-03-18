@@ -1,6 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ShoppingBag, Search, Percent, ChevronDown, Zap, Grid, Filter, List } from 'lucide-react';
-import { createSlug } from '../App'; // Importa a função de slug do App para consistência
+
+// Função local para criar os slugs de categorias com segurança
+const createSlug = (text) => {
+  if (!text) return '';
+  return text.toString().toLowerCase()
+    .trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 -]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+};
 
 export default function OffersPage({ offersData, onOfferClick }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,14 +31,13 @@ export default function OffersPage({ offersData, onOfferClick }) {
     const data = (offersData || []).filter(o => o.status !== 'inactive');
     const structure = {};
     
-    // Lista de grupos e categorias que não devem aparecer no menu flutuante (pois já são fixos)
+    // Lista de categorias que não devem aparecer no menu flutuante (pois já são fixos)
     const excludeCategories = ['bestsellers', 'ofertas do dia', 'ofertas-do-dia'];
 
     data.forEach(offer => {
       const gName = offer.group || offer.grupo;
       const cName = offer.category || offer.categoria;
       
-      // Ignora se for ofertas do dia ou se faltar dados
       if (!gName || !cName || excludeCategories.includes(cName.toLowerCase()) || excludeCategories.includes(createSlug(cName))) return;
 
       if (!structure[gName]) {
@@ -61,7 +70,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
       switch (activeFilter.type) {
         case 'all': return true;
         case 'daily': 
-          // Checa se é bestsellers (ou as variações de texto)
+          // Checa se é bestsellers
           const isDaily = offerCategory && (offerCategory.toLowerCase() === 'bestsellers' || offerCategory.toLowerCase() === 'ofertas do dia' || createSlug(offerCategory) === 'ofertas-do-dia');
           return isDaily;
         case 'group': return offerGroup === activeFilter.group;
@@ -85,7 +94,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
   return (
     <div className="animate-in fade-in pb-10">
       
-      {/* HEADER DA PÁGINA (Limpo e Focado) */}
+      {/* HEADER DA PÁGINA */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
         <div>
           <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
@@ -108,7 +117,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
         </div>
       </div>
 
-      {/* NOVO MENU DE NAVEGAÇÃO SECUNDÁRIA (Estilo Mercado Livre) */}
+      {/* NOVO MENU DE NAVEGAÇÃO SECUNDÁRIA */}
       <div className="bg-slate-100 rounded-full shadow-inner border border-slate-200 p-1 mb-6 max-w-4xl mx-auto flex items-center justify-center gap-1">
         
         {/* TODAS AS OFERTAS */}
@@ -170,7 +179,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
                   {menuStructure.map(({ group, categories }) => (
                     <div key={group}>
-                      {/* GRUPO (Negrito, serve de filtro de grupo) */}
+                      {/* GRUPO */}
                       <button 
                         onClick={() => { setActiveFilter({ type: 'group', group: group, category: null }); setIsMenuOpen(false); setSearchTerm(''); }}
                         className="font-bold text-slate-800 hover:text-pink-600 transition text-left mb-2.5 block text-sm"
@@ -178,7 +187,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
                         {group}
                       </button>
                       
-                      {/* CATEGORIAS (Subgrupos) */}
+                      {/* CATEGORIAS */}
                       <div className="space-y-2">
                         {categories.map(category => (
                           <button
@@ -219,7 +228,6 @@ export default function OffersPage({ offersData, onOfferClick }) {
           return (
             <div key={offer.id} onClick={() => onOfferClick(offer)} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:border-pink-300 hover:shadow-md transition-all group flex flex-col">
               
-              {/* IMAGEM DO PRODUTO */}
               <div className="w-full h-48 bg-white relative p-4 flex items-center justify-center border-b border-slate-50">
                 <img src={offer.image || offer.photos?.[0]} alt={offer.title} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 
@@ -230,7 +238,6 @@ export default function OffersPage({ offersData, onOfferClick }) {
                 )}
               </div>
 
-              {/* INFORMAÇÕES DO PRODUTO */}
               <div className="p-4 flex flex-col flex-1">
                 <div className="mb-auto">
                   <div className="flex items-center flex-wrap gap-1.5 mb-2">
@@ -243,7 +250,6 @@ export default function OffersPage({ offersData, onOfferClick }) {
                   </h3>
                 </div>
 
-                {/* PREÇOS */}
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-end justify-between">
                   <div>
                     {hasDiscount ? (
@@ -272,7 +278,7 @@ export default function OffersPage({ offersData, onOfferClick }) {
           <div className="col-span-full py-20 text-center bg-white rounded-2xl border border-dashed border-slate-300 text-slate-500">
             <ShoppingBag size={48} className="mx-auto text-slate-300 mb-4" />
             <h3 className="text-lg font-bold text-slate-700 mb-1">Nenhum produto encontrado</h3>
-            <p className="text-sm">Tente limpar os filtros ou buscar por outro termo.</p>
+            <p className="text-sm">Tente remover os filtros ou buscar por outro termo.</p>
           </div>
         )}
       </div>
