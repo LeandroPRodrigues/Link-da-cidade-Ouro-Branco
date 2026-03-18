@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
 import { uploadFile } from '../utils/uploadHelper';
@@ -205,6 +205,30 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
+  // === NOVA FUNÇÃO PARA UPLOAD MÚLTIPLO NOS BLOCOS DE NOTÍCIA ===
+  const handleNewsMultiImageUpload = async (e, blockId, currentValues) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setIsUploading(true);
+    try {
+      const uploadPromises = files.map(file => uploadFile(file, 'news_images'));
+      const urls = await Promise.all(uploadPromises);
+      const validUrls = urls.filter(Boolean);
+      
+      // Garante que o currentValues seja sempre interpretado como um array
+      let newValues = Array.isArray(currentValues) ? [...currentValues] : (currentValues ? [currentValues] : []);
+      newValues = [...newValues, ...validUrls];
+      
+      updateNewsBlockField(blockId, 'value', newValues);
+    } catch (err) {
+      console.error("Erro no upload de múltiplas imagens:", err);
+      alert("Erro ao enviar algumas imagens. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+    }
+    e.target.value = null;
+  };
+
   const openEditModal = (item = {}) => {
     if (activeTab === 'news') setNewsBlocks(item.content || []);
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
@@ -323,15 +347,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     </div>
   );
 
-  // === LÓGICA ATUALIZADA DOS BLOCOS DE NOTÍCIA ===
   const addNewsBlock = (type) => setNewsBlocks([...newsBlocks, { id: Date.now(), type, value: '', caption: '' }]);
   
-  // Função atualizada para atualizar qualquer campo de um bloco
   const updateNewsBlockField = (id, field, newValue) => {
     setNewsBlocks(newsBlocks.map(block => block.id === id ? { ...block, [field]: newValue } : block));
   };
   
   const removeNewsBlock = (id) => setNewsBlocks(newsBlocks.filter(block => block.id !== id));
+  
   const moveNewsBlock = (index, direction) => {
     const newBlocks = [...newsBlocks];
     if (direction === 'up' && index > 0) [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
@@ -385,38 +408,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800">Configurações Gerais do Site</h2>
             </div>
-            
             <form onSubmit={handleSaveSettings} className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-5">
               <h3 className="font-bold text-slate-700 border-b border-slate-200 pb-2">Redes Sociais (Cabeçalho)</h3>
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Facebook</label>
-                <input type="url" value={siteSettings.facebook} onChange={e => setSiteSettings({...siteSettings, facebook: e.target.value})} placeholder="Ex: https://facebook.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Instagram</label>
-                <input type="url" value={siteSettings.instagram} onChange={e => setSiteSettings({...siteSettings, instagram: e.target.value})} placeholder="Ex: https://instagram.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do YouTube</label>
-                <input type="url" value={siteSettings.youtube} onChange={e => setSiteSettings({...siteSettings, youtube: e.target.value})} placeholder="Ex: https://youtube.com/c/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do WhatsApp</label>
-                <input type="url" value={siteSettings.whatsapp} onChange={e => setSiteSettings({...siteSettings, whatsapp: e.target.value})} placeholder="Ex: https://wa.me/5531999999999" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-              </div>
-
-              <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                <input type="checkbox" id="showWhatsapp" checked={siteSettings.showWhatsapp} onChange={e => setSiteSettings({...siteSettings, showWhatsapp: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-                <label htmlFor="showWhatsapp" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Exibir Ícone do WhatsApp no Cabeçalho</label>
-              </div>
-
-              <button type="submit" className="mt-4 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition">
-                <Save size={18}/> Salvar Configurações
-              </button>
+              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Facebook</label><input type="url" value={siteSettings.facebook} onChange={e => setSiteSettings({...siteSettings, facebook: e.target.value})} placeholder="Ex: https://facebook.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do Instagram</label><input type="url" value={siteSettings.instagram} onChange={e => setSiteSettings({...siteSettings, instagram: e.target.value})} placeholder="Ex: https://instagram.com/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do YouTube</label><input type="url" value={siteSettings.youtube} onChange={e => setSiteSettings({...siteSettings, youtube: e.target.value})} placeholder="Ex: https://youtube.com/c/linkdacidade" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" /></div>
+              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link do WhatsApp</label><input type="url" value={siteSettings.whatsapp} onChange={e => setSiteSettings({...siteSettings, whatsapp: e.target.value})} placeholder="Ex: https://wa.me/5531999999999" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-600" /></div>
+              <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl"><input type="checkbox" id="showWhatsapp" checked={siteSettings.showWhatsapp} onChange={e => setSiteSettings({...siteSettings, showWhatsapp: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" /><label htmlFor="showWhatsapp" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Exibir Ícone do WhatsApp no Cabeçalho</label></div>
+              <button type="submit" className="mt-4 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition"><Save size={18}/> Salvar Configurações</button>
             </form>
           </div>
         )}
@@ -693,7 +692,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
-                {/* ===== EDIÇÃO DE NOTÍCIAS COM UPLOAD DE IMAGEM NO CORPO E LEGENDA ===== */}
+                {/* ===== EDIÇÃO DE NOTÍCIAS COM UPLOAD MÚLTIPLO DE IMAGENS ===== */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
@@ -723,17 +722,62 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                               
                               {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
                               
+                              {/* BLOCO DE IMAGEM ATUALIZADO PARA SUPORTAR MÚLTIPLAS IMAGENS */}
                               {block.type === 'image' && (
                                 <div className="flex flex-col gap-2">
                                   <div className="flex gap-2">
-                                    <input value={block.value || ''} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="URL da imagem (ou faça upload ao lado)..." required/>
+                                    <input 
+                                       value={Array.isArray(block.value) ? block.value.join(', ') : (block.value || '')} 
+                                       onChange={(e) => {
+                                           const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                           updateNewsBlockField(block.id, 'value', arr.length > 0 ? arr : '');
+                                       }} 
+                                       className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" 
+                                       placeholder="Cole URLs separadas por vírgula (ou faça upload ao lado)..." 
+                                       required={!(block.value && block.value.length > 0)}
+                                    />
+                                    
                                     <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       {isUploading ? <Loader size={20} className="animate-spin"/> : <Upload size={20} />}
-                                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={(e) => handleLocalImageUpload(e, (url) => updateNewsBlockField(block.id, 'value', url))} />
+                                      <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                        disabled={isUploading} 
+                                        onChange={(e) => handleNewsMultiImageUpload(e, block.id, block.value)} 
+                                      />
                                     </label>
                                   </div>
-                                  {block.value && <img src={block.value} alt="Preview" className="h-32 object-cover rounded-lg border border-slate-200 w-fit"/>}
-                                  <input value={block.caption || ''} onChange={(e) => updateNewsBlockField(block.id, 'caption', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none text-sm italic" placeholder="Legenda da foto (Opcional)..."/>
+
+                                  {/* PREVIEW DAS MINIATURAS ENVIADAS NESTE BLOCO */}
+                                  {(Array.isArray(block.value) ? block.value : (block.value ? [block.value] : [])).length > 0 && (
+                                    <div className="flex flex-wrap gap-3 mt-2 mb-2 p-3 bg-white border border-slate-200 rounded-lg">
+                                      {(Array.isArray(block.value) ? block.value : (block.value ? [block.value] : [])).map((imgUrl, i) => (
+                                        <div key={i} className="relative group w-24 h-24">
+                                           <img src={imgUrl} alt={`Preview ${i}`} className="w-full h-full object-cover rounded-md border border-slate-200" />
+                                           <button 
+                                             type="button" 
+                                             onClick={() => {
+                                                const currentArr = Array.isArray(block.value) ? block.value : [block.value];
+                                                const newArr = currentArr.filter((_, index) => index !== i);
+                                                updateNewsBlockField(block.id, 'value', newArr.length > 0 ? newArr : '');
+                                             }} 
+                                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-sm"
+                                           >
+                                             <X size={14} />
+                                           </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  <input 
+                                     value={block.caption || ''} 
+                                     onChange={(e) => updateNewsBlockField(block.id, 'caption', e.target.value)} 
+                                     className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none text-sm italic" 
+                                     placeholder="Legenda da foto ou do carrossel (Opcional)..."
+                                  />
                                 </div>
                               )}
                             </div>
@@ -743,7 +787,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                       <div className="flex flex-wrap gap-2 border-t border-dashed border-slate-300 pt-4">
                         <button type="button" onClick={() => addNewsBlock('paragraph')} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm"><Type size={16}/> Parágrafo</button>
                         <button type="button" onClick={() => addNewsBlock('subtitle')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><Heading size={16}/> Subtítulo</button>
-                        <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> Imagem</button>
+                        <button type="button" onClick={() => addNewsBlock('image')} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"><ImageIcon size={16}/> Imagem / Carrossel</button>
                       </div>
                     </div>
                   </div>

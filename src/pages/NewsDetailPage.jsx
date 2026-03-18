@@ -1,6 +1,85 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, User, Tag, Heart, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Tag, Heart, MessageCircle, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { db } from '../utils/database';
+
+// === NOVO COMPONENTE: CARROSSEL DE IMAGENS PARA A NOTÍCIA ===
+const ImageCarousel = ({ images, caption }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!images || images.length === 0) return null;
+
+  // Se for só uma imagem, renderiza normalmente (sem carrossel)
+  if (images.length === 1) {
+    return (
+      <figure className="my-8 flex flex-col items-center">
+        <img src={images[0]} alt={caption || "Ilustração da matéria"} className="w-full rounded-xl shadow-md" />
+        {caption && (
+          <figcaption className="mt-3 text-sm text-slate-500 italic text-center border-b border-slate-100 pb-4 w-full">
+            {caption}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+
+  // Funções para passar o carrossel
+  const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % images.length);
+  const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+
+  return (
+    <figure className="my-8 flex flex-col items-center w-full">
+      <div className="relative w-full rounded-xl overflow-hidden shadow-md bg-slate-900 group">
+        
+        {/* Container das Imagens */}
+        <div 
+          className="flex transition-transform duration-500 ease-in-out h-64 md:h-96" 
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {images.map((img, idx) => (
+            <img 
+              key={idx} 
+              src={img} 
+              alt={`Slide ${idx + 1}`} 
+              className="w-full h-full object-contain shrink-0" 
+            />
+          ))}
+        </div>
+        
+        {/* Setas de Navegação */}
+        <button 
+          onClick={prevSlide} 
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/80 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <button 
+          onClick={nextSlide} 
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/80 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
+        >
+          <ChevronRight size={24} />
+        </button>
+
+        {/* Bolinhas indicadoras */}
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-20">
+          {images.map((_, idx) => (
+            <div 
+              key={idx} 
+              className={`h-2 rounded-full transition-all duration-300 shadow-sm ${idx === currentIndex ? 'bg-white w-6' : 'bg-white/50 w-2 hover:bg-white/80 cursor-pointer'}`}
+              onClick={() => setCurrentIndex(idx)}
+            />
+          ))}
+        </div>
+      </div>
+      
+      {/* Legenda Única do Carrossel */}
+      {caption && (
+        <figcaption className="mt-3 text-sm text-slate-500 italic text-center border-b border-slate-100 pb-4 w-full">
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+};
 
 export default function NewsDetailPage({ news, onBack, user }) {
   // Estados para gerir as interações em tempo real
@@ -107,18 +186,12 @@ export default function NewsDetailPage({ news, onBack, user }) {
               if (block.type === 'subtitle') {
                 return <h3 key={index} className="text-2xl font-bold text-slate-900 mt-8 mb-4">{block.value}</h3>;
               }
+              
+              // === AQUI CHAMAMOS O NOVO COMPONENTE DE CARROSSEL/IMAGEM ===
               if (block.type === 'image') {
-                return (
-                  <figure key={index} className="my-8 flex flex-col items-center">
-                    <img src={block.value} alt={block.caption || "Ilustração da matéria"} className="w-full rounded-xl shadow-md" />
-                    {/* AQUI ESTÁ A NOVA LEGENDA DA IMAGEM */}
-                    {block.caption && (
-                      <figcaption className="mt-3 text-sm text-slate-500 italic text-center border-b border-slate-100 pb-4 w-full">
-                        {block.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                );
+                // Garante que o valor seja tratado como array, mesmo se for uma string simples antiga
+                const imagesArray = Array.isArray(block.value) ? block.value : (block.value ? [block.value] : []);
+                return <ImageCarousel key={index} images={imagesArray} caption={block.caption} />;
               }
               return null;
             })}
