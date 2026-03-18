@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, User, Tag, Heart, MessageCircle, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Tag, Heart, MessageCircle, Send, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { db } from '../utils/database';
 
-// === NOVO COMPONENTE: CARROSSEL DE IMAGENS PARA A NOTÍCIA ===
+// === COMPONENTE: CARROSSEL DE IMAGENS PARA A NOTÍCIA ===
 const ImageCarousel = ({ images, caption }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) return null;
 
-  // Se for só uma imagem, renderiza normalmente (sem carrossel)
   if (images.length === 1) {
     return (
       <figure className="my-8 flex flex-col items-center">
@@ -22,15 +21,12 @@ const ImageCarousel = ({ images, caption }) => {
     );
   }
 
-  // Funções para passar o carrossel
   const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
     <figure className="my-8 flex flex-col items-center w-full">
       <div className="relative w-full rounded-xl overflow-hidden shadow-md bg-slate-900 group">
-        
-        {/* Container das Imagens */}
         <div 
           className="flex transition-transform duration-500 ease-in-out h-64 md:h-96" 
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -45,7 +41,6 @@ const ImageCarousel = ({ images, caption }) => {
           ))}
         </div>
         
-        {/* Setas de Navegação */}
         <button 
           onClick={prevSlide} 
           className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/80 backdrop-blur text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
@@ -59,7 +54,6 @@ const ImageCarousel = ({ images, caption }) => {
           <ChevronRight size={24} />
         </button>
 
-        {/* Bolinhas indicadoras */}
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-20">
           {images.map((_, idx) => (
             <div 
@@ -71,7 +65,6 @@ const ImageCarousel = ({ images, caption }) => {
         </div>
       </div>
       
-      {/* Legenda Única do Carrossel */}
       {caption && (
         <figcaption className="mt-3 text-sm text-slate-500 italic text-center border-b border-slate-100 pb-4 w-full">
           {caption}
@@ -82,7 +75,6 @@ const ImageCarousel = ({ images, caption }) => {
 };
 
 export default function NewsDetailPage({ news, onBack, user }) {
-  // Estados para gerir as interações em tempo real
   const [likes, setLikes] = useState(news?.likes || []);
   const [comments, setComments] = useState(news?.comments || []);
   const [commentText, setCommentText] = useState('');
@@ -91,7 +83,6 @@ export default function NewsDetailPage({ news, onBack, user }) {
 
   const isLiked = user && likes.includes(user.id);
 
-  // Função para dar Like
   const handleLike = async () => {
     if (!user) { alert("Faça login para curtir!"); return; }
     const newLikes = isLiked ? likes.filter(id => id !== user.id) : [...likes, user.id];
@@ -100,7 +91,6 @@ export default function NewsDetailPage({ news, onBack, user }) {
     await db.toggleLike(colName, news.id, user.id);
   };
 
-  // Função para Comentar
   const handleComment = async (e) => {
     e.preventDefault();
     if (!user) { alert("Faça login para comentar!"); return; }
@@ -120,9 +110,29 @@ export default function NewsDetailPage({ news, onBack, user }) {
     await db.addComment(colName, news.id, newComment);
   };
 
+  // === NOVA FUNÇÃO DE COMPARTILHAMENTO ===
+  const handleShare = async () => {
+    const shareData = {
+      title: news.title,
+      text: `Veja esta notícia no Link da Cidade: ${news.title}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback para PC: Copia o link
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link copiado para a área de transferência! Cole nas suas redes sociais para compartilhar.");
+      }
+    } catch (err) {
+      console.log("Compartilhamento cancelado ou erro:", err);
+    }
+  };
+
   return (
     <div className="bg-white min-h-screen pb-12 animate-in fade-in">
-      {/* Imagem de Capa Gigante */}
       <div className="relative h-96 w-full">
         <img 
           src={news.image} 
@@ -137,8 +147,15 @@ export default function NewsDetailPage({ news, onBack, user }) {
         >
           <ArrowLeft size={24} />
         </button>
+
+        {/* BOTÃO DE COMPARTILHAR FLUTUANTE NO TOPO DIREITO */}
+        <button 
+          onClick={handleShare} 
+          className="absolute top-6 right-6 bg-white/20 hover:bg-indigo-600 backdrop-blur text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 transition-colors z-20 shadow-sm"
+        >
+          <Share2 size={18} /> <span className="hidden sm:inline">Compartilhar</span>
+        </button>
         
-        {/* Informações na Capa (Título, Categoria e Subgrupo) */}
         <div className="absolute bottom-0 left-0 p-8 max-w-4xl z-10">
           <div className="flex flex-col items-start gap-2 mb-3">
              <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded uppercase tracking-wide shadow-sm">
@@ -166,18 +183,15 @@ export default function NewsDetailPage({ news, onBack, user }) {
         </div>
       </div>
 
-      {/* Conteúdo da Notícia */}
       <div className="max-w-3xl mx-auto px-6 -mt-10 relative z-10">
         <div className="bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-slate-100">
           
-          {/* Resumo/Lead */}
           {news.summary && (
             <p className="text-xl text-slate-600 font-medium italic mb-8 border-l-4 border-blue-600 pl-4 leading-relaxed">
               {news.summary}
             </p>
           )}
 
-          {/* Renderização dos Blocos de Conteúdo */}
           <div className="space-y-6 text-lg text-slate-800 leading-relaxed">
             {news.content && news.content.map((block, index) => {
               if (block.type === 'paragraph') {
@@ -186,10 +200,7 @@ export default function NewsDetailPage({ news, onBack, user }) {
               if (block.type === 'subtitle') {
                 return <h3 key={index} className="text-2xl font-bold text-slate-900 mt-8 mb-4">{block.value}</h3>;
               }
-              
-              // === AQUI CHAMAMOS O NOVO COMPONENTE DE CARROSSEL/IMAGEM ===
               if (block.type === 'image') {
-                // Garante que o valor seja tratado como array, mesmo se for uma string simples antiga
                 const imagesArray = Array.isArray(block.value) ? block.value : (block.value ? [block.value] : []);
                 return <ImageCarousel key={index} images={imagesArray} caption={block.caption} />;
               }
@@ -197,7 +208,6 @@ export default function NewsDetailPage({ news, onBack, user }) {
             })}
           </div>
 
-          {/* Tags */}
           {news.tags && (
             <div className="mt-12 pt-8 border-t border-slate-100 flex flex-wrap gap-2">
               {news.tags.split(',').map(tag => (
@@ -208,25 +218,33 @@ export default function NewsDetailPage({ news, onBack, user }) {
             </div>
           )}
 
-          {/* === SECÇÃO: CURTIDAS E COMENTÁRIOS === */}
           <div className="mt-12 pt-8 border-t border-slate-100">
             <h3 className="text-xl font-bold text-slate-800 mb-6">O que você achou desta matéria?</h3>
             
-            <div className="flex items-center gap-6 mb-8">
-              <button 
-                onClick={handleLike} 
-                className={`flex items-center gap-2 text-lg font-bold transition ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
-              >
-                <Heart size={24} className={`transition-transform active:scale-75 ${isLiked ? 'fill-red-500' : ''}`}/> 
-                <span>{likes.length} Curtidas</span>
-              </button>
-              <div className="flex items-center gap-2 text-lg font-bold text-slate-500">
-                <MessageCircle size={24} />
-                <span>{comments.length} Comentários</span>
+            {/* BOTÕES DE INTERAÇÃO E COMPARTILHAMENTO AQUI EM BAIXO TAMBÉM */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-6">
+                <button 
+                  onClick={handleLike} 
+                  className={`flex items-center gap-2 text-lg font-bold transition ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-500'}`}
+                >
+                  <Heart size={24} className={`transition-transform active:scale-75 ${isLiked ? 'fill-red-500' : ''}`}/> 
+                  <span>{likes.length} Curtidas</span>
+                </button>
+                <div className="flex items-center gap-2 text-lg font-bold text-slate-500">
+                  <MessageCircle size={24} />
+                  <span>{comments.length} Comentários</span>
+                </div>
               </div>
+              
+              <button 
+                onClick={handleShare} 
+                className="flex items-center gap-2 text-slate-600 font-bold bg-slate-100 hover:bg-indigo-100 hover:text-indigo-600 px-4 py-2.5 rounded-xl transition"
+              >
+                <Share2 size={20} /> Compartilhar
+              </button>
             </div>
 
-            {/* Lista de Comentários */}
             <div className="space-y-4 mb-8">
               {comments.map((c, idx) => (
                 <div key={idx} className="bg-slate-50 p-5 rounded-xl border border-slate-100">
@@ -251,7 +269,6 @@ export default function NewsDetailPage({ news, onBack, user }) {
               )}
             </div>
 
-            {/* Formulário de Comentário */}
             <form onSubmit={handleComment} className="flex gap-4 items-start bg-white border border-slate-200 p-2 pl-4 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
               <textarea 
                 value={commentText} 
@@ -269,8 +286,6 @@ export default function NewsDetailPage({ news, onBack, user }) {
               </button>
             </form>
           </div>
-          {/* =========================================== */}
-
         </div>
       </div>
     </div>

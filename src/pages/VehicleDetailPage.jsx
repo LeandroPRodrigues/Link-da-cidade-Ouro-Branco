@@ -16,22 +16,46 @@ export default function VehicleDetailPage({ vehicle, onBack }) {
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  // === NOVA FUNÇÃO DE COMPARTILHAMENTO ===
+  const handleShare = async () => {
+    const shareData = {
+      title: `${vehicle.brand} ${vehicle.model}`,
+      text: `Dê uma olhada neste veículo em Ouro Branco: ${vehicle.brand} ${vehicle.model} por ${priceFormatted}.`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback para PC: Copia o link
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link do veículo copiado para a área de transferência! Cole nas suas redes sociais para compartilhar.");
+      }
+    } catch (err) {
+      console.log("Compartilhamento cancelado ou erro:", err);
+    }
+  };
+
   const nextImage = () => setCurrentImage((prev) => (prev + 1) % photos.length);
   const prevImage = () => setCurrentImage((prev) => (prev - 1 + photos.length) % photos.length);
 
   return (
     <div className="animate-in slide-in-from-bottom-4 fade-in duration-300 pb-12 px-4 md:px-0 max-w-5xl mx-auto">
       
-      {/* HEADER DE NAVEGAÇÃO */}
+      {/* HEADER DE NAVEGAÇÃO E COMPARTILHAMENTO */}
       <div className="flex items-center justify-between mb-6 pt-4">
         <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
           <ArrowLeft size={20} /> <span className="font-bold text-sm">Voltar aos Veículos</span>
         </button>
-        <div className="flex gap-2">
-          <button className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-500 hover:text-blue-600 transition" onClick={() => navigator.clipboard.writeText(window.location.href).then(() => alert("Link copiado!"))}>
-            <Share2 size={20}/>
-          </button>
-        </div>
+        
+        {/* BOTÃO COMPARTILHAR NO TOPO */}
+        <button 
+          onClick={handleShare} 
+          className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl shadow-sm border border-indigo-100 font-bold transition-colors"
+        >
+          <Share2 size={18}/> <span className="hidden sm:inline">Compartilhar Veículo</span>
+        </button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
@@ -78,6 +102,16 @@ export default function VehicleDetailPage({ vehicle, onBack }) {
             <p className="text-slate-600 whitespace-pre-line leading-relaxed">
               {vehicle.description || "O vendedor não forneceu uma descrição detalhada para este anúncio."}
             </p>
+            
+            {/* BOTÃO DE COMPARTILHAR ABAIXO DA DESCRIÇÃO */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={handleShare} 
+                className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition"
+              >
+                <Share2 size={18} /> Partilhar com um amigo
+              </button>
+            </div>
           </div>
 
           {/* OPCIONAIS E ACESSÓRIOS */}
