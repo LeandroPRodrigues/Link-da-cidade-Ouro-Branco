@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, MapPin, Bed, Bath, Car, Maximize, PlusCircle, X } from 'lucide-react';
+import { Home, MapPin, Bed, Bath, Car, Maximize, PlusCircle } from 'lucide-react';
 import { GoogleMap, Marker, Circle, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import PropertyForm from '../components/PropertyForm';
 
@@ -13,10 +13,10 @@ const pinIcons = {
   'Temporada': { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', hex: '#10B981' }
 };
 
-export default function RealEstatePage({ user, navigate, propertiesData, onCrud, checkLimit }) {
+export default function RealEstatePage({ user, navigate, propertiesData, onCrud, checkLimit, onSelectProperty }) {
   const [filter, setFilter] = useState('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState(null); // Controla qual InfoWindow está aberto no mapa
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -42,7 +42,7 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
         </button>
       </div>
 
-      {/* MAPA GLOBAL DE IMÓVEIS (GOOGLE MAPS) */}
+      {/* MAPA GLOBAL DE IMÓVEIS */}
       <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-100 mb-6 z-0 relative">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-2 pt-2">Mapa de Imóveis</h2>
         
@@ -57,7 +57,6 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
                 const style = pinIcons[p.type] || pinIcons['Venda'];
                 const position = { lat: p.lat, lng: p.lng };
 
-                // Se o usuário marcou como região (approx), desenha um círculo
                 if (p.privacy === 'approx') {
                   return (
                     <Circle 
@@ -70,7 +69,6 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
                   );
                 }
 
-                // Se for ponto exato, desenha o Marker
                 return (
                   <Marker 
                     key={p.id} 
@@ -81,10 +79,10 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
                 );
               })}
 
-              {/* POPUP DE INFORMAÇÕES (INFOWINDOW) */}
+              {/* POPUP DE INFORMAÇÕES NO MAPA */}
               {selectedProperty && (
                 <InfoWindow position={{ lat: selectedProperty.lat, lng: selectedProperty.lng }} onCloseClick={() => setSelectedProperty(null)}>
-                  <div className="w-40 text-center cursor-pointer p-1" onClick={() => navigate('property_detail')}>
+                  <div className="w-40 text-center cursor-pointer p-1" onClick={() => onSelectProperty(selectedProperty)}>
                     <img src={selectedProperty.image || selectedProperty.photos?.[0]} alt={selectedProperty.title} className="w-full h-20 object-cover rounded-lg mb-2" />
                     <span className={`text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                       selectedProperty.type === 'Venda' ? 'bg-red-500' : selectedProperty.type === 'Aluguel' ? 'bg-blue-500' : 'bg-emerald-500'
@@ -100,7 +98,7 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
             </GoogleMap>
           )}
 
-          {/* LEGENDA FLUTUANTE DO MAPA */}
+          {/* LEGENDA FLUTUANTE */}
           <div className="absolute bottom-6 right-2 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-slate-200 flex flex-col gap-2 pointer-events-none">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-inner"></div> Venda</div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-inner"></div> Aluguel</div>
@@ -118,10 +116,10 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
         ))}
       </div>
 
-      {/* GRID DE IMÓVEIS (LISTA) */}
+      {/* GRID DE IMÓVEIS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {properties.map(property => (
-          <div key={property.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition cursor-pointer group" onClick={() => navigate('property_detail')}>
+          <div key={property.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition cursor-pointer group" onClick={() => onSelectProperty(property)}>
             <div className="relative h-56 overflow-hidden">
               <img src={property.image || property.photos?.[0]} alt={property.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
               <div className={`absolute top-3 left-3 text-white text-xs font-black px-3 py-1 rounded-lg shadow-sm uppercase tracking-wide ${
@@ -151,9 +149,6 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <h2 className="text-2xl font-black text-slate-800 mb-6 border-b border-slate-100 pb-4">
-              Anunciar Novo Imóvel
-            </h2>
             <PropertyForm 
               initialData={null} 
               onSuccess={(formData) => {
