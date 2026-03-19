@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X, Shield, Users } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X, Shield, Users, Search } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
+import LocationPicker from '../components/LocationPicker'; // NOVO: Importando o Mapa
 import { uploadFile } from '../utils/uploadHelper';
 import { db } from '../utils/database';
 
@@ -19,9 +20,43 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [editingUser, setEditingUser] = useState(null);
   const [usersList, setUsersList] = useState([]);
 
+  // === NOVO ESTADO: CAMPO DE BUSCA DO ADMIN ===
+  const [adminSearchTerm, setAdminSearchTerm] = useState('');
+
+  // Limpa o campo de busca sempre que mudar de aba
+  useEffect(() => {
+    setAdminSearchTerm('');
+  }, [activeTab]);
+
   useEffect(() => {
     if (settingsData) setSiteSettings(settingsData);
   }, [settingsData]);
+
+  // === FUNÇÃO FILTRO INTELIGENTE ===
+  const filterData = (data, searchFields) => {
+    if (!data) return [];
+    if (!adminSearchTerm) return data;
+    const term = adminSearchTerm.toLowerCase();
+    return data.filter(item => {
+      return searchFields.some(field => {
+        const val = item[field];
+        return val && typeof val === 'string' && val.toLowerCase().includes(term);
+      });
+    });
+  };
+
+  // Barra de Busca Reutilizável para o Topo das Abas
+  const SearchBar = () => (
+    <div className="relative flex-1 md:w-64 min-w-[200px]">
+      <input 
+        value={adminSearchTerm} 
+        onChange={e => setAdminSearchTerm(e.target.value)} 
+        placeholder="Buscar na lista..." 
+        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-sm bg-slate-50 focus:bg-white transition-colors" 
+      />
+      <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+    </div>
+  );
 
   // === CARREGAR USUÁRIOS ===
   const fetchUsers = async () => {
@@ -43,7 +78,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     }
   }, [activeTab]);
 
-  // === SALVAR EDIÇÃO DO USUÁRIO (BAN / VIP) ===
+  // === SALVAR EDIÇÃO DO USUÁRIO ===
   const handleSaveUser = async (e) => {
     e.preventDefault();
     setIsUploading(true);
@@ -65,7 +100,9 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
         }
       };
 
-      await db.updateUserAdmin(editingUser.id, dataToUpdate);
+      const targetDocId = editingUser.docId || editingUser.id; 
+      await db.updateUserAdmin(targetDocId, dataToUpdate);
+      
       alert("Conta atualizada com sucesso!");
       setEditingUser(null);
       fetchUsers();
@@ -304,7 +341,14 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     if (activeTab === 'news') setNewsBlocks(item.content || []);
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
     const photosValue = item.photos || (item.image ? [item.image] : []);
-    setEditingItem({ ...item, image: imageValue, photos: photosValue });
+    
+    // NOVO: Preenche a localização vazia do Guia para inicializar o mapa
+    let loc = item.location;
+    if (activeTab === 'guide' && !loc) {
+        loc = { lat: -20.5236, lng: -43.6914 };
+    }
+    
+    setEditingItem({ ...item, image: imageValue, photos: photosValue, location: loc });
     setModalOpen(true);
   };
 
@@ -459,7 +503,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'vehicles', label: 'Veículos' },
           { id: 'classifieds', label: 'Classificados' },
           { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' },
-          { id: 'users', label: 'Usuários' }, // <-- NOVA ABA AQUI
+          { id: 'users', label: 'Usuários' },
           { id: 'settings', label: 'Configurações' }
         ].map(tab => (
           <button
@@ -475,22 +519,23 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       <div className="p-6">
         
-        {/* ============================================================== */}
-        {/* NOVA ABA: GESTÃO DE USUÁRIOS                                   */}
-        {/* ============================================================== */}
+        {/* ABA: GESTÃO DE USUÁRIOS */}
         {activeTab === 'users' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 shrink-0">
                 <Users size={24} className="text-indigo-600"/> Gerenciar Usuários
               </h2>
-              <button onClick={fetchUsers} className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100">
-                Atualizar Lista
-              </button>
+              <div className="flex gap-2 w-full md:w-auto items-center">
+                <SearchBar />
+                <button onClick={fetchUsers} className="bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100 shrink-0">
+                  Atualizar
+                </button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 gap-4">
-              {usersList.length > 0 ? usersList.map(u => (
+              {filterData(usersList, ['name', 'email']).map(u => (
                 <div key={u.id} className="flex flex-col sm:flex-row gap-4 p-5 border border-slate-200 rounded-xl bg-white relative group items-start sm:items-center justify-between shadow-sm hover:border-indigo-200 transition">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-black text-xl uppercase shrink-0">
@@ -522,12 +567,13 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     <Shield size={18}/> Gerenciar Conta
                   </button>
                 </div>
-              )) : <p className="text-center py-8 text-slate-400 font-medium">Nenhum usuário encontrado.</p>}
+              ))}
+              {filterData(usersList, ['name', 'email']).length === 0 && <p className="text-center py-8 text-slate-400 font-medium">Nenhum usuário encontrado.</p>}
             </div>
           </div>
         )}
 
-        {/* --- MODAL DE EDIÇÃO DE USUÁRIO --- */}
+        {/* MODAL DE EDIÇÃO DE USUÁRIO */}
         {editingUser && (
           <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto custom-scrollbar relative shadow-2xl animate-in zoom-in-95">
@@ -576,7 +622,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     </label>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-2 font-medium leading-relaxed">
-                    *Marcando estas opções, o usuário ignora a regra limite de 3 cadastros, podendo publicar anúncios infinitamente na respectiva categoria.
+                    *Marcando estas opções, o usuário ignora a regra limite de 3 cadastros, podendo publicar anúncios infinitamente na respectiva categoria. E seus anúncios ficarão ativos por 120 dias em vez de 30.
                   </p>
                 </div>
 
@@ -589,8 +635,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* ============================================================== */}
-        
+        {/* === ABA: CONFIGURAÇÕES === */}
         {activeTab === 'settings' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -608,26 +653,30 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
+        {/* === ABA: GUIA COMERCIAL === */}
         {activeTab === 'guide' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-black text-slate-800">Gerenciar Guia Comercial</h2>
-              <div className="flex gap-2 w-full md:w-auto">
-                <button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 w-full md:w-auto">
-                  <PlusCircle size={18}/> Novo Local
-                </button>
-                <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
-                  <Upload size={18}/> Importar CSV
-                  <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-                </label>
+              <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Guia Comercial</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                <SearchBar />
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button onClick={() => openEditModal()} className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-sm">
+                    <PlusCircle size={18}/> Novo Local
+                  </button>
+                  <label className="flex-1 sm:flex-none bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
+                    <Upload size={18}/> Importar CSV
+                    <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+                  </label>
+                </div>
               </div>
             </div>
 
-            {pendingGuideItems.length > 0 && (
+            {filterData(pendingGuideItems, ['name', 'address', 'category']).length > 0 && (
               <div className="mb-10 bg-amber-50 border border-amber-200 rounded-2xl p-5">
                 <h3 className="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2"><Clock size={20}/> Solicitações Aguardando Aprovação</h3>
                 <div className="space-y-3">
-                  {pendingGuideItems.map(item => (
+                  {filterData(pendingGuideItems, ['name', 'address', 'category']).map(item => (
                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-white border border-amber-200 shadow-sm rounded-xl gap-4">
                         <div className="flex items-center gap-4 flex-1">
                            {item.image && <img src={item.image} alt={item.name} className="w-14 h-14 rounded-lg object-cover bg-slate-100 border border-slate-200 shrink-0"/>}
@@ -649,20 +698,24 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             )}
             
             <h3 className="font-bold text-slate-600 mb-2 uppercase text-xs tracking-wider">Locais Já Publicados</h3>
-            {renderList(activeGuideItems, 'name', crud.deleteGuideItem)}
+            {renderList(filterData(activeGuideItems, ['name', 'address', 'category']), 'name', crud.deleteGuideItem)}
           </div>
         )}
 
+        {/* === ABA: OFERTAS === */}
         {activeTab === 'offers' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-black text-slate-800">Gerenciar Banco de Ofertas</h2>
-              <button onClick={() => openEditModal({ category: 'bestsellers' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
-                <PlusCircle size={18}/> Adicionar Oferta
-              </button>
+              <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Banco de Ofertas</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                <SearchBar />
+                <button onClick={() => openEditModal({ category: 'bestsellers' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
+                  <PlusCircle size={18}/> Adicionar Oferta
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {offersData?.map(item => (
+              {filterData(offersData, ['title', 'category']).map(item => (
                 <div key={item.id} className="flex gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 relative group hover:border-indigo-200 transition-colors">
                   <img src={item.image} alt="Produto" className="w-20 h-20 object-contain bg-white rounded-lg border border-slate-200 p-1"/>
                   <div className="flex-1 min-w-0 pr-20">
@@ -676,32 +729,41 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </div>
                 </div>
               ))}
+              {filterData(offersData, ['title', 'category']).length === 0 && <p className="text-slate-400 py-8 col-span-full text-center">Nenhuma oferta encontrada.</p>}
             </div>
           </div>
         )}
 
+        {/* === ABA: ADS === */}
         {activeTab === 'ads' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-black text-slate-800">Gerenciar Publicidade (Banners)</h2>
-              <button onClick={() => openEditModal({ position: 'top' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
-                <PlusCircle size={18}/> Adicionar Banner
-              </button>
+              <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Publicidade (Banners)</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                <SearchBar />
+                <button onClick={() => openEditModal({ position: 'top' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
+                  <PlusCircle size={18}/> Adicionar Banner
+                </button>
+              </div>
             </div>
-            {renderList(adsData, 'title', crud.deleteAd)}
+            {renderList(filterData(adsData, ['title', 'position']), 'title', crud.deleteAd)}
           </div>
         )}
 
+        {/* === ABA: NOTÍCIAS === */}
         {activeTab === 'news' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-black text-slate-800">Gerenciar Notícias</h2>
-              <button onClick={() => openEditModal({ isOfficial: false, author: 'Redação', category: 'Cidade' })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 w-full md:w-auto justify-center">
-                <PlusCircle size={18}/> Nova Notícia
-              </button>
+              <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Notícias</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                <SearchBar />
+                <button onClick={() => openEditModal({ isOfficial: false, author: 'Redação', category: 'Cidade' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
+                  <PlusCircle size={18}/> Nova Notícia
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-4">
-              {newsData?.map(item => (
+              {filterData(newsData, ['title', 'author', 'category']).map(item => (
                 <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 relative group hover:border-indigo-200 transition-colors">
                   {item.image && <img src={item.image} alt="Capa" className="w-full sm:w-32 h-24 object-cover bg-white rounded-lg border border-slate-200"/>}
                   <div className="flex-1 min-w-0 pr-20">
@@ -734,56 +796,82 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </div>
                 </div>
               ))}
+              {filterData(newsData, ['title', 'author', 'category']).length === 0 && <p className="text-slate-400 py-8 col-span-full text-center">Nenhuma notícia encontrada.</p>}
             </div>
           </div>
         )}
 
+        {/* === OUTRAS ABAS COM SEARCH BAR === */}
         {activeTab === 'events' && (
           <div>
-            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Eventos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
-            {renderList(eventsData, 'title', crud.deleteEvent)}
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Eventos</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                <SearchBar />
+                <button onClick={() => openEditModal()} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Evento</button>
+              </div>
+            </div>
+            {renderList(filterData(eventsData, ['title', 'location', 'category']), 'title', crud.deleteEvent)}
           </div>
         )}
+
         {activeTab === 'real_estate' && (
            <div>
-             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Imóveis</h2><button onClick={() => openEditModal({type: 'Venda'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
-             {renderList(propertiesData, 'title', crud.deleteProperty)}
+             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Imóveis</h2>
+               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                 <SearchBar />
+                 <button onClick={() => openEditModal({type: 'Venda'})} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Imóvel</button>
+               </div>
+             </div>
+             {renderList(filterData(propertiesData, ['title', 'address', 'type']), 'title', crud.deleteProperty)}
            </div>
         )}
         
         {activeTab === 'jobs' && (
            <div>
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-               <h2 className="text-xl font-black text-slate-800">Gerenciar Vagas</h2>
-               <div className="flex gap-2 w-full md:w-auto">
-                 <button onClick={() => openEditModal({type: 'CLT'})} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 w-full md:w-auto">
-                   <PlusCircle size={18}/> Nova Vaga
-                 </button>
-                 <label className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm w-full md:w-auto">
-                   <Upload size={18}/> Importar SINE (CSV)
-                   <input type="file" accept=".csv" className="hidden" onChange={handleJobsCSVUpload} />
-                 </label>
+               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Vagas</h2>
+               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                 <SearchBar />
+                 <div className="flex gap-2 w-full sm:w-auto">
+                   <button onClick={() => openEditModal({type: 'CLT'})} className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-sm">
+                     <PlusCircle size={18}/> Nova Vaga
+                   </button>
+                   <label className="flex-1 sm:flex-none bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
+                     <Upload size={18}/> Importar SINE
+                     <input type="file" accept=".csv" className="hidden" onChange={handleJobsCSVUpload} />
+                   </label>
+                 </div>
                </div>
              </div>
-             {renderList(jobsData, 'title', crud.deleteJob)}
+             {renderList(filterData(jobsData, ['title', 'company', 'category']), 'title', crud.deleteJob)}
            </div>
         )}
 
         {activeTab === 'vehicles' && (
            <div>
-             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-slate-800">Gerenciar Veículos</h2><button onClick={() => openEditModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><PlusCircle size={18}/> Novo</button></div>
-             {renderList(vehiclesData, 'title', crud.deleteVehicle)}
+             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Veículos</h2>
+               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+                 <SearchBar />
+                 <button onClick={() => openEditModal()} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Veículo</button>
+               </div>
+             </div>
+             {renderList(filterData(vehiclesData, ['title', 'brand', 'model']), 'title', crud.deleteVehicle)}
            </div>
         )}
 
         {activeTab === 'classifieds' && (
            <div>
-             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><Tag size={24} className="text-indigo-600"/> Classificados da Comunidade</h2>
+             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 shrink-0"><Tag size={24} className="text-indigo-600"/> Classificados</h2>
+                <div className="flex w-full md:w-auto items-center"><SearchBar /></div>
              </div>
-             {renderList(classifiedsData, 'title', crud.deleteClassified)}
+             {renderList(filterData(classifiedsData, ['title', 'category']), 'title', crud.deleteClassified)}
            </div>
         )}
+
       </div>
 
       {modalOpen && (
@@ -886,6 +974,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                   </>
                 )}
 
+                {/* === FORMULÁRIO DO GUIA COM NOVO MAPA === */}
                 {activeTab === 'guide' && (
                   <>
                     {renderField("Nome do Estabelecimento", "name", "text", true)}
@@ -894,6 +983,20 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                       {renderField("Telefone / Celular", "phone")}
                     </div>
                     {renderField("Endereço Completo", "address")}
+                    
+                    {/* CAMPO DE MAPA COM PESQUISA (LOCATION PICKER) */}
+                    <div className="mt-4 mb-4">
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Localização Exata no Mapa</label>
+                      <div className="h-64 w-full rounded-xl overflow-hidden border border-slate-200">
+                        <LocationPicker 
+                          lat={editingItem?.location?.lat || -20.5236} 
+                          lng={editingItem?.location?.lng || -43.6914} 
+                          onChange={(location) => setEditingItem({ ...editingItem, location })} 
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-2 font-medium">Use a lupa no mapa para pesquisar o endereço ou arraste o pino para a localização exata do comércio.</p>
+                    </div>
+
                     {renderField("Breve Descrição (Opcional)", "description", "textarea")}
                     {renderImagePicker("Logotipo ou Foto da Fachada")}
                   </>
