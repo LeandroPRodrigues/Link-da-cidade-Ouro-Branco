@@ -105,7 +105,25 @@ export default function GuidePage({ guideData, crud, onLocalClick, user, onRequi
 
   return (
     <div className="animate-in fade-in pb-12 relative">
-      <div className="bg-white p-6 rounded-b-2xl md:rounded-2xl shadow-sm border border-slate-100 mb-6">
+      
+      {/* 1. DESTAQUE NO TOPO: BANNER DE CADASTRO (Correção do botão ruim) */}
+      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        <div>
+          <h3 className="text-xl font-bold text-indigo-900 mb-1">Destaque sua Empresa Grátis</h3>
+          <p className="text-sm text-indigo-700 max-w-lg">
+            Aumente sua visibilidade em Ouro Branco. Adicione seu negócio ao nosso guia e seja encontrado por milhares de pessoas.
+          </p>
+        </div>
+        <button 
+          onClick={handleOpenModal} 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-md"
+        >
+          <PlusCircle size={20} />
+          <span>Cadastrar Empresa</span>
+        </button>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
         <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
           <Store className="text-indigo-600" size={24}/> Guia Comercial
         </h2>
@@ -149,16 +167,7 @@ export default function GuidePage({ guideData, crud, onLocalClick, user, onRequi
         </div>
       )}
 
-      {/* CALL TO ACTION - ENVIAR LOCAL */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-6 md:p-8 text-center shadow-sm">
-        <h3 className="font-black text-indigo-900 text-xl mb-2">Sabe de algum local que não está na lista?</h3>
-        <p className="text-indigo-700 text-sm mb-6 max-w-lg mx-auto">Ajude nossa comunidade a crescer! Envie as informações do comércio e, após nossa aprovação, ele fará parte do guia oficial da cidade.</p>
-        <button onClick={handleOpenModal} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">
-          <PlusCircle size={20}/> Cadastrar Estabelecimento
-        </button>
-      </div>
-
-      {/* MODAL DE CADASTRO PÚBLICO */}
+      {/* MODAL DE CADASTRO PÚBLICO CORRIGIDO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95">
@@ -184,26 +193,30 @@ export default function GuidePage({ guideData, crud, onLocalClick, user, onRequi
                </div>
 
                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">Telefone / WhatsApp</label>
-                  <input value={newItem.phone} onChange={e => setNewItem({...newItem, phone: e.target.value})} placeholder="Ex: (31) 99999-9999" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" />
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Telefone / WhatsApp *</label>
+                  <input required value={newItem.phone} onChange={e => setNewItem({...newItem, phone: e.target.value})} placeholder="Ex: (31) 99999-9999" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" />
                </div>
 
-               <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">Endereço Completo</label>
-                  <input value={newItem.address} onChange={e => setNewItem({...newItem, address: e.target.value})} placeholder="Rua, Número, Bairro" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" />
-               </div>
-
-               {/* NOVO CAMPO: MAPA PARA MARCAR A LOCALIZAÇÃO */}
-               <div>
-                 <label className="block text-xs font-bold text-slate-600 mb-1">Localização no Mapa</label>
-                 <div className="h-48 rounded-xl overflow-hidden border border-slate-200">
-                   <LocationPicker 
-                     lat={newItem.location.lat} 
-                     lng={newItem.location.lng} 
-                     onChange={(location) => setNewItem({ ...newItem, location })} 
-                   />
-                 </div>
-                 <p className="text-[10px] text-slate-500 mt-1">Arraste o marcador para o local exato da empresa.</p>
+               {/* SEÇÃO DO MAPA CORRIGIDA COM A NOVA API DO LocationPicker */}
+               <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+                 <label className="block text-xs font-bold text-slate-600 mb-2">Endereço e Localização *</label>
+                 <LocationPicker 
+                   locationData={{ 
+                     address: newItem.address, 
+                     lat: newItem.location.lat, 
+                     lng: newItem.location.lng,
+                     privacy: 'exact'
+                   }} 
+                   setLocationData={(data) => setNewItem({ 
+                     ...newItem, 
+                     address: data.address, 
+                     location: { lat: data.lat, lng: data.lng } 
+                   })} 
+                   variant="guide" 
+                 />
+                 <p className="text-[10px] text-slate-500 mt-2 text-center">
+                   Busque o endereço e arraste o marcador para o local exato da empresa.
+                 </p>
                </div>
 
                <div>
