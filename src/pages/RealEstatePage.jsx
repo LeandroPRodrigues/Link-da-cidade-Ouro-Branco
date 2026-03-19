@@ -1,35 +1,27 @@
 import React, { useState } from 'react';
-import { Home, MapPin, Bed, Bath, Car, Maximize, PlusCircle } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { Home, MapPin, Bed, Bath, Car, Maximize, PlusCircle, X } from 'lucide-react';
+import { GoogleMap, Marker, Circle, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import PropertyForm from '../components/PropertyForm';
 
-// ==========================================
-// CRIAÇÃO DOS PINS PERSONALIZADOS POR COR
-// ==========================================
-const createIcon = (color) => new L.DivIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.3));"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3" fill="white"></circle></svg>`,
-  className: '',
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -36]
-});
+const LIBRARIES = ['places'];
+const CENTER = { lat: -20.5236, lng: -43.6914 };
 
-const pinVenda = createIcon('#EF4444');    // Vermelho (Venda)
-const pinAluguel = createIcon('#3B82F6');  // Azul (Aluguel)
-const pinTemporada = createIcon('#10B981');// Verde (Temporada)
-
-const getPinColor = (type) => {
-  if (type === 'Venda') return pinVenda;
-  if (type === 'Aluguel') return pinAluguel;
-  if (type === 'Temporada') return pinTemporada;
-  return pinVenda; // Padrão
+// Configuração das cores para o mapa
+const pinIcons = {
+  'Venda': { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', hex: '#EF4444' },
+  'Aluguel': { url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png', hex: '#3B82F6' },
+  'Temporada': { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', hex: '#10B981' }
 };
 
 export default function RealEstatePage({ user, navigate, propertiesData, onCrud, checkLimit }) {
   const [filter, setFilter] = useState('Todos');
-  const [isModalOpen, setIsModalOpen] = useState(false); // Estado que controla o modal do formulário
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null); // Controla qual InfoWindow está aberto no mapa
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: LIBRARIES,
+  });
 
   const properties = propertiesData?.filter(p => filter === 'Todos' || p.type === filter) || [];
 
@@ -43,7 +35,6 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
           <p className="text-slate-500 text-sm">Encontre a sua próxima casa ou apartamento em Ouro Branco</p>
         </div>
         <button 
-          // Agora, em vez de enviar para o admin, ele abre o modal diretamente na página!
           onClick={() => checkLimit(() => setIsModalOpen(true))} 
           className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm w-full md:w-auto justify-center"
         >
@@ -51,34 +42,66 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
         </button>
       </div>
 
-      {/* MAPA GLOBAL DE IMÓVEIS COM LEGENDA */}
+      {/* MAPA GLOBAL DE IMÓVEIS (GOOGLE MAPS) */}
       <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-100 mb-6 z-0 relative">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-2 pt-2">Mapa de Imóveis</h2>
         
-        <div className="w-full h-80 rounded-xl overflow-hidden relative z-0">
-          <MapContainer center={[-20.5236, -43.6914]} zoom={14} scrollWheelZoom={false} className="w-full h-full">
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            
-            {properties.map(p => p.lat && p.lng && (
-              <Marker key={p.id} position={[p.lat, p.lng]} icon={getPinColor(p.type)}>
-                <Popup>
-                  <div className="w-40 text-center cursor-pointer" onClick={() => navigate('property_detail')}>
-                    <img src={p.image || p.photos?.[0]} alt={p.title} className="w-full h-20 object-cover rounded-lg mb-2" />
+        <div className="w-full h-80 rounded-xl overflow-hidden relative z-0 border border-slate-200">
+          {!isLoaded ? (
+            <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-500">Carregando mapa...</div>
+          ) : (
+            <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={CENTER} zoom={14} options={{ streetViewControl: false, mapTypeControl: false, gestureHandling: 'cooperative' }}>
+              
+              {properties.map(p => {
+                if (!p.lat || !p.lng) return null;
+                const style = pinIcons[p.type] || pinIcons['Venda'];
+                const position = { lat: p.lat, lng: p.lng };
+
+                // Se o usuário marcou como região (approx), desenha um círculo
+                if (p.privacy === 'approx') {
+                  return (
+                    <Circle 
+                      key={p.id} 
+                      center={position} 
+                      radius={500} 
+                      onClick={() => setSelectedProperty(p)}
+                      options={{ fillColor: style.hex, fillOpacity: 0.35, strokeColor: style.hex, strokeOpacity: 0.8, strokeWeight: 2 }} 
+                    />
+                  );
+                }
+
+                // Se for ponto exato, desenha o Marker
+                return (
+                  <Marker 
+                    key={p.id} 
+                    position={position} 
+                    icon={style.url} 
+                    onClick={() => setSelectedProperty(p)} 
+                  />
+                );
+              })}
+
+              {/* POPUP DE INFORMAÇÕES (INFOWINDOW) */}
+              {selectedProperty && (
+                <InfoWindow position={{ lat: selectedProperty.lat, lng: selectedProperty.lng }} onCloseClick={() => setSelectedProperty(null)}>
+                  <div className="w-40 text-center cursor-pointer p-1" onClick={() => navigate('property_detail')}>
+                    <img src={selectedProperty.image || selectedProperty.photos?.[0]} alt={selectedProperty.title} className="w-full h-20 object-cover rounded-lg mb-2" />
                     <span className={`text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                      p.type === 'Venda' ? 'bg-red-500' : p.type === 'Aluguel' ? 'bg-blue-500' : 'bg-emerald-500'
+                      selectedProperty.type === 'Venda' ? 'bg-red-500' : selectedProperty.type === 'Aluguel' ? 'bg-blue-500' : 'bg-emerald-500'
                     }`}>
-                      {p.type}
+                      {selectedProperty.type}
                     </span>
-                    <p className="font-bold text-slate-800 mt-1 line-clamp-1">{p.title}</p>
-                    <p className="font-black text-slate-700">{Number(p.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    <p className="font-bold text-slate-800 mt-1 line-clamp-1">{selectedProperty.title}</p>
+                    <p className="font-black text-slate-700">{Number(selectedProperty.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    {selectedProperty.privacy === 'approx' && <p className="text-[9px] text-slate-400 mt-1 uppercase">Localização Aproximada</p>}
                   </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+                </InfoWindow>
+              )}
+            </GoogleMap>
+          )}
 
           {/* LEGENDA FLUTUANTE DO MAPA */}
-          <div className="absolute bottom-4 right-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-slate-200 flex flex-col gap-2 pointer-events-none">
+          <div className="absolute bottom-6 right-2 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-slate-200 flex flex-col gap-2 pointer-events-none">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-inner"></div> Venda</div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-inner"></div> Aluguel</div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-inner"></div> Temporada</div>
@@ -101,7 +124,6 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
           <div key={property.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition cursor-pointer group" onClick={() => navigate('property_detail')}>
             <div className="relative h-56 overflow-hidden">
               <img src={property.image || property.photos?.[0]} alt={property.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
-              {/* Etiqueta na lista combinando com a cor do Pin */}
               <div className={`absolute top-3 left-3 text-white text-xs font-black px-3 py-1 rounded-lg shadow-sm uppercase tracking-wide ${
                 property.type === 'Venda' ? 'bg-red-500' : property.type === 'Aluguel' ? 'bg-blue-500' : 'bg-emerald-500'
               }`}>
@@ -125,9 +147,7 @@ export default function RealEstatePage({ user, navigate, propertiesData, onCrud,
         ))}
       </div>
 
-      {/* ======================================================== */}
-      {/* MODAL COM O FORMULÁRIO DE CADASTRO DE IMÓVEL */}
-      {/* ======================================================== */}
+      {/* MODAL DE CADASTRO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">

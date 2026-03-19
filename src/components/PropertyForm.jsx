@@ -4,10 +4,11 @@ import { Upload, Loader } from 'lucide-react';
 import { uploadFile } from '../utils/uploadHelper';
 
 export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin }) {
+  // ADICIONADO: privacy: 'exact' como padrão
   const [formData, setFormData] = useState(initialData || {
     title: '', type: 'Venda', price: '', bedrooms: '', bathrooms: '', 
     garage: '', area: '', description: '', image: '', 
-    address: '', lat: null, lng: null, featured: false
+    address: '', lat: null, lng: null, privacy: 'exact', featured: false
   });
   
   const [isUploading, setIsUploading] = useState(false);
@@ -18,12 +19,9 @@ export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin
       setIsUploading(true);
       try {
         const url = await uploadFile(file, 'properties_images');
-        if (url) {
-          setFormData({...formData, image: url});
-        }
+        if (url) setFormData({...formData, image: url});
       } catch (error) {
-        console.error(error);
-        alert("Erro ao fazer upload da imagem. Verifique se o arquivo não é muito grande ou sua conexão.");
+        alert("Erro ao fazer upload da imagem.");
       } finally {
         setIsUploading(false);
       }
@@ -33,14 +31,9 @@ export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isUploading) {
-       alert("Aguarde o envio da imagem terminar.");
-       return;
-    }
-    if (!formData.lat) {
-      alert("Por favor, selecione ou digite a localização no mapa antes de salvar.");
-      return;
-    }
+    if (isUploading) return alert("Aguarde o envio da imagem terminar.");
+    if (!formData.lat) return alert("Por favor, selecione a localização no mapa.");
+    
     const finalData = { ...formData, photos: formData.image ? [formData.image] : [] };
     onSuccess(finalData);
   };
@@ -49,7 +42,7 @@ export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título do Anúncio</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título</label>
           <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -76,43 +69,38 @@ export default function PropertyForm({ initialData, onSuccess, onCancel, isAdmin
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição do Imóvel</label>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição</label>
         <textarea required rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Principal (URL ou Upload)</label>
+        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Principal</label>
         <div className="flex gap-2">
           <input value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} placeholder="Link da foto..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600" />
-          <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-xl cursor-pointer flex items-center justify-center transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-xl cursor-pointer flex items-center justify-center transition ${isUploading ? 'opacity-50' : ''}`}>
             {isUploading ? <Loader size={20} className="animate-spin" /> : <Upload size={20} />}
             <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={handleLocalImageUpload} />
           </label>
         </div>
-        {isUploading && <p className="text-xs text-indigo-600 mt-1 font-bold">Enviando imagem, aguarde...</p>}
-        {formData.image && !isUploading && <img src={formData.image} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-xl"/>}
+        {formData.image && !isUploading && <img src={formData.image} className="mt-2 h-24 w-full object-cover rounded-xl"/>}
       </div>
 
-      {isAdmin && (
-        <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl mt-4">
-          <input type="checkbox" id="featured" checked={formData.featured || false} onChange={e => setFormData({...formData, featured: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-          <label htmlFor="featured" className="text-sm font-bold text-indigo-900 cursor-pointer select-none">Destacar este imóvel na Página Inicial (Apenas Admin)</label>
-        </div>
-      )}
-
       <div className="pt-4 border-t border-slate-100 mt-4">
+        {/* AQUI ESTÁ A MÁGICA: Passamos propertyType e variant="property" */}
         <LocationPicker 
-          locationData={{ address: formData.address, lat: formData.lat, lng: formData.lng }}
-          setLocationData={(data) => setFormData({ ...formData, address: data.address, lat: data.lat, lng: data.lng })}
+          variant="property"
+          propertyType={formData.type}
+          locationData={{ address: formData.address, lat: formData.lat, lng: formData.lng, privacy: formData.privacy }}
+          setLocationData={(data) => setFormData({ ...formData, address: data.address, lat: data.lat, lng: data.lng, privacy: data.privacy })}
         />
       </div>
 
       <div className="flex gap-3 pt-6">
-        <button type="submit" className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-700 transition shadow-md">
+        <button type="submit" className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-700 shadow-md">
           {initialData?.id ? 'Atualizar Imóvel' : 'Publicar Imóvel'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition">
+          <button type="button" onClick={onCancel} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50">
             Cancelar
           </button>
         )}
