@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Phone, MessageCircle, ChevronRight, Store, ArrowLeft, Grid, PlusCircle, Upload, X } from 'lucide-react';
 import { GUIDE_CATEGORIES } from '../data/mockData';
+// Importando o componente do Mapa
+import LocationPicker from '../components/LocationPicker';
 
-export default function GuidePage({ guideData, crud, onLocalClick }) {
+export default function GuidePage({ guideData, crud, onLocalClick, user, onRequireLogin }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Estados para o Formulário Colaborativo
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', category: '', phone: '', address: '', image: '' });
+  // Adicionado o state 'location' com as coordenadas iniciais de Ouro Branco
+  const [newItem, setNewItem] = useState({ name: '', category: '', phone: '', address: '', image: '', location: { lat: -20.5236, lng: -43.6914 } });
 
   // A MÁGICA: O público só vê os estabelecimentos que NÃO estão pendentes de aprovação
   const activeGuideData = guideData.filter(item => item.status !== 'pending');
@@ -35,6 +38,16 @@ export default function GuidePage({ guideData, crud, onLocalClick }) {
     }
   };
 
+  // Função para verificar login antes de abrir o modal
+  const handleOpenModal = () => {
+    if (!user) {
+      alert("Você precisa estar logado para cadastrar um estabelecimento.");
+      if (onRequireLogin) onRequireLogin(); // Tenta abrir a tela de login do App.jsx
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
   // Função que envia para a "Sala de Espera" do Admin
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,11 +56,12 @@ export default function GuidePage({ guideData, crud, onLocalClick }) {
       await crud.addGuideItem({
         ...newItem,
         status: 'pending', // Fica escondido até você aprovar!
+        ownerId: user?.id || 'desconhecido', // Salva o ID de quem enviou
         date: new Date().toISOString()
       });
       alert("Local enviado com sucesso! Após análise da nossa equipe, ele aparecerá no guia.");
       setIsModalOpen(false);
-      setNewItem({ name: '', category: '', phone: '', address: '', image: '' });
+      setNewItem({ name: '', category: '', phone: '', address: '', image: '', location: { lat: -20.5236, lng: -43.6914 } });
     } catch (error) {
       alert("Erro ao enviar. Tente novamente.");
     } finally {
@@ -139,7 +153,7 @@ export default function GuidePage({ guideData, crud, onLocalClick }) {
       <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-6 md:p-8 text-center shadow-sm">
         <h3 className="font-black text-indigo-900 text-xl mb-2">Sabe de algum local que não está na lista?</h3>
         <p className="text-indigo-700 text-sm mb-6 max-w-lg mx-auto">Ajude nossa comunidade a crescer! Envie as informações do comércio e, após nossa aprovação, ele fará parte do guia oficial da cidade.</p>
-        <button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">
+        <button onClick={handleOpenModal} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-md shadow-indigo-200 transition hover:-translate-y-0.5">
           <PlusCircle size={20}/> Cadastrar Estabelecimento
         </button>
       </div>
@@ -177,6 +191,19 @@ export default function GuidePage({ guideData, crud, onLocalClick }) {
                <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">Endereço Completo</label>
                   <input value={newItem.address} onChange={e => setNewItem({...newItem, address: e.target.value})} placeholder="Rua, Número, Bairro" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" />
+               </div>
+
+               {/* NOVO CAMPO: MAPA PARA MARCAR A LOCALIZAÇÃO */}
+               <div>
+                 <label className="block text-xs font-bold text-slate-600 mb-1">Localização no Mapa</label>
+                 <div className="h-48 rounded-xl overflow-hidden border border-slate-200">
+                   <LocationPicker 
+                     lat={newItem.location.lat} 
+                     lng={newItem.location.lng} 
+                     onChange={(location) => setNewItem({ ...newItem, location })} 
+                   />
+                 </div>
+                 <p className="text-[10px] text-slate-500 mt-1">Arraste o marcador para o local exato da empresa.</p>
                </div>
 
                <div>

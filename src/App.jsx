@@ -637,7 +637,7 @@ export default function App() {
           {currentPage === 'job_detail' && <JobDetailPage job={selectedJob} onBack={() => setCurrentPage('jobs')} />}
           {currentPage === 'vehicles' && <VehiclesPage vehiclesData={activeVehicles} user={user} onCrud={crud} checkLimit={() => handleAddClick('vehicle')} onVehicleClick={(v) => { setSelectedVehicle(v); setCurrentPage('vehicle_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'vehicle_detail' && <VehicleDetailPage vehicle={selectedVehicle} onBack={() => setCurrentPage('vehicles')} />}
-          {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
+          {currentPage === 'guide' && <GuidePage guideData={guideData} crud={crud} user={user} onRequireLogin={() => setIsLoginOpen(true)} onLocalClick={(item) => { setSelectedGuideItem(item); setCurrentPage('guide_detail'); window.scrollTo(0,0); }} />}
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
           {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS */}
