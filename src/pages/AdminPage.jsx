@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X, Shield, Users, Search } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
-import LocationPicker from '../components/LocationPicker'; // NOVO: Importando o Mapa
+import LocationPicker from '../components/LocationPicker'; 
 import { uploadFile } from '../utils/uploadHelper';
 import { db } from '../utils/database';
 
@@ -20,7 +20,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   const [editingUser, setEditingUser] = useState(null);
   const [usersList, setUsersList] = useState([]);
 
-  // === NOVO ESTADO: CAMPO DE BUSCA DO ADMIN ===
+  // === ESTADO: CAMPO DE BUSCA DO ADMIN ===
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
 
   // Limpa o campo de busca sempre que mudar de aba
@@ -45,8 +45,8 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     });
   };
 
-  // Barra de Busca Reutilizável para o Topo das Abas
-  const SearchBar = () => (
+  // === CORREÇÃO: Transformado em função (render) para não perder o foco ao digitar ===
+  const renderSearchBar = () => (
     <div className="relative flex-1 md:w-64 min-w-[200px]">
       <input 
         value={adminSearchTerm} 
@@ -342,7 +342,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
     const photosValue = item.photos || (item.image ? [item.image] : []);
     
-    // NOVO: Preenche a localização vazia do Guia para inicializar o mapa
+    // Preenche a localização vazia do Guia para inicializar o mapa
     let loc = item.location;
     if (activeTab === 'guide' && !loc) {
         loc = { lat: -20.5236, lng: -43.6914 };
@@ -527,7 +527,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                 <Users size={24} className="text-indigo-600"/> Gerenciar Usuários
               </h2>
               <div className="flex gap-2 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <button onClick={fetchUsers} className="bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100 shrink-0">
                   Atualizar
                 </button>
@@ -635,7 +635,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           </div>
         )}
 
-        {/* === ABA: CONFIGURAÇÕES === */}
+        {/* === RESTO DAS CONFIGURAÇÕES === */}
         {activeTab === 'settings' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -659,7 +659,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Guia Comercial</h2>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button onClick={() => openEditModal()} className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-sm">
                     <PlusCircle size={18}/> Novo Local
@@ -708,7 +708,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Banco de Ofertas</h2>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <button onClick={() => openEditModal({ category: 'bestsellers' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
                   <PlusCircle size={18}/> Adicionar Oferta
                 </button>
@@ -740,7 +740,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Publicidade (Banners)</h2>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <button onClick={() => openEditModal({ position: 'top' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
                   <PlusCircle size={18}/> Adicionar Banner
                 </button>
@@ -756,7 +756,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Notícias</h2>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <button onClick={() => openEditModal({ isOfficial: false, author: 'Redação', category: 'Cidade' })} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 justify-center shadow-sm">
                   <PlusCircle size={18}/> Nova Notícia
                 </button>
@@ -807,7 +807,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Eventos</h2>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                <SearchBar />
+                {renderSearchBar()}
                 <button onClick={() => openEditModal()} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Evento</button>
               </div>
             </div>
@@ -820,7 +820,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Imóveis</h2>
                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                 <SearchBar />
+                 {renderSearchBar()}
                  <button onClick={() => openEditModal({type: 'Venda'})} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Imóvel</button>
                </div>
              </div>
@@ -833,7 +833,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Vagas</h2>
                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                 <SearchBar />
+                 {renderSearchBar()}
                  <div className="flex gap-2 w-full sm:w-auto">
                    <button onClick={() => openEditModal({type: 'CLT'})} className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-sm">
                      <PlusCircle size={18}/> Nova Vaga
@@ -854,7 +854,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                <h2 className="text-xl font-black text-slate-800 shrink-0">Gerenciar Veículos</h2>
                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-                 <SearchBar />
+                 {renderSearchBar()}
                  <button onClick={() => openEditModal()} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-sm"><PlusCircle size={18}/> Novo Veículo</button>
                </div>
              </div>
@@ -866,7 +866,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
            <div>
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 shrink-0"><Tag size={24} className="text-indigo-600"/> Classificados</h2>
-                <div className="flex w-full md:w-auto items-center"><SearchBar /></div>
+                <div className="flex w-full md:w-auto items-center">{renderSearchBar()}</div>
              </div>
              {renderList(filterData(classifiedsData, ['title', 'category']), 'title', crud.deleteClassified)}
            </div>
