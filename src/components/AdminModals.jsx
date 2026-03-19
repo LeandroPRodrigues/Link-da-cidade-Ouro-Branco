@@ -111,17 +111,19 @@ export const AdminEditModal = ({
     const onChange = e => setEditingItem({...editingItem, [field]: e.target.value});
     
     return (
-      <div key={field}>
-        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
-        <div className="flex gap-2">
-          <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Link da imagem..." required={required && !val}/>
-          <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div key={field} className="border border-slate-200 rounded-xl p-4 bg-slate-50 mt-4 mb-4">
+        <label className="block text-xs font-bold text-slate-700 uppercase mb-2">{label}</label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input value={val} onChange={onChange} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Cole o Link da imagem..." required={required && !val}/>
+          <label className={`bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
             {isUploading ? <Loader size={20} className="animate-spin"/> : <Upload size={20} />}
+            <span className="text-sm">Upload do PC/Celular</span>
+            {/* Aqui fazemos o upload real para o banco de dados (Firebase Storage) */}
             <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={(e) => handleLocalImageUpload(e, (url) => setEditingItem({...editingItem, [field]: url}))} />
           </label>
         </div>
-        {isUploading && <p className="text-xs text-indigo-600 mt-1 font-bold">Enviando imagem, aguarde...</p>}
-        {val && !isUploading && <img src={val} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg border border-slate-200"/>}
+        {isUploading && <p className="text-xs text-indigo-600 mt-2 font-bold flex items-center gap-1"><Loader size={12} className="animate-spin"/> Enviando imagem, aguarde...</p>}
+        {val && !isUploading && <img src={val} alt="Preview" className="mt-4 h-32 w-auto max-w-full object-contain rounded-lg border border-slate-200 bg-white p-1 shadow-sm"/>}
       </div>
     );
   };
@@ -184,7 +186,7 @@ export const AdminEditModal = ({
                    {renderField("Preço Atual", "price", "number", true)}
                    {renderField("Preço Antigo", "originalPrice", "number", false)}
                 </div>
-                {renderImagePicker()}
+                {renderImagePicker("Foto do Produto")}
                 {renderField("Link de Afiliado", "link", "text", true)}
               </>
             )}
@@ -198,7 +200,7 @@ export const AdminEditModal = ({
                   {renderField("Categoria", "category", "text", true)}
                 </div>
                 {renderField("Local do Evento", "location", "text", true)}
-                {renderImagePicker()}
+                {renderImagePicker("Capa do Evento")}
                 {renderField("Descrição", "description", "textarea")}
                 {renderField("Link para Ingressos (Opcional)", "link")}
               </>
@@ -231,20 +233,33 @@ export const AdminEditModal = ({
                   {renderField("Categoria", "category", "select", true, ["Saúde & Bem-estar", "Emergência & Serviços Públicos", "Educação & Ensino", "Supermercados & Alimentação", "Automotivo & Transportes", "Construção & Casa", "Bancos & Financeiro", "Hotéis & Pousadas", "Religião & Igrejas", "Esportes & Academias", "Beleza & Estética", "Outros"])}
                   {renderField("Telefone / Celular", "phone")}
                 </div>
-                {renderField("Endereço Completo", "address")}
-                <div className="mt-4 mb-4">
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Localização Exata no Mapa</label>
-                  <div className="h-64 w-full rounded-xl overflow-hidden border border-slate-200">
-                    <LocationPicker 
-                      lat={editingItem?.location?.lat || -20.5236} 
-                      lng={editingItem?.location?.lng || -43.6914} 
-                      onChange={(location) => setEditingItem({ ...editingItem, location })} 
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-2 font-medium">Use a lupa no mapa para pesquisar o endereço ou arraste o pino para a localização exata do comércio.</p>
+                
+                {/* --- SEÇÃO DO MAPA CORRIGIDA (SEM CAMPO DE ENDEREÇO DUPLICADO) --- */}
+                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 mt-4 mb-4">
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-3">Endereço e Localização Exata</label>
+                  <LocationPicker 
+                    locationData={{ 
+                      address: editingItem?.address || '', 
+                      lat: editingItem?.location?.lat || -20.5236, 
+                      lng: editingItem?.location?.lng || -43.6914,
+                      privacy: 'exact'
+                    }} 
+                    setLocationData={(data) => setEditingItem({ 
+                      ...editingItem, 
+                      address: data.address, 
+                      location: { lat: data.lat, lng: data.lng, privacy: 'exact' } 
+                    })} 
+                    variant="guide" 
+                  />
+                  <p className="text-[10px] text-slate-500 mt-2 text-center">
+                    Busque o endereço e arraste o marcador para o local exato da empresa.
+                  </p>
                 </div>
+                
                 {renderField("Breve Descrição (Opcional)", "description", "textarea")}
-                {renderImagePicker("Logotipo ou Foto da Fachada")}
+                
+                {/* O renderImagePicker já possui opção de link e upload de foto juntos! */}
+                {renderImagePicker("Logotipo ou Foto da Fachada", "image")}
               </>
             )}
 
@@ -277,10 +292,11 @@ export const AdminEditModal = ({
                           {block.type === 'subtitle' && <input value={block.value} onChange={(e) => updateNewsBlockField(block.id, 'value', e.target.value)} className="w-full p-3 bg-white border border-slate-200 rounded-lg font-bold text-lg focus:border-indigo-600 outline-none" placeholder="Subtítulo..." required/>}
                           {block.type === 'image' && (
                             <div className="flex flex-col gap-2">
-                              <div className="flex gap-2">
-                                <input value={Array.isArray(block.value) ? block.value.join(', ') : (block.value || '')} onChange={(e) => { const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean); updateNewsBlockField(block.id, 'value', arr.length > 0 ? arr : ''); }} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Cole URLs separadas por vírgula (ou faça upload ao lado)..." required={!(block.value && block.value.length > 0)} />
-                                <label className={`bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-lg cursor-pointer flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <input value={Array.isArray(block.value) ? block.value.join(', ') : (block.value || '')} onChange={(e) => { const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean); updateNewsBlockField(block.id, 'value', arr.length > 0 ? arr : ''); }} className="flex-1 p-3 bg-white border border-slate-200 rounded-lg focus:border-indigo-600 outline-none" placeholder="Cole URLs separadas por vírgula (ou faça upload)..." required={!(block.value && block.value.length > 0)} />
+                                <label className={`bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                                   {isUploading ? <Loader size={20} className="animate-spin"/> : <Upload size={20} />}
+                                  <span className="text-sm">Upload</span>
                                   <input type="file" multiple accept="image/*" className="hidden" disabled={isUploading} onChange={(e) => handleNewsMultiImageUpload(e, block.id, block.value)} />
                                 </label>
                               </div>
