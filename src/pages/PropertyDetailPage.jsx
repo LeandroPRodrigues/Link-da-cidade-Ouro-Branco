@@ -3,13 +3,27 @@ import {
   ArrowLeft, Map as MapIcon, Phone, MessageCircle, 
   Mail, Share2, Copy, X 
 } from 'lucide-react';
-import LocationPicker from '../components/LocationPicker';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+
+const libraries = ['places'];
 
 export default function PropertyDetailPage({ property, onBack }) {
   const [showPhone, setShowPhone] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
+  // Carrega a API do Google Maps
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: libraries,
+  });
+
   if (!property) return null;
+
+  // Define o centro do mapa com base no imóvel ou usa o centro de Ouro Branco como fallback
+  const mapCenter = {
+    lat: property.location?.lat || -20.5236,
+    lng: property.location?.lng || -43.6914
+  };
 
   // --- FUNÇÃO DE CONTATO VIA WHATSAPP ---
   const handleWhatsApp = () => {
@@ -230,12 +244,27 @@ export default function PropertyDetailPage({ property, onBack }) {
             <h3 className="font-black text-slate-800 text-lg mb-4 border-b border-slate-100 pb-3">Localização</h3>
             
             <div className="h-56 rounded-xl overflow-hidden relative border border-slate-200">
-              <LocationPicker 
-                lat={property.location?.lat || -20.5} 
-                lng={property.location?.lng || -43.7} 
-                privacy={property.privacy} 
-                readOnly 
-              />
+              {!isLoaded ? (
+                <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-500">
+                  Carregando mapa...
+                </div>
+              ) : (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={mapCenter}
+                  zoom={property.privacy === 'approx' ? 14 : 16}
+                  options={{
+                    disableDefaultUI: true, // Remove botões extras para ficar mais clean
+                    zoomControl: true, // Mantém apenas o controle de zoom
+                    gestureHandling: 'cooperative' // Evita que o mapa dê zoom sozinho ao rolar a página no celular
+                  }}
+                >
+                  {/* Só mostra o pino exato se a privacidade não for aproximada */}
+                  {property.privacy !== 'approx' && (
+                    <Marker position={mapCenter} />
+                  )}
+                </GoogleMap>
+              )}
             </div>
             
             {property.privacy === 'approx' && (
