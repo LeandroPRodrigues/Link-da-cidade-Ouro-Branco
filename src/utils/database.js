@@ -102,17 +102,56 @@ export const database = {
   },
   addComment: async (colName, itemId, comment) => { await updateDoc(doc(firestoreDB, colName, itemId), { comments: arrayUnion(comment) }); },
 
+  // --- GESTÃO DE USUÁRIOS ---
+  getAllUsers: async () => { 
+    const q = await getDocs(collection(firestoreDB, "users")); 
+    return mapList(q); 
+  },
+  updateUserAdmin: async (docId, data) => { 
+    await updateDoc(doc(firestoreDB, "users", docId), data); 
+  },
+
   loginUser: async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      
+      // Bypass para o Admin principal
       if (user.email === 'leandro122005@hotmail.com') {
-        return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin' };
+        return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin', permissions: { unlimitedProperties: true, unlimitedVehicles: true, unlimitedJobs: true } };
       }
+      
       const q = query(collection(firestoreDB, "users"), where("uid", "==", user.uid));
       const snap = await getDocs(q);
+      
       if (!snap.empty) {
-        return { id: user.uid, ...snap.docs[0].data(), role: 'user' };
+        const userData = snap.docs[0].data();
+        const docId = snap.docs[0].id;
+        
+        // Verifica Banimento
+        if (userData.status === 'banned') {
+          await signOut(auth);
+          return { error: "Sua conta foi banida permanentemente por violar as regras do portal." };
+        }
+        
+        // Verifica Suspensão Temporária
+        if (userData.status === 'suspended' && userData.suspensionEnd) {
+          const now = new Date().getTime();
+          const end = new Date(userData.suspensionEnd).getTime();
+          
+          if (now < end) {
+            await signOut(auth);
+            const diasRestantes = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+            return { error: `Sua conta está suspensa temporariamente. Faltam ${diasRestantes} dia(s) para o desbloqueio.` };
+          } else {
+            // Se o tempo já passou, reativa a conta automaticamente
+            await updateDoc(doc(firestoreDB, "users", docId), { status: 'active', suspensionEnd: null });
+            userData.status = 'active';
+            userData.suspensionEnd = null;
+          }
+        }
+
+        return { id: user.uid, docId: docId, ...userData, role: userData.role || 'user' };
       }
       return { id: user.uid, name: 'Usuário', email: email, role: 'user' };
     } catch (error) {
@@ -125,17 +164,54 @@ export const database = {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      
       if (user.email === 'leandro122005@hotmail.com') {
-        return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin' };
+        return { id: user.uid, name: 'Leandro Admin', email: user.email, role: 'admin', type: 'admin', permissions: { unlimitedProperties: true, unlimitedVehicles: true, unlimitedJobs: true } };
       }
+      
       const q = query(collection(firestoreDB, "users"), where("uid", "==", user.uid));
       const snap = await getDocs(q);
+      
       if (snap.empty) {
-        const newUser = { uid: user.uid, name: user.displayName || 'Usuário', email: user.email, type: 'user', role: 'user', createdAt: new Date().toISOString() };
-        await addDoc(collection(firestoreDB, "users"), newUser);
-        return { id: user.uid, ...newUser };
+        const newUser = { 
+          uid: user.uid, 
+          name: user.displayName || 'Usuário', 
+          email: user.email, 
+          type: 'user', 
+          role: 'user', 
+          status: 'active',
+          permissions: { unlimitedProperties: false, unlimitedVehicles: false, unlimitedJobs: false },
+          createdAt: new Date().toISOString() 
+        };
+        const docRef = await addDoc(collection(firestoreDB, "users"), newUser);
+        return { id: user.uid, docId: docRef.id, ...newUser };
       } else {
-        return { id: user.uid, ...snap.docs[0].data(), role: 'user' };
+        const userData = snap.docs[0].data();
+        const docId = snap.docs[0].id;
+
+        // Verifica Banimento
+        if (userData.status === 'banned') {
+          await signOut(auth);
+          return { error: "Sua conta foi banida permanentemente por violar as regras do portal." };
+        }
+        
+        // Verifica Suspensão Temporária
+        if (userData.status === 'suspended' && userData.suspensionEnd) {
+          const now = new Date().getTime();
+          const end = new Date(userData.suspensionEnd).getTime();
+          
+          if (now < end) {
+            await signOut(auth);
+            const diasRestantes = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+            return { error: `Sua conta está suspensa temporariamente. Faltam ${diasRestantes} dia(s) para o desbloqueio.` };
+          } else {
+            await updateDoc(doc(firestoreDB, "users", docId), { status: 'active', suspensionEnd: null });
+            userData.status = 'active';
+            userData.suspensionEnd = null;
+          }
+        }
+
+        return { id: user.uid, docId: docId, ...userData, role: userData.role || 'user' };
       }
     } catch (error) {
       console.error("Erro no login com Google:", error);
@@ -146,7 +222,13 @@ export const database = {
   registerUser: async (userData) => {
     const { email, password, ...rest } = userData;
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await addDoc(collection(firestoreDB, "users"), { uid: userCredential.user.uid, email, ...rest });
+    await addDoc(collection(firestoreDB, "users"), { 
+      uid: userCredential.user.uid, 
+      email, 
+      status: 'active',
+      permissions: { unlimitedProperties: false, unlimitedVehicles: false, unlimitedJobs: false },
+      ...rest 
+    });
     return true;
   },
 

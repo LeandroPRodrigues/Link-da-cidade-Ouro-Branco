@@ -118,7 +118,6 @@ export default function App() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ESTADO GLOBAL DO POP-UP (MODAL DE CADASTRO)
   const [globalFormOpen, setGlobalFormOpen] = useState(null);
 
   const [selectedNews, setSelectedNews] = useState(null);
@@ -218,10 +217,18 @@ export default function App() {
     }
   }, []);
 
+  // ==========================================
+  // NOVA LÓGICA DE VALIDADE DOS ANÚNCIOS (120 DIAS)
+  // ==========================================
   const isItemActive = (item, type) => {
     const updated = new Date(item.updatedAt || item.createdAt || item.date || 0).getTime();
     const diffDays = (new Date().getTime() - updated) / (1000 * 60 * 60 * 24);
-    const maxActive = (type === 'property' && item.type === 'Temporada') ? 90 : 30;
+    
+    // Tenta pegar os dias de validade salvo no anúncio, senão aplica os padrões
+    let maxActive = item.expiresIn;
+    if (!maxActive) {
+       maxActive = (type === 'property' && item.type === 'Temporada') ? 90 : 30;
+    }
     return diffDays <= maxActive;
   };
 
@@ -230,7 +237,10 @@ export default function App() {
     for (const item of data) {
       const updated = new Date(item.updatedAt || item.createdAt || item.date || 0).getTime();
       const diffDays = (now - updated) / (1000 * 60 * 60 * 24);
-      const maxDelete = (type === 'property' && item.type === 'Temporada') ? 120 : 60;
+      
+      let baseActive = item.expiresIn || ((type === 'property' && item.type === 'Temporada') ? 90 : 30);
+      let maxDelete = baseActive + 30; // Apaga do BD apenas 30 dias após vencer a validade
+      
       if (diffDays > maxDelete) {
         try { await deleteFn(item.id); } catch(e){}
       }
@@ -349,6 +359,9 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [resolveUrlPath, newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, offersData, classifiedsData]);
   
+  // ==========================================
+  // FUNÇÕES DE CRIAR E EDITAR (SALVAM OS 120 DIAS PARA VIPS)
+  // ==========================================
   const crud = {
     addNews: async (item) => { await db.addNews(item); setNewsData(await db.getNews()); },
     updateNews: async (item) => { await db.updateNews(item); setNewsData(await db.getNews()); },
@@ -359,24 +372,39 @@ export default function App() {
     deleteEvent: async (id) => { await db.deleteEvent(id); setEventsData(await db.getEvents()); },
     
     addProperty: async (item) => { 
-      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      const exp = (user?.role === 'admin' || user?.permissions?.unlimitedProperties) ? 120 : (item.type === 'Temporada' ? 90 : 30);
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', expiresIn: exp, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
       await db.addProperty(i); setPropertiesData(await db.getProperties()); 
     },
-    updateProperty: async (item) => { await db.updateProperty({...item, updatedAt: new Date().toISOString()}); setPropertiesData(await db.getProperties()); },
+    updateProperty: async (item) => { 
+      const exp = item.expiresIn || ((user?.role === 'admin' || user?.permissions?.unlimitedProperties) ? 120 : (item.type === 'Temporada' ? 90 : 30));
+      await db.updateProperty({...item, expiresIn: exp, updatedAt: new Date().toISOString()}); 
+      setPropertiesData(await db.getProperties()); 
+    },
     deleteProperty: async (id) => { await db.deleteProperty(id); setPropertiesData(await db.getProperties()); },
     
     addJob: async (item) => { 
-      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      const exp = (user?.role === 'admin' || user?.permissions?.unlimitedJobs) ? 120 : 30;
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', expiresIn: exp, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
       await db.addJob(i); setJobsData(await db.getJobs()); 
     },
-    updateJob: async (item) => { await db.updateJob({...item, updatedAt: new Date().toISOString()}); setJobsData(await db.getJobs()); },
+    updateJob: async (item) => { 
+      const exp = item.expiresIn || ((user?.role === 'admin' || user?.permissions?.unlimitedJobs) ? 120 : 30);
+      await db.updateJob({...item, expiresIn: exp, updatedAt: new Date().toISOString()}); 
+      setJobsData(await db.getJobs()); 
+    },
     deleteJob: async (id) => { await db.deleteJob(id); setJobsData(await db.getJobs()); },
     
     addVehicle: async (item) => { 
-      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      const exp = (user?.role === 'admin' || user?.permissions?.unlimitedVehicles) ? 120 : 30;
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', expiresIn: exp, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
       await db.addVehicle(i); setVehiclesData(await db.getVehicles()); 
     },
-    updateVehicle: async (item) => { await db.updateVehicle({...item, updatedAt: new Date().toISOString()}); setVehiclesData(await db.getVehicles()); },
+    updateVehicle: async (item) => { 
+      const exp = item.expiresIn || ((user?.role === 'admin' || user?.permissions?.unlimitedVehicles) ? 120 : 30);
+      await db.updateVehicle({...item, expiresIn: exp, updatedAt: new Date().toISOString()}); 
+      setVehiclesData(await db.getVehicles()); 
+    },
     deleteVehicle: async (id) => { await db.deleteVehicle(id); setVehiclesData(await db.getVehicles()); },
     
     addGuideItem: async (item) => { await db.addGuideItem(item); setGuideData(await db.getGuide()); },
@@ -394,30 +422,51 @@ export default function App() {
     updateSettings: async (item) => { await db.updateSettings(item); setSettingsData(await db.getSettings()); },
 
     addClassified: async (item) => { 
-      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+      const exp = (user?.role === 'admin') ? 120 : 30;
+      const i = { ...item, ownerId: user?.id || 'admin', ownerName: user?.name || 'Administrador', expiresIn: exp, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
       await db.addClassified(i); setClassifiedsData(await db.getClassifieds()); 
     },
-    updateClassified: async (item) => { await db.updateClassified({...item, updatedAt: new Date().toISOString()}); setClassifiedsData(await db.getClassifieds()); },
+    updateClassified: async (item) => { 
+      const exp = item.expiresIn || ((user?.role === 'admin') ? 120 : 30);
+      await db.updateClassified({...item, expiresIn: exp, updatedAt: new Date().toISOString()}); 
+      setClassifiedsData(await db.getClassifieds()); 
+    },
     deleteClassified: async (id) => { await db.deleteClassified(id); setClassifiedsData(await db.getClassifieds()); },
   };
 
-  // FUNÇÕES GLOBAIS DE CADASTRO (Abrem os Modais Diretamente)
   const handleAddClick = (type) => {
     if (!user) { 
       alert("Faça login para anunciar."); 
       setIsLoginOpen(true); 
       return; 
     } 
-    let limit = 0;
-    if (type === 'property') limit = propertiesData.filter(p => p.ownerId === user.id).length;
-    if (type === 'vehicle') limit = vehiclesData.filter(v => v.ownerId === user.id).length;
-    if (type === 'job') limit = jobsData.filter(j => j.ownerId === user.id).length;
-    if (type === 'classified') limit = classifiedsData.filter(c => c.ownerId === user.id).length;
     
-    if (user.role !== 'admin' && type !== 'guide' && limit >= 3) {
-      alert("Limite de 3 cadastros atingido para esta categoria. Exclua anúncios antigos no seu Perfil."); 
+    if (user.role === 'admin' || type === 'guide') {
+      setGlobalFormOpen(type);
       return;
     }
+
+    let currentCount = 0;
+    let hasUnlimitedPermission = false;
+
+    if (type === 'property') {
+      currentCount = propertiesData.filter(p => p.ownerId === user.id).length;
+      hasUnlimitedPermission = user.permissions?.unlimitedProperties === true;
+    } else if (type === 'vehicle') {
+      currentCount = vehiclesData.filter(v => v.ownerId === user.id).length;
+      hasUnlimitedPermission = user.permissions?.unlimitedVehicles === true;
+    } else if (type === 'job') {
+      currentCount = jobsData.filter(j => j.ownerId === user.id).length;
+      hasUnlimitedPermission = user.permissions?.unlimitedJobs === true;
+    } else if (type === 'classified') {
+      currentCount = classifiedsData.filter(c => c.ownerId === user.id).length;
+    }
+    
+    if (currentCount >= 3 && !hasUnlimitedPermission) {
+      alert("Limite de 3 cadastros atingido para esta categoria. Exclua anúncios antigos no seu Perfil para criar novos."); 
+      return;
+    }
+
     setGlobalFormOpen(type); 
   };
   
@@ -426,6 +475,12 @@ export default function App() {
     setLoading(true);
     const u = await db.loginUser(e.target.email.value, e.target.password.value);
     setLoading(false);
+
+    if (u?.error) {
+      alert(u.error);
+      return;
+    }
+
     if(u) { 
       setUser(u); 
       localStorage.setItem('app_user', JSON.stringify(u)); 
@@ -440,6 +495,12 @@ export default function App() {
     e.preventDefault();
     try {
       const u = await db.loginWithGoogle();
+      
+      if (u?.error) {
+        alert(u.error);
+        return;
+      }
+
       if(u) { 
         setUser(u); 
         localStorage.setItem('app_user', JSON.stringify(u)); 
@@ -641,7 +702,7 @@ export default function App() {
           {currentPage === 'guide_detail' && <GuideDetailPage item={selectedGuideItem} onBack={() => setCurrentPage('guide')} />}
           
           {/* AS PÁGINAS DE ADMINISTRAÇÃO RECEBEM TODA A BASE DE DADOS */}
-          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} classifiedsData={classifiedsData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} />}
+          {currentPage === 'admin' && user?.role === 'admin' && <AdminPage newsData={newsData} eventsData={eventsData} propertiesData={propertiesData} jobsData={jobsData} vehiclesData={vehiclesData} guideData={guideData} classifiedsData={classifiedsData} adsData={adsData} offersData={offersData} settingsData={settingsData} crud={crud} db={db} />}
           {currentPage === 'profile' && user && <ProfilePage user={user} db={db} setUser={setUser} onBack={() => setCurrentPage('home')} propertiesData={propertiesData} vehiclesData={vehiclesData} jobsData={jobsData} classifiedsData={classifiedsData} crud={crud} />}
           
           {currentPage === 'about' && <AboutPage />}

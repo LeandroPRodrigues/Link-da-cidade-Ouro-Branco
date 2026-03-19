@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Image as ImageIcon, Type, Heading, Upload, Clock, CheckCircle, XCircle, Edit, Loader, Save, Tag, X, Shield, Users } from 'lucide-react';
 import VehicleForm from '../components/VehicleForm'; 
 import PropertyForm from '../components/PropertyForm'; 
 import { uploadFile } from '../utils/uploadHelper';
+import { db } from '../utils/database';
 
 export default function AdminPage({ newsData, eventsData, propertiesData, jobsData, vehiclesData, guideData, classifiedsData, adsData, offersData, settingsData, crud }) {
   const [activeTab, setActiveTab] = useState('offers');
@@ -14,9 +15,67 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
   
   const [siteSettings, setSiteSettings] = useState(settingsData || { facebook: '', instagram: '', youtube: '', whatsapp: '', showWhatsapp: false });
 
+  // === ESTADOS PARA GESTÃO DE USUÁRIOS ===
+  const [editingUser, setEditingUser] = useState(null);
+  const [usersList, setUsersList] = useState([]);
+
   useEffect(() => {
     if (settingsData) setSiteSettings(settingsData);
   }, [settingsData]);
+
+  // === CARREGAR USUÁRIOS ===
+  const fetchUsers = async () => {
+    setIsUploading(true);
+    try {
+      const users = await db.getAllUsers();
+      setUsersList(users || []);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao carregar usuários.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  // === SALVAR EDIÇÃO DO USUÁRIO (BAN / VIP) ===
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    setIsUploading(true);
+    try {
+      let newSuspensionEnd = editingUser.suspensionEnd;
+      if (editingUser.status === 'suspended' && editingUser.suspensionDays) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + parseInt(editingUser.suspensionDays));
+        newSuspensionEnd = endDate.toISOString();
+      } else if (editingUser.status !== 'suspended') {
+        newSuspensionEnd = null;
+      }
+
+      const dataToUpdate = {
+        status: editingUser.status,
+        suspensionEnd: newSuspensionEnd,
+        permissions: editingUser.permissions || {
+          unlimitedProperties: false, unlimitedVehicles: false, unlimitedJobs: false
+        }
+      };
+
+      await db.updateUserAdmin(editingUser.id, dataToUpdate);
+      alert("Conta atualizada com sucesso!");
+      setEditingUser(null);
+      fetchUsers();
+    } catch(err) {
+      console.error(err);
+      alert("Erro ao atualizar conta.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -24,23 +83,16 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     alert("Configurações do site salvas com sucesso!");
   };
 
-  // ==========================================
-  // FUNÇÃO DE DEFINIR DESTAQUE DA NOTÍCIA NA HOME
-  // ==========================================
   const handleSetFeaturedNews = async (item, pos) => {
     setIsUploading(true);
     try {
-      // Verifica se já existe alguma notícia ocupando esta posição e remove o destaque dela
       const existing = newsData.find(n => n.featuredPosition === pos);
       if (existing && existing.id !== item.id) {
         await crud.updateNews({ ...existing, featuredPosition: null });
       }
-      
-      // Se clicar na mesma posição, remove o destaque
       if (item.featuredPosition === pos) {
         await crud.updateNews({ ...item, featuredPosition: null });
       } else {
-        // Aplica a nova posição
         await crud.updateNews({ ...item, featuredPosition: pos });
       }
     } catch(err) {
@@ -51,9 +103,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     }
   };
 
-  // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (GUIA)
-  // ==========================================
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -127,9 +176,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // ==========================================
-  // FUNÇÃO DE IMPORTAÇÃO DE CSV (VAGAS DO SINE)
-  // ==========================================
   const handleJobsCSVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -232,7 +278,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
-  // === FUNÇÃO PARA UPLOAD MÚLTIPLO NOS BLOCOS DE NOTÍCIA ===
   const handleNewsMultiImageUpload = async (e, blockId, currentValues) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -414,6 +459,7 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
           { id: 'vehicles', label: 'Veículos' },
           { id: 'classifieds', label: 'Classificados' },
           { id: 'guide', label: pendingGuideItems.length > 0 ? `Guia Comercial (${pendingGuideItems.length})` : 'Guia Comercial' },
+          { id: 'users', label: 'Usuários' }, // <-- NOVA ABA AQUI
           { id: 'settings', label: 'Configurações' }
         ].map(tab => (
           <button
@@ -428,6 +474,122 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
       </div>
 
       <div className="p-6">
+        
+        {/* ============================================================== */}
+        {/* NOVA ABA: GESTÃO DE USUÁRIOS                                   */}
+        {/* ============================================================== */}
+        {activeTab === 'users' && (
+          <div>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                <Users size={24} className="text-indigo-600"/> Gerenciar Usuários
+              </h2>
+              <button onClick={fetchUsers} className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100">
+                Atualizar Lista
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {usersList.length > 0 ? usersList.map(u => (
+                <div key={u.id} className="flex flex-col sm:flex-row gap-4 p-5 border border-slate-200 rounded-xl bg-white relative group items-start sm:items-center justify-between shadow-sm hover:border-indigo-200 transition">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-black text-xl uppercase shrink-0">
+                      {u.name ? u.name[0] : '?'}
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-800 text-base flex items-center gap-2 mb-0.5">
+                        {u.name} {u.role === 'admin' && <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">Admin</span>}
+                      </h3>
+                      <p className="text-sm font-medium text-slate-500 mb-2">{u.email}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {u.status === 'banned' ? (
+                          <span className="bg-red-100 border border-red-200 text-red-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Banido</span>
+                        ) : u.status === 'suspended' ? (
+                          <span className="bg-orange-100 border border-orange-200 text-orange-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
+                            Suspenso até {u.suspensionEnd ? new Date(u.suspensionEnd).toLocaleDateString('pt-BR') : ''}
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Ativo</span>
+                        )}
+                        
+                        {(u.permissions?.unlimitedProperties || u.permissions?.unlimitedVehicles || u.permissions?.unlimitedJobs) && (
+                          <span className="bg-indigo-100 border border-indigo-200 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Membro VIP</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditingUser({...u, suspensionDays: ''})} className="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition flex items-center justify-center gap-2 shrink-0">
+                    <Shield size={18}/> Gerenciar Conta
+                  </button>
+                </div>
+              )) : <p className="text-center py-8 text-slate-400 font-medium">Nenhum usuário encontrado.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL DE EDIÇÃO DE USUÁRIO --- */}
+        {editingUser && (
+          <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto custom-scrollbar relative shadow-2xl animate-in zoom-in-95">
+              <button onClick={() => setEditingUser(null)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition"><X size={20}/></button>
+              
+              <h2 className="text-2xl font-black text-slate-800 mb-2">Gerenciar Conta</h2>
+              <p className="text-sm font-bold text-indigo-600 mb-6 pb-4 border-b border-slate-100">{editingUser.name} ({editingUser.email})</p>
+              
+              <form onSubmit={handleSaveUser} className="space-y-6">
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Status da Conta</label>
+                  <select value={editingUser.status || 'active'} onChange={e => setEditingUser({...editingUser, status: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600 font-bold text-slate-700">
+                    <option value="active">🟢 Ativo (Acesso Normal)</option>
+                    <option value="suspended">🟠 Suspender Temporariamente</option>
+                    <option value="banned">🔴 Banir Permanentemente</option>
+                  </select>
+                </div>
+
+                {editingUser.status === 'suspended' && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-xs font-black text-orange-500 uppercase tracking-wider mb-2">Duração da Suspensão</label>
+                    <select value={editingUser.suspensionDays || ''} onChange={e => setEditingUser({...editingUser, suspensionDays: e.target.value})} className="w-full p-4 bg-orange-50 border border-orange-200 rounded-xl outline-none focus:border-orange-500 text-orange-800 font-bold" required>
+                      <option value="">Selecione os dias...</option>
+                      <option value="5">5 Dias</option>
+                      <option value="10">10 Dias</option>
+                      <option value="15">15 Dias</option>
+                      <option value="30">30 Dias</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Permissões Especiais (Limites VIP)</label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl cursor-pointer transition">
+                      <input type="checkbox" checked={editingUser.permissions?.unlimitedProperties || false} onChange={e => setEditingUser({...editingUser, permissions: {...(editingUser.permissions || {}), unlimitedProperties: e.target.checked}})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                      <span className="text-sm font-bold text-indigo-900">Anúncios Ilimitados de Imóveis</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl cursor-pointer transition">
+                      <input type="checkbox" checked={editingUser.permissions?.unlimitedVehicles || false} onChange={e => setEditingUser({...editingUser, permissions: {...(editingUser.permissions || {}), unlimitedVehicles: e.target.checked}})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                      <span className="text-sm font-bold text-indigo-900">Anúncios Ilimitados de Veículos</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl cursor-pointer transition">
+                      <input type="checkbox" checked={editingUser.permissions?.unlimitedJobs || false} onChange={e => setEditingUser({...editingUser, permissions: {...(editingUser.permissions || {}), unlimitedJobs: e.target.checked}})} className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                      <span className="text-sm font-bold text-indigo-900">Cadastros Ilimitados de Vagas</span>
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 font-medium leading-relaxed">
+                    *Marcando estas opções, o usuário ignora a regra limite de 3 cadastros, podendo publicar anúncios infinitamente na respectiva categoria.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-6 mt-4 border-t border-slate-100">
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 transition shadow-md">Salvar Alterações</button>
+                  <button type="button" onClick={() => setEditingUser(null)} className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition shadow-sm">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
         
         {activeTab === 'settings' && (
           <div>
@@ -546,7 +708,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
                     <h3 className="font-bold text-slate-800 text-base line-clamp-2" title={item.title}>{item.title}</h3>
                     <p className="text-xs text-slate-500 mt-1">{item.author} • {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Sem data'}</p>
                     
-                    {/* === BOTÕES PARA SELECIONAR A POSIÇÃO DA NOTÍCIA NA HOME === */}
                     <div className="flex items-center gap-3 mt-3">
                       {item.isOfficial && <span className="inline-block bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Oficial</span>}
                       
