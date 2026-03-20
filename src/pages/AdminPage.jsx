@@ -322,17 +322,22 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     e.target.value = null;
   };
 
+  // CORREÇÃO: Evita adicionar 'location: undefined' no estado quando o item não tem mapa (ex: notícias, ofertas)
   const openEditModal = (item = {}) => {
     if (activeTab === 'news') setNewsBlocks(item.content || []);
     const imageValue = item.image || (item.photos && item.photos.length > 0 ? item.photos[0] : '') || '';
     const photosValue = item.photos || (item.image ? [item.image] : []);
     
-    let loc = item.location;
-    if (activeTab === 'guide' && !loc) {
-        loc = { lat: -20.5236, lng: -43.6914 };
+    let newItemState = { ...item, image: imageValue, photos: photosValue };
+
+    // Só adiciona a chave 'location' se for Guia Comercial, Imóvel ou se a localização já existir
+    if (activeTab === 'guide' && !item.location) {
+        newItemState.location = { lat: -20.5236, lng: -43.6914, privacy: 'exact' };
+    } else if (item.location !== undefined) {
+        newItemState.location = item.location;
     }
     
-    setEditingItem({ ...item, image: imageValue, photos: photosValue, location: loc });
+    setEditingItem(newItemState);
     setModalOpen(true);
   };
 
@@ -342,6 +347,15 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
     
     let payload = { ...editingItem };
     if (activeTab === 'news') payload.content = newsBlocks;
+
+    // ⚠️ CORREÇÃO VITAL DO ERRO DO FIREBASE ⚠️
+    // O Firebase proíbe salvar qualquer chave com valor "undefined".
+    // Esta função limpa tudo que for undefined antes de enviar pro banco.
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
 
     try {
       if (payload.id) {
@@ -741,9 +755,6 @@ export default function AdminPage({ newsData, eventsData, propertiesData, jobsDa
 
       </div>
 
-      {/* ========================================================= */}
-      {/* OS MODAIS AGORA SÃO PUXADOS DO ARQUIVO EXTERNO AdminModals */}
-      {/* ========================================================= */}
       <AdminUserModal 
         editingUser={editingUser} 
         setEditingUser={setEditingUser} 
