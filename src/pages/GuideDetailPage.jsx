@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
-import { ArrowLeft, MapPin, Phone, MessageCircle, Share2, Clock, Globe, Copy, X } from 'lucide-react';
-import LocationPicker from '../components/LocationPicker';
+import { ArrowLeft, MapPin, Phone, MessageCircle, Share2, Globe, Copy, X } from 'lucide-react';
+// Importamos o mapa direto em vez do LocationPicker
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 export default function GuideDetailPage({ item, onBack }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Carrega a API do Google Maps
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  });
 
   if (!item) return null;
 
   const cleanPhone = item.phone ? item.phone.replace(/\D/g, '') : '';
   const isMobile = cleanPhone.length >= 10 && cleanPhone.startsWith('319');
+
+  // Verifica se o item possui coordenadas exatas salvas
+  const hasLocation = item.location && item.location.lat && item.location.lng;
+  const mapCenter = hasLocation 
+    ? { lat: item.location.lat, lng: item.location.lng } 
+    : { lat: -20.5236, lng: -43.6914 }; // Centro de Ouro Branco como fallback
 
   // --- FUNÇÕES DO MODAL DE COMPARTILHAMENTO ---
   const currentUrl = window.location.href;
@@ -154,20 +166,31 @@ export default function GuideDetailPage({ item, onBack }) {
               {item.address || "Endereço completo não informado"}
             </p>
             
-            {/* O NOVO MAPA INTEGRADO */}
-            <div className="h-64 w-full rounded-xl overflow-hidden border border-slate-200 relative mb-4 shadow-inner">
-              <LocationPicker 
-                lat={item.location?.lat || -20.5236} 
-                lng={item.location?.lng || -43.6914} 
-                readOnly 
-              />
+            {/* O MAPA SOMENTE LEITURA E AMPLIADO */}
+            <div className="h-96 w-full rounded-xl overflow-hidden border border-slate-200 relative mb-5 shadow-inner z-0 bg-slate-100 flex items-center justify-center">
+              {isLoaded ? (
+                <GoogleMap 
+                  mapContainerStyle={{ width: '100%', height: '100%' }} 
+                  center={mapCenter} 
+                  zoom={hasLocation ? 17 : 13} 
+                  options={{ streetViewControl: false, mapTypeControl: false }}
+                >
+                  {hasLocation && <Marker position={mapCenter} />}
+                </GoogleMap>
+              ) : (
+                <span className="text-slate-500 font-bold animate-pulse">Carregando mapa...</span>
+              )}
             </div>
 
+            {/* Link Corrigido de Abrir Rota */}
             <a 
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' Ouro Branco MG ' + (item.address || ''))}`}
+              href={hasLocation 
+                ? `https://www.google.com/maps/dir/?api=1&destination=${item.location.lat},${item.location.lng}` 
+                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' Ouro Branco MG ' + (item.address || ''))}`
+              }
               target="_blank"
               rel="noreferrer"
-              className="w-full bg-blue-50 border border-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition shadow-sm"
+              className="w-full bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-blue-700 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition shadow-sm text-lg"
             >
               Abrir Rota no Google Maps →
             </a>
